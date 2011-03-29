@@ -1,12 +1,37 @@
 /*********************************************************************
 File: acsbridge.h
-Description: Declare routines for reading and writing the kernel->userspace
-accessibility bridge (aka /dev/acsint).
-And other routines that are generally useful
-for anyone writing adaptive software.
+Description: a layer above the acsint device driver /dev/acsint.
+Acsint carries kernel events, such as keystrokes and tty output,
+back into user space to support accessibility adapters.
+You can use the character device directly if you wish,
+but that's kinda like reading a block device without
+a filesystem on top of it.  You could do it, but ...
+you're probably better off using at least some of the routines in this
+accessibility bridge.
+You can configure the keyboard, watch for events,
+maintain a text buffer for each console,
+manipuate the reading cursor, watch for index markers
+from the synthesizer, manage a repronunciation dictionary, and much more.
 
-This file describes the API visible to clients,
-so it should be heavily commented.
+There are many routines here; some operate at a low level and some
+operate at a higher level.
+You should read through the entire api before you start building
+your application.
+This file is divided into sections of related functions as follows.
+
+Section 1: opening the acsint device.
+Section 2: sounds.
+Section 3: the reading buffer.
+Section 4: capturing keystrokes.
+Section 5: key redirection.
+Section 6: passing a string to the console as tty input.
+Section 7: associate a macro or speech function with a modified key.
+Section 8: repronunciations.
+Section 9: foreground console.
+Section 10: cursor motion.
+Section 11: get a chunk of text to read.
+Section 12: synthesizer communications.
+Section 13: synthesizer speed, volume, pitch, etc.
 *********************************************************************/
 
 #ifndef ACSBRIDGE_H
@@ -16,7 +41,7 @@ so it should be heavily commented.
 
 
 /*********************************************************************
-Section 1: opening the device.
+Section 1: opening the acsint device.
 You can't do anything until you open /dev/acsint.
 This is the device driver that provides you with
 keystroke events, screen memory, and a log of tty output.
