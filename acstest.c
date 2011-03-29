@@ -20,7 +20,7 @@ A little syntax checker verifies the first letter of each speech command.
 
 static int syntaxcheck(char *s)
 {
-if(strchr("bzhmskrd", *s)) return 0; // ok
+if(strchr("bzhmsklrd", *s)) return 0; // ok
 return -1; // don't recognize that one
 } // syntaxcheck
 
@@ -108,6 +108,7 @@ int dump_fd;
 char grab[20];
 int mkcode; // modified key code
 char *cmd; // the speech command
+achar c;
 
 mkcode = acs_build_mkcode(key, ss);
 cmd = acs_getspeechcommand(mkcode);
@@ -119,7 +120,7 @@ if(!cmd) {
 // and the command is generic alt.
 // Let's check for that.
 if(ss&ACS_SS_ALT) {
-mkcode = acs_build_mkcode(key, ACS_SS_ALT);
+mkcode = acs_build_mkcode(key, (ss|ACS_SS_ALT));
 cmd = acs_getspeechcommand(mkcode);
 }
 }
@@ -130,7 +131,7 @@ if(!cmd) return;
 // Don't switch on key or state.
 // We're done with that.
 // Switch on the command, and take action accordingly.
-
+// Thus it is independent of the key bindings.
 // Notice we don't have to worry about macros here.
 // They are handled by acs_events().
 
@@ -168,13 +169,20 @@ puts(dumpfile);
 break;
 
 case 'k':
-acs_tone_onoff(1);
+acs_tone_onoff(0);
 if(!acs_keystring(grab, sizeof(grab), ACS_KS_DEFAULT))
 printf("<%s>\n", grab);
 break;
 
+case 'l':
+acs_tone_onoff(0);
+if(acs_get1char(&c) < 0)
+acs_bell();
+else printf("%c\n", c);
+break;
+
 case 'r':
-acs_tone_onoff(1);
+acs_tone_onoff(0);
 moreStuff = 0;
 fakeSynthesizer();
 break;

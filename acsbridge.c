@@ -488,6 +488,21 @@ acs_key_h = save_key_h;
 acs_divert(0);
 } // swallow1_h
 
+int acs_get1char(achar *p)
+{
+int key, state;
+achar keychar;
+*p = 0;
+if(acs_get1key(&key, &state)) return -1;
+if(key > KEY_SPACE ||
+state&(ACS_SS_ALT|ACS_SS_CTRL)) return -1;
+// This only works on a qwerty layout; not sure how to fix this.
+keychar = (state&ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
+if(!isalnum(keychar)) return -1;
+*p = keychar;
+return 0;
+} // acs_get1char
+
 
 // set and unset keys
 
@@ -1823,11 +1838,14 @@ char save, c;
 // leading whitespace doesn't matter
 skipWhite(&s);
 
-// comment line starts with #, except for ## space
+// comment line starts with #, except for ## space or# digit
 if(s[0] == '#') {
+if(!s[1]) return 0;
+if(!strchr("1234567890.+-*/", s[1])) {
 ++s;
 if(s[0] != '#') return 0;
 if(s[1] != ' ' && s[1] != '\t') return 0;
+}
 }
 
 mkcode = acs_ascii2mkcode(s, &s);
@@ -2037,6 +2055,8 @@ static char extstring[] = "[:dv g5 dd]";
 static char bnsstring[10];
 static char acestring[] = "\33A5";
 
+if(n < 0 || n > 9) return -1;
+
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
 doublestring[1] = '0' + n;
@@ -2100,6 +2120,8 @@ static char bnsstring[10];
 static char acestring[] = "\33R5";
 static const char acerate[] ="02468ACEGH";
 
+if(n < 0 || n > 9) return -1;
+
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
 doublestring[1] = doublestring[4] = '0' + n;
@@ -2153,6 +2175,8 @@ static const short tohurtz[] = {
 static char decstring[] = "[:dv ap xxx]";
 static char bnsstring[10];
 static char acestring[] = "\33P5";
+
+if(n < 0 || n > 9) return -1;
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:

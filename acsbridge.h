@@ -485,17 +485,18 @@ extern ks_echo_handler_t acs_ks_echo_h;
 Get one character from the keyboard.
 There is no checking here, just return the key and the state.
 Could be a function key, whatever.
+get1char does more checking - returns a letter or digit.
 This can be used to set modes that are 0 to 9,
 like the voice,  pitch, rate, etc.
 Or choose, by letter, one of a dozen binary modes to toggle.
 Or try to open the synthesizer on a different port, 0 through 3,
 for ttyS0 through ttyS3.
-Or announce the speech function associated with the next key.
 You get the idea.
 Note that get1key is the opposite of bypass.
 *********************************************************************/
 
 int acs_get1key(int *key_p, int *ss_p);
+int acs_get1char(achar *p);
 
 
 /*********************************************************************
