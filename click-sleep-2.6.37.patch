@@ -1,0 +1,19 @@
+diff -uprN a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
+--- a/drivers/tty/vt/vt.c	2011-03-19 00:22:03.000000000 -0400
++++ b/drivers/tty/vt/vt.c	2011-03-19 00:22:03.000000000 -0400
+@@ -2255,6 +2255,15 @@ rescan_last_byte:
+ 					&param) == NOTIFY_STOP)
+ 			continue;
+ 
++/* Sleep for a while.  I would call msleep(),
++ * but that addds an extra jiffy.  Timing is tight, and I can't afford that.
++ * Results would be inconsistent, based on the value of HZ.  This is better. */
++		if(param.c == 0xac97) {
++			unsigned long timeout = msecs_to_jiffies(4);
++			while (timeout)
++				timeout = schedule_timeout_uninterruptible(timeout);
++		}
++
+                 /* If the original code was a control character we
+                  * only allow a glyph to be displayed if the code is
+                  * not normally used (such as for cursor movement) or
