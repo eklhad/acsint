@@ -1387,7 +1387,7 @@ void acs_endsentence(achar *dest)
 
 // Synthesizer descriptor and some routines for a serial connection.
 
-int ss_fd;
+int ss_fd0, ss_fd1;
 
 talking_handler_t talking_h;
 imark_handler_t imark_h;
@@ -1409,7 +1409,7 @@ tio.c_cc[VSTART] = 19;
     tio.c_cc[VMIN] = 1;
     tio.c_cc[VTIME] = 0;
 
-return tcsetattr(ss_fd, TCSANOW, &tio);
+return tcsetattr(ss_fd0, TCSANOW, &tio);
 } // ess_flowcontrol
 
 int ess_open(const char *devname, int baud)
@@ -1434,14 +1434,15 @@ B115200,
 0};
 int j;
 
-if(ss_fd >= 0) {
+if(ss_fd0 >= 0) {
 // already open
 errno = EEXIST;
 return -1;
 }
 
-ss_fd = open(devname, O_RDWR);
-if(ss_fd < 0) return 0;
+ss_fd0 = open(devname, O_RDWR);
+if(ss_fd0 < 0) return 0;
+ss_fd1 = ss_fd0;
 
 // Set up the tty characteristics.
 // Especially important to have no echo and no cooked mode.
@@ -1451,24 +1452,24 @@ if(baud == baudvalues[j]) thisbaud = baudbits[j];
 if(ess_flowcontrol(1)) {
 // ioctl failure ; don't understand.
 // Hope errno helps.
-close(ss_fd);
-ss_fd = -1;
+close(ss_fd0);
+ss_fd0 = ss_fd1 = -1;
 return -1;
 }
 
 	// Send an initial CR.
 		// Some units like to see this to establish baud rate.
 usleep(5000);
-write(ss_fd, &crbyte, 1);
+write(ss_fd1, &crbyte, 1);
 
 return 0;
 } // ess_open
 
 void ss_close(void)
 {
-if(ss_fd < 0) return; // already closed
-close(ss_fd);
-ss_fd = -1;
+if(ss_fd0 < 0) return; // already closed
+close(ss_fd0);
+ss_fd0 = ss_fd1 = -1;
 } // ss_close
 
 static fd_set channels;
@@ -1479,16 +1480,16 @@ int rc;
 int nfds;
 
 FD_SET(acs_fd, &channels);
-FD_SET(ss_fd, &channels);
+FD_SET(ss_fd0, &channels);
 
-nfds = ss_fd > acs_fd ? ss_fd : acs_fd;
+nfds = ss_fd0 > acs_fd ? ss_fd0 : acs_fd;
 ++nfds;
 rc = select(nfds, &channels, 0, 0, 0);
 if(rc < 0) return; // should never happen
 
 rc = 0;
 if(FD_ISSET(acs_fd, &channels)) rc |= 1;
-if(FD_ISSET(ss_fd, &channels)) rc |= 2;
+if(FD_ISSET(ss_fd0, &channels)) rc |= 2;
 return rc;
 } // acs_ss_wait
 
@@ -1498,12 +1499,12 @@ int nr; // number of bytes read
 int i;
 static int leftover = 0;
 
-if(ss_fd < 0) {
+if(ss_fd0 < 0) {
 errno = ENXIO;
 return -1;
 }
 
-nr = read(ss_fd, ss_inbuf+leftover, SSBUFSIZE-leftover);
+nr = read(ss_fd0, ss_inbuf+leftover, SSBUFSIZE-leftover);
 if(acs_debug) acs_log("synth read %d bytes\n", nr);
 if(nr < 0) return -1;
 
@@ -1931,13 +1932,13 @@ acs_clearspeechcommand(i);
 static void ss_cr(void)
 {
 if(ss_style == SS_STYLE_DECEXP || ss_style == SS_STYLE_DECPC)
-write(ss_fd, &kbyte, 1);
-write(ss_fd, &crbyte, 1);
+write(ss_fd1, &kbyte, 1);
+write(ss_fd1, &crbyte, 1);
 }
 
 int ss_say_string(const achar *s)
 {
-write(ss_fd, s, strlen(s));
+write(ss_fd1, s, strlen(s));
 ss_cr();
 } // ss_say_string
 
@@ -1967,7 +1968,7 @@ t = s;
 while(*s) {
 if(*o && mark >= 0 && mark <= 100) { // mark here
 // have to send the prior word
-write(ss_fd, t, s-t);
+write(ss_fd1, t, s-t);
 t = s;
 // set the index marker
 imark_loc[imark_end++] = *o;
@@ -1988,7 +1989,7 @@ sprintf(ibuf, "[:i r %d]", mark);
 break;
 } // switch
 if(ibuf[0]) {
-write(ss_fd, ibuf, strlen(ibuf));
+write(ss_fd1, ibuf, strlen(ibuf));
 ++mark;
 }
 }
@@ -1996,7 +1997,7 @@ write(ss_fd, ibuf, strlen(ibuf));
 }
 
 if(s > t)
-write(ss_fd, t, s-t);
+write(ss_fd1, t, s-t);
 ss_cr();
 } // ss_say_string_imarks
 
@@ -2015,7 +2016,7 @@ ibyte = 3;
 break;
 } // switch
 
-write(ss_fd, &ibyte, 1);
+write(ss_fd1, &ibyte, 1);
 
 imark_start = 0;
 bnsf = 0;
@@ -2044,7 +2045,7 @@ break;
 static void
 ss_writeString(const char *s)
 {
-write(ss_fd, s, strlen(s));
+write(ss_fd1, s, strlen(s));
 } /* ss_writeString */
 
 int ss_setvolume(int n)

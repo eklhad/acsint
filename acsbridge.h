@@ -1033,6 +1033,9 @@ Section 12: synthesizer communications.
 Most synthesizers communicate with us over a file descriptor,
 be it a serial port, socket, or pipe.
 If that is the case, you can use ss_fd for this descriptor.
+Actually we use ss_fd0 for input and ss_fd1 for output.
+These will be the same for a serial port or socket,
+and different if we are talking to a software synth through a pipe.
 With acs_fd and ss_fd in place, the bridge can perform some functions for you,
 like reading from the two file descriptors simultaneously, and watching for events.
 We've already seen the acsint events, keystrokes, console switch, etc.
@@ -1042,7 +1045,7 @@ they will be passed back to you through handlers,
 much like the handlers seen above.
 *********************************************************************/
 
-extern int ss_fd; // file descriptor
+extern int ss_fd0, ss_fd1; // file descriptor
 
 // report an index marker
 typedef void (*imark_handler_t)(int mark);
@@ -1068,10 +1071,10 @@ int ess_flowcontrol(int hardware);
 /*********************************************************************
 Wait for communication from either the acsint kernel module or the synthesizer.
 If you must monitor other channels as well, then this won't work for you.
-This function only monitors acs_fd and ss_fd.
+This function only monitors acs_fd and ss_fd0.
 That is enough for most adapters.
 The return is 1 if acs_fd has data,
-2 if ss_fd has data, and 3 if they are both ready to read.
+2 if ss_fd0 has data, and 3 if they are both ready to read.
 *********************************************************************/
 
 int acs_ss_wait(void);
@@ -1175,7 +1178,7 @@ int ss_say_string_imarks(const achar *s, const unsigned short *offsets, int firs
 
 /*********************************************************************
 Stop speech immediately.
-Writes an interrupt byte, which depends on the synth style, to ss_fd.
+Writes an interrupt byte, which depends on the synth style, to ss_fd1.
 Clear away any internal index markers; we're not watching for them any more,
 because they aren't coming back to us.
 *********************************************************************/
