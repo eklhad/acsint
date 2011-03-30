@@ -555,13 +555,6 @@ if(t[-1]) --t;
 continue;
 }
 
-// control chars
-if(*s < ' ' && *s != '\7' && *s != '\r' && *s != '\n' &&
-acs_postprocess&ACS_PP_STRIP_CTRL) {
-++s;
-continue;
-}
-
 // ansi escape sequences
 if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_STRIP_ESCB) {
 int j;
@@ -579,6 +572,13 @@ if(j < 20 && s[j]) {
 s += j+1;
 continue;
 		}
+}
+
+// control chars
+if(*s < ' ' && *s != '\7' && *s != '\r' && *s != '\n' &&
+acs_postprocess&ACS_PP_STRIP_CTRL) {
+++s;
+continue;
 }
 
 *t++ = *s++;
