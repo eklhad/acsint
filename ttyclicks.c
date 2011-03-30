@@ -62,11 +62,10 @@ MODULE_PARM_DESC(kmsg,
 static int sleep = 0;
 module_param(sleep, int, 0);
 MODULE_PARM_DESC(sleep,
-		 "sleep between the clicks of the output characters, (rather than a CPU busy loop), default is 0 (no); this does not work unless you patch vt.c");
-// Implementing sleep by stopping the tty doesn't work.  Not sure why.
-// Too bad; that means I have to modify and recompile the kernel
-// for this feature to run properly.
-#define SLEEP_STOP_TTY 0
+		 "sleep between the clicks of the output characters,\n\
+rather than a CPU busy loop.\n\
+Default is 0 (no).\n\
+This does not work unless you patch vt.c.");
 
 /* Define KDS if your kernel has the patch with kd_mkpulse and kd_mkswoop. */
 #define KDS 0
@@ -471,13 +470,6 @@ static int soundFromChar(char c, int minor)
 		return TICKS_CHARWAIT;
 	}
 
-/* You need this if you're trying to get sleep to work, You need this if you're trying to get sleep to work,
- * and you don't want to run stty -onlcr  */
-#if SLEEP_STOP_TTY
-	if (c == '\r')
-		return 0;
-#endif
-
 /* I don't know what to do with nonprintable characters. */
 /* I'll just pause, like they are spaces. */
 	if (c >= 0 && c <= ' ') {
@@ -489,21 +481,6 @@ static int soundFromChar(char c, int minor)
 	return TICKS_CHARWAIT - TICKS_CLICK;
 }				/* soundFromChar */
 
-/* timer to wake up the terminal after this module has put it to sleep. */
-
-#if SLEEP_STOP_TTY
-static struct tty_struct *hang_tty;
-static void restart_output(unsigned long);
-static DEFINE_TIMER(restart_timer, restart_output, 0, 0);
-
-static void restart_output(unsigned long dummy)
-{
-	del_timer(&restart_timer);
-	start_tty(hang_tty);
-	hang_tty = 0;
-}				/* restart_output */
-#endif
-
 /* Get char from the console, and make the sound. */
 
 static int
@@ -511,11 +488,6 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 {
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
-#if SLEEP_STOP_TTY
-	struct tty_struct *tty = vc->vc_tty;
-Starting in version 2.6.36
-	struct tty_struct *tty = vc->port.tty;
-#endif
 	int minor = vc->vc_num + 1;
 	int msecs = 0, usecs = 0;
 	long jifpause;
@@ -572,38 +544,25 @@ Starting in version 2.6.36
 	jifpause = msecs_to_jiffies(msecs);
 /* jifpause should always be positive */
 	if (sleep && jifpause > 0) {
-#if SLEEP_STOP_TTY
-// This doesn't work.   Why?
-if(tty && !hang_tty) {
-		stop_tty(tty);
-		hang_tty = tty;
-		mod_timer(&restart_timer, jiffies + jifpause);
-}
-#else
 
-/*********************************************************************
-This magical line of code only works if you edit vt.c and recompile the kernel.
-Add the following, around line 2219, just after
-rescan_last_byte:  &param) == NOTIFY_STOP)   continue;
- 
-// Sleep for a while.  I would call msleep(),
-// but that addds an extra jiffy.  Timing is tight, and I can't afford that.
-// Results would be inconsistent, based on the value of HZ.  This is better.
-		if(param.c == 0xac97) {
-			unsigned long timeout = msecs_to_jiffies(4);
-			while (timeout)
-				timeout = schedule_timeout_uninterruptible(timeout);
-		}
-
-*********************************************************************/
+/*
+ * This magical line of code only works if you edit vt.c
+ * and recompile the kernel.
+ * A patch for 2.3.37 can be found here.
+ * http://www.eklhad.net/linux/click-sleep-2.6.37.patch
+ */
 
 		param->c = 0xac97;
-#endif
 
 	} else {
-// no sleep, spin in a cpu cycle.
-// It's easy, and works, but will suspend the music you are playing in the background.
-// You won't here the rest of Hey Jude until output has ceased.
+
+/*
+ * no sleep, spin in a cpu cycle.
+ * It's easy, and works,
+ * but will suspend the music you are playing in the background.
+ * You won't here the rest of Hey Jude until output has ceased.
+ */
+
 		udelay(usecs);
 	}
 
@@ -651,11 +610,6 @@ static void __exit click_exit(void)
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
 	popfifo(0);
-
-#if SLEEP_STOP_TTY
-	if (hang_tty)
-		restart_output(0);
-#endif
 }				/* click_exit */
 
 module_init(click_init);
