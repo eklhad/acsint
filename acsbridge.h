@@ -1,16 +1,15 @@
 /*********************************************************************
 File: acsbridge.h
 Description: a layer above the acsint device driver /dev/acsint.
-Acsint carries kernel events, such as keystrokes and tty output,
+Acsint carries kernel events such as keystrokes and tty output
 back into user space to support accessibility adapters.
 You can use the character device directly if you wish,
 but that's kinda like reading a block device without
-a filesystem on top of it.  You could do it, but ...
-you're probably better off using at least some of the routines in this
-accessibility bridge.
+a filesystem on top of it.  You could do it, but you're probably better off
+using at least some of the routines in this accessibility bridge.
 You can configure the keyboard, watch for events,
 maintain a text buffer for each console,
-manipuate the reading cursor, watch for index markers
+manipulate the reading cursor, watch for index markers
 from the synthesizer, manage a repronunciation dictionary, and much more.
 
 There are many routines here; some operate at a low level and some
