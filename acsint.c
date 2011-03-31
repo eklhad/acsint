@@ -45,43 +45,20 @@ char area[TTYLOGSIZE1];
 char *start, *end, *head, *tail, *mark;
 };
 static struct cbuf cbuf_tty[NUMVIRTUALCONSOLES];
-// point to my area, for the active tty
-static struct cbuf *cb;
-
-/*********************************************************************
-In this paragraph I'm going to try to convince myself that I
-don't have to turn interrupts off every time I touch the circular buffer.
-The vt notifier adds characters to the circular buffer.
-It runs at process level.
-It's not part of an interrupt handler.
-The read function passes characters from the circular buffer into user space -
-characters that you haven't seen before.
-It does this because there is a keystroke event,
-or some other action that means you might be reading text.
-This is also at process level.
-So you hit a key, the adapter swaps in, I am copying the new chars
-to the adapter, when suddenly it swaps out and a process,
-running on the foreground tty, generates more tty output.
-Or ... a program spewing output is preempted by the adapter,
-which wants to see the latest tty characters.
-Under PREEMPT_NONE this can't happen,
-but if your kernel has the highest level of preemption I suppose it could.
-So I guess circular buffer operations are considered
-critical code after all.   (sigh)
-I hate messing with spinlocks, cause I don't know what Im doing!
-Well I don't think I need an irq lock here, just something threadsafe.
-*********************************************************************/
+/* Staging area to copy tty data to user space */
+static char cb_staging[TTYLOGSIZE];
 
 static void
-cb_reset(void)
+cb_reset(struct cbuf *cb)
 {
 cb->start = cb->head = cb->tail = cb->mark = cb->area;
 cb->end = cb->area + TTYLOGSIZE1;
-} // cb_reset
+}
 
-// put a character on the end of the circular buffer
+/* Put a character on the end of the circular buffer. */
+/* Already under a spinlock when this is called. */
 static void
-cb_append(char c)
+cb_append(struct cbuf *cb, char c)
 {
 *cb->head = c;
 ++cb->head;
@@ -92,46 +69,51 @@ if(cb->tail == cb->mark) cb->mark = 0;
 ++cb->tail;
 if(cb->tail == cb->end) cb->tail = cb->start;
 }
-} // cb_append
+}
 
 
-/*********************************************************************
-Indicate which keys should be passed on to userspace.
-Each element should be set to the appropriate shiftstate(s)
-as defined in acsint.h.
-Relay keys in those designated shift states.
-Otherwise they go on to the console.
-Set to -1 if the key is discarded entirely.
-*********************************************************************/
+/*
+ * Indicate which keys should be passed on to userspace.
+ * Each element should be set to the appropriate shiftstate(s)
+ * as defined in acsint.h.
+ * Relay keys in those designated shift states.
+ * Otherwise they go on to the console.
+ * Set to -1 if the key is discarded entirely.
+ */
 
-static int acsint_keys[ACS_NUM_KEYS];
+static char acsint_keys[ACS_NUM_KEYS];
 static char key_divert, key_bypass, key_echo;
-static bool mustrefresh = false;
 
 static void clear_keys(void)
 {
 int i;
 for (i=0; i<ACS_NUM_KEYS; i++)
 acsint_keys[i]=0;
-} // clear_keys
+}
 
 
-// The array "rbuf" is used for passing key/tty events to user space
-#define RBUF_LEN 1024
+/* The array "rbuf" is used for passing key/tty events to user space.
+ * A reading buffer of sorts.  See device_read() below.
+ * Despite the names head and tail, it's not a true circular buffer.
+ * The process has to read the data before rbuf_head reaches rbuf_end,
+ * or data is lost.
+ * That's not a problem, because you just can't type faster
+ * than the daemon can gather up those keystrokes.
+ */
+
+#define RBUF_LEN 400
 static char rbuf[RBUF_LEN];
 static const char *rbuf_end=rbuf+RBUF_LEN;
-// Despite the names head and tail, it's not a circular buffer.
-// The process has to read the data before we reach rbuf_end, or data is lost.
 static char *rbuf_tail, *rbuf_head;
-static int rbuf_len;
 
 // Wait until this driver has some data to read.
 DECLARE_WAIT_QUEUE_HEAD(wq);
 
-static int in_use; // only one process opens this device at a time
-static int last_fgc; // last foreground console
+static int in_use; /* only one process opens this device at a time */
+static int last_fgc; /* last foreground console */
 
-// Push characters onto the input tty for the foreground console.
+/* Push characters onto the input queue of the foreground tty.
+ * This is for macros, or cut&paste. */
 static void
 tty_pushstring(const char *cp, int len)
 {
@@ -156,25 +138,25 @@ get_user(c, cp);
 	con_schedule_flip(tty);
 } /* tty_pushstring */
 
-// File operations for /dev/acsint.
+/* File operations for /dev/acsint. */
 
 static int device_open(struct inode *inode, struct file *file)
 {
 int j;
+struct cbuf *cb;
 
+/* A theoretical race condition here; too unlikely for me to worry about. */
 if (in_use) return -EBUSY;
 
 cb = cbuf_tty;
 for(j=0; j<NUMVIRTUALCONSOLES; ++j, ++cb)
-cb_reset();
+cb_reset(cb);
 
 clear_keys();
-
-in_use = 1;
 key_divert = key_bypass = key_echo = 0;
 
-// At startup we tell the process which virtual console it is on.
-// Place this directive in rbuf to be read.
+/* At startup we tell the process which virtual console it is on.
+ * Place this directive in rbuf to be read. */
 rbuf[0] = ACSINT_FGC;
 last_fgc = fg_console+1;
 if(last_fgc <= 0 || last_fgc > 6)
@@ -182,27 +164,36 @@ last_fgc = 1; // should never happen
 rbuf[1] = last_fgc;
 rbuf_tail=rbuf;
 rbuf_head=rbuf + 2;
-rbuf_len=2;
+
+in_use = 1;
+
 return 0;
-} // device_open
+}
 
 static int device_close(struct inode *inode, struct file *file)
 {
 in_use=0;
-rbuf_len = 0;
+rbuf_head = rbuf_tail = rbuf;
 return 0;
-} // device_close
+}
 
 static ssize_t device_read(struct file *file, char *buf, size_t len, loff_t *offset)
 {
 int bytes_read=0;
-int ccbytes;
+int copystatus;
 int mino, minor;
+struct cbuf *cb;
 bool catchup;
-char cubuf[4]; // for the catch up command
-int culen; // catch up length
-int retval = wait_event_interruptible(wq, (rbuf_len>0));
+/* catch up length - how many bytes to copy down to user space */
+int culen = 0;
+char cu_cmd[4]; // for the catch up command
+char *temp_head, *temp_tail, *t;
+int j, j2;
+int retval;
 
+if(!in_use) return 0; /* should never happen */
+
+retval = wait_event_interruptible(wq, (rbuf_head > rbuf_tail));
 if (retval==ERESTARTSYS) {
 return 0;
 }
@@ -210,103 +201,110 @@ return 0;
 // you can only read on behalf of the foreground console
 minor = last_fgc;
 mino = minor - 1;
-
-// rbuf contains at most one fgc command, at the front.
-// If so, we catch up right after that.
-// Otherwise catch up just before the first keystroke.
-// No need to catch up if there is just a MORECHARS command,
-// because the adapter hasn't shown any interest yet.
-// But the adapter might have issued a refresh command, and then we must.
-
-	raw_spin_lock_irqsave(&acslock, irqflags);
-catchup = mustrefresh;
-mustrefresh = false;
-
 cb = cbuf_tty + mino;
-if(catchup || cb->head != cb->mark) {
 
-if(*rbuf_tail == ACSINT_FGC && len >= 2) {
-ccbytes = copy_to_user(buf, rbuf_tail, 2);
-rbuf_len-=2;
-rbuf_tail+=2;
-bytes_read += 2;
-buf += 2;
-len -= 2;
-catchup = true;
+/* Use temp pointers, more keystrokes could be appended while
+ * we're doing this; that's ok. */
+temp_head = rbuf_head;
+temp_tail = rbuf_tail;
+
+/* Skip ahead to the last FGC event, if present. */
+for(t=temp_tail; t<temp_head; ++t) {
+if(*t == ACSINT_FGC) {
+temp_tail = t;
+t += 2;
+} else if(*t == ACSINT_KEYSTROKE) {
+t += 4;
+} else ++t;
 }
 
-// MORECHARS is a single byte, anything beyond that is keystrokes
-if(rbuf_len > 1) catchup = true;
+	raw_spin_lock_irqsave(&acslock, irqflags);
+
+catchup = false;
+if(cb->head != cb->mark) {
+/* MORECHARS doesn't force us to catch up, but anything else does. */
+for(t=temp_tail; t<temp_head; ++t) {
+if(*t == ACSINT_TTY_MORECHARS) continue;
+catchup = true;
+break;
+}
+}
 
 if(catchup) {
 if(cb->mark == 0) cb->mark = cb->tail;
-// There just has to be enough room, or I'm not even going to try
 if(cb->head >= cb->mark) culen = cb->head - cb->mark;
 else culen = (cb->end - cb->mark) + (cb->head - cb->start);
-if(len >= culen + 4) {
-cubuf[0] = ACSINT_TTY_NEWCHARS;
-cubuf[1] = minor;
-cubuf[2] = culen;
-cubuf[3] = (culen >> 8);
-ccbytes = copy_to_user(buf, cubuf, 4);
-bytes_read += 4;
-buf += 4;
-len -= 4;
-// one clump or two
+cu_cmd[0] = ACSINT_TTY_NEWCHARS;
+cu_cmd[1] = minor;
+cu_cmd[2] = culen;
+cu_cmd[3] = (culen >> 8);
+/* One clump or two. */
 if(cb->head >= cb->mark) {
-if(culen) ccbytes = copy_to_user(buf, cb->mark, culen);
-bytes_read += culen;
-buf += culen;
-len -= culen;
+if(culen) memcpy(cb_staging, cb->mark, culen);
 } else {
-culen = cb->end - cb->mark;
-ccbytes = copy_to_user(buf, cb->mark, culen);
-bytes_read += culen;
-buf += culen;
-len -= culen;
-culen = cb->head - cb->start;
-if(culen) ccbytes = copy_to_user(buf, cb->start, culen);
-bytes_read += culen;
-buf += culen;
-len -= culen;
+j = cb->end - cb->mark;
+memcpy(cb_staging, cb->mark, j);
+j2 = cb->head - cb->start;
+if(j2) memcpy(cb_staging + j, cb->start, j2);
 }
-} // room to catch up
 
 cb->mark = cb->head;
 } // catching up
-} // new characters not seen
 
-// Now pass down the rest of the events.
-// Could be nothing, if all we had was FGC.
-if (rbuf_len<=len) {
-if(rbuf_len)
-ccbytes = copy_to_user(buf, rbuf_tail, rbuf_len);
-rbuf_head = rbuf_tail=rbuf;
-bytes_read+=rbuf_len;
-rbuf_len=0;
-} else {
-// This really shouldn't ever happen.
-// The reading buffer should be large enough to catch up,
-// plus dozens of keystroke events.
-ccbytes = copy_to_user(buf, rbuf_tail, len);
-rbuf_len-=len;
-rbuf_tail+=len;
-bytes_read+=len;
+	raw_spin_unlock_irqrestore(&acslock, irqflags);
+
+/* Now pass down the events. */
+/* First fgc, then catch up, then the rest. */
+if(*temp_tail == ACSINT_FGC && len >= 2) {
+copystatus = copy_to_user(buf, temp_tail, 2);
+temp_tail+=2;
+bytes_read += 2;
+buf += 2;
+len -= 2;
 }
+
+if(catchup && len >= culen+4) {
+copystatus = copy_to_user(buf, cu_cmd, 4);
+if(!copystatus && culen)
+copystatus = copy_to_user(buf+4, cb_staging, culen);
+bytes_read += culen+4;
+buf += culen+4;
+len -= culen+4;
+}
+
+/* And the rest of the events. */
+j = temp_head - temp_tail;
+if(j > len) j = len; /* should never happen */
+if(j) {
+copystatus = copy_to_user(buf, temp_tail, j);
+temp_tail += j;
+buf += j;
+bytes_read+=j;
+len -= j;
+}
+
+/* Pull the pointers back to start. */
+/* This should happen almost every time. */
+	raw_spin_lock_irqsave(&acslock, irqflags);
+rbuf_tail = temp_tail;
+if(rbuf_head == rbuf_tail)
+rbuf_head = rbuf_tail = rbuf;
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 
 *offset += bytes_read;
 return bytes_read;
-} // device_read
+} /* device_read */
 
 static ssize_t device_write(struct file *file, const char *buf, size_t len, loff_t *offset)
 {
 char c;
 const char *p = buf;
-int j, key, shiftstate, bytes_read;
+int j, key, shiftstate, bytes_write;
 int nn; // number of notes
 short notes[2*(10+1)];
 int isize; // size of input to inject
+
+if(!in_use) return 0; /* should never happen */
 
 while(len) {
 get_user(c, p++);
@@ -405,13 +403,10 @@ break;
 
 case ACSINT_REFRESH:
 	raw_spin_lock_irqsave(&acslock, irqflags);
-if(rbuf_len) {
-mustrefresh = true;
-} else if(rbuf_head < rbuf_end) {
-*rbuf_head++ = ACSINT_REFRESH;
-++rbuf_len;
-mustrefresh = true;
-if(rbuf_len == 1) wake_up_interruptible(&wq);
+if(rbuf_head < rbuf_end) {
+*rbuf_head = ACSINT_REFRESH;
+if(rbuf_head == rbuf_tail) wake_up_interruptible(&wq);
+++rbuf_head;
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 break;
@@ -428,19 +423,20 @@ tty_pushstring(p, isize);
 p += isize, len -= isize;
 break;
 
-} // switch
-} // loop processing config instructions
+} /* switch */
+} /* loop processing config instructions */
 
-bytes_read=p-buf;
-*offset+=bytes_read;
-return bytes_read;
-} // device_write
+bytes_write=p-buf;
+*offset+=bytes_write;
+return bytes_write;
+} /* device_write */
 
 static unsigned int device_poll(struct file *fp, poll_table *pt)
 {
 unsigned int mask = 0;
-// we don't support poll writing. How to figure if the buffer is not full?
-if (rbuf_len > 0)
+if(!in_use) return 0; /* should never happen */
+/* we don't support poll writing. How to figure if the buffer is not full? */
+if (rbuf_head > rbuf_tail)
 mask = POLLIN | POLLRDNORM;
 poll_wait(fp, &wq, pt);
 return mask;
@@ -467,29 +463,29 @@ static struct miscdevice acsint_dev = {
 static void
 pushlog(char c, int minor)
 {
-int mino = minor - 1;
 bool wake = false;
+int mino = minor - 1;
+struct cbuf *cb = cbuf_tty + mino;
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
-cb = cbuf_tty + mino;
 if(cb->mark == cb->head && minor == last_fgc && rbuf_head < rbuf_end) {
 // throw the "more stuff" event
-if(!rbuf_len) wake = true;
-*rbuf_head++ = ACSINT_TTY_MORECHARS;
-++rbuf_len;
+if(rbuf_head == rbuf_tail) wake = true;
+*rbuf_head = ACSINT_TTY_MORECHARS;
+++rbuf_head;
 }
 
-cb_append(c);
+cb_append(cb, c);
 
 if(wake) wake_up_interruptible(&wq);
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
-} // pushlog
+} /* pushlog */
 
-/*********************************************************************
-And now we need a console, to capture printk() text
-and push it onto the buffer.
-It didn't come from the tty, but we want to read it nonetheless.
-*********************************************************************/
+/*
+ * And now we need a console to capture printk() text
+ * and push it onto the buffer.
+ * It didn't come from the tty, but we want to read it nonetheless.
+ */
 
 static void my_printk(struct console *cons, const char *msg, unsigned int len)
 {
@@ -505,13 +501,10 @@ static struct console acsintconsole = {
 name:	"acsint",
 write:	my_printk,
 flags:	CON_ENABLED,
-// hope everything else is ok being zero or null
 };
 
 
-/*********************************************************************
-Notifiers: keyboard events and tty events.
-*********************************************************************/
+/* Notifiers: keyboard events and tty events. */
 
 static int
 vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
@@ -534,17 +527,16 @@ if (new_fgc > 6) new_fgc = 1;
 if (new_fgc != last_fgc) {
 last_fgc = new_fgc;
 	raw_spin_lock_irqsave(&acslock, irqflags);
-// This command displaces all others.
-// We'll catch up when it is read.
-if(!rbuf_len) wake = true;
-rbuf_head = rbuf_tail = rbuf;
-*rbuf_head++=ACSINT_FGC;
-*rbuf_head++=new_fgc;
-rbuf_len=2;
+if(rbuf_head <= rbuf_end-2) {
+if(rbuf_head == rbuf_tail) wake = true;
+rbuf_head[0]=ACSINT_FGC;
+rbuf_head[1]=new_fgc;
+rbuf_head += 2;
 if(wake) wake_up_interruptible(&wq);
+}
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
-} // we switched
-} //vt_update
+} /* console switch */
+} /* vt_update */
 
 	if (type != VT_PREWRITE)
 		goto done;
@@ -554,15 +546,13 @@ if(unicode == 0)
 goto done;
 
 	if (unicode >= 256) {
-/*********************************************************************
-I don't handle international chars beyond ISO8859-1.
-thus unicode beyond 256 is discarded.
-If you are using another character set,
-then you have to map those unicodes back to bytes,
-and this is the place to do it.
-That means we need a setlocale command.
-None of this is implemented yet.
-*********************************************************************/
+/* I don't handle international chars beyond ISO8859-1.
+ * thus unicode beyond 256 is discarded.
+ * If you are using another character set,
+ * then you have to map those unicodes back to bytes,
+ * and this is the place to do it.
+ * That means we need a setlocale command.
+ * None of this is implemented yet. */
 		goto done;
 	}
 
@@ -570,7 +560,7 @@ pushlog(c, minor);
 
 done:
 	return NOTIFY_DONE;
-}				// vt_out
+} /* vt_out */
 
 static struct notifier_block nb_vt = {
 	.notifier_call = vt_out,
@@ -613,7 +603,7 @@ if(action < 0) goto stop;
 divert = key_divert;
 echo = key_echo;
 bypass = key_bypass;
-// But we don't redirect the meta keys
+/* But we don't redirect the meta keys */
 if(divert|echo|bypass) {
 if(key == KEY_LEFTCTRL ||
 key == KEY_RIGHTCTRL ||
@@ -630,8 +620,8 @@ divert = echo = bypass = 0;
 if(divert | echo) keep = true;
 if(bypass) {key_bypass = 0; send = true; goto event; }
 
-// keypad is assumed to be numbers with numlock on,
-// perhaps speech functions otherwise.
+/* keypad is assumed to be numbers with numlock on,
+ * perhaps speech functions otherwise. */
 if(param->ledstate & ACS_LEDS_NUMLOCK &&
 key >= KEY_KP7 && key <= KEY_KPDOT &&
 key != KEY_KPMINUS && key != KEY_KPPLUS)
@@ -646,17 +636,17 @@ keep = true;
 goto event;
 
 regular:
-// Just a regular key.
+/* Just a regular key. */
 if(!divert) send = true;
 
 event:
 if (keep && rbuf_head<=rbuf_end-4) {
-if(!rbuf_len) wake = true;
-*rbuf_head++=ACSINT_KEYSTROKE;
-*rbuf_head++=key;
-*rbuf_head++=ss;
-*rbuf_head++=param->ledstate;
-rbuf_len+=4;
+if(rbuf_head == rbuf_tail) wake = true;
+rbuf_head[0]=ACSINT_KEYSTROKE;
+rbuf_head[1]=key;
+rbuf_head[2]=ss;
+rbuf_head[3]=param->ledstate;
+rbuf_head+=4;
 if(wake) wake_up_interruptible(&wq);
 }
 
@@ -675,7 +665,7 @@ static struct notifier_block nb_key = {
 };
 
 
-// Load and unload the module.
+/* load and unload the module */
 
 static int __init acsint_init(void)
 {
