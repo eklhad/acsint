@@ -702,7 +702,7 @@ if(!screenmode) imark_start = 0;
 } else {
 if(diff > 0) {
 // partial replacement
-memcpy(tl->start, tl->start+diff, tl->end-tl->start - diff);
+memmove(tl->start, tl->start+diff, tl->end-tl->start - diff);
 tl->end -= diff;
 tl->cursor -= diff;
 if(tl->cursor < tl->start) tl->cursor = 0;
@@ -1586,7 +1586,7 @@ return -1;
 
 done:
 leftover = nr - i;
-if(leftover) memcpy(ss_inbuf, ss_inbuf+i, leftover);
+if(leftover) memmove(ss_inbuf, ss_inbuf+i, leftover);
 
 return 0;
 } // ss_events
