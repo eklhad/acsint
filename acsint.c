@@ -640,7 +640,10 @@ regular:
 if(!divert) send = true;
 
 event:
-if (keep && rbuf_head<=rbuf_end-4) {
+if (keep) {
+/* If this notifier is not called by an interrupt, then we need the spinlock */
+	raw_spin_lock_irqsave(&acslock, irqflags);
+if(rbuf_head<=rbuf_end-4) {
 if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0]=ACSINT_KEYSTROKE;
 rbuf_head[1]=key;
@@ -648,6 +651,8 @@ rbuf_head[2]=ss;
 rbuf_head[3]=param->ledstate;
 rbuf_head+=4;
 if(wake) wake_up_interruptible(&wq);
+}
+	raw_spin_unlock_irqrestore(&acslock, irqflags);
 }
 
 if(send) goto done;
