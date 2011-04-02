@@ -32,7 +32,7 @@
 #include <asm/io.h>		/* for inb() outb() */
 #include <asm/delay.h>
 
-#include <linux/ttyclicks.h>
+#include "ttyclicks.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");

@@ -18,8 +18,9 @@
 #include <linux/miscdevice.h>
 #include <linux/version.h>
 #include <linux/poll.h>
-#include <linux/ttyclicks.h>
-#include <linux/acsint.h>
+
+#include "ttyclicks.h"
+#include "acsint.h"
 
 
 #define ACSINT_DEVICE "/dev/acsint"
