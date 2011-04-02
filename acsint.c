@@ -37,8 +37,6 @@ MODULE_PARM_DESC(major,
 
 // For various critical sections of code
 static DEFINE_RAW_SPINLOCK(acslock);
-// When we must disable interrupts
-static unsigned long irqflags;
 
 
 struct cbuf { // circular buffer
@@ -191,6 +189,7 @@ char cu_cmd[4]; // for the catch up command
 char *temp_head, *temp_tail, *t;
 int j, j2;
 int retval;
+unsigned long irqflags;
 
 if(!in_use) return 0; /* should never happen */
 
@@ -304,6 +303,7 @@ int j, key, shiftstate, bytes_write;
 int nn; // number of notes
 short notes[2*(10+1)];
 int isize; // size of input to inject
+unsigned long irqflags;
 
 if(!in_use) return 0; /* should never happen */
 
@@ -464,6 +464,7 @@ static struct miscdevice acsint_dev = {
 static void
 pushlog(char c, int minor)
 {
+unsigned long irqflags;
 bool wake = false;
 int mino = minor - 1;
 struct cbuf *cb = cbuf_tty + mino;
@@ -515,6 +516,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	int minor = vc->vc_num + 1;
 	int unicode = param->c;
 	char c = param->c;
+	unsigned long irqflags;
 int new_fgc;
 bool wake = false;
 
@@ -580,6 +582,7 @@ static char ischort[] = {
 0,0,0,1,0,1,1,1,0,1,1,1,1,1,1,1,0};
 bool wake = false, keep = false, send = false;
 char divert, echo, bypass;
+unsigned long irqflags;
 
 if(!in_use) goto done;
 
