@@ -179,7 +179,6 @@ return 0;
 static ssize_t device_read(struct file *file, char *buf, size_t len, loff_t *offset)
 {
 int bytes_read=0;
-int copystatus;
 int mino, minor;
 struct cbuf *cb;
 bool catchup;
@@ -256,7 +255,8 @@ cb->mark = cb->head;
 /* Now pass down the events. */
 /* First fgc, then catch up, then the rest. */
 if(*temp_tail == ACSINT_FGC && len >= 2) {
-copystatus = copy_to_user(buf, temp_tail, 2);
+if (copy_to_user(buf, temp_tail, 2))
+return -EFAULT;
 temp_tail+=2;
 bytes_read += 2;
 buf += 2;
@@ -264,9 +264,10 @@ len -= 2;
 }
 
 if(catchup && len >= culen+4) {
-copystatus = copy_to_user(buf, cu_cmd, 4);
-if(!copystatus && culen)
-copystatus = copy_to_user(buf+4, cb_staging, culen);
+if (copy_to_user(buf, cu_cmd, 4))
+return -EFAULT;
+if(culen && copy_to_user(buf+4, cb_staging, culen))
+return -EFAULT;
 bytes_read += culen+4;
 buf += culen+4;
 len -= culen+4;
@@ -276,7 +277,8 @@ len -= culen+4;
 j = temp_head - temp_tail;
 if(j > len) j = len; /* should never happen */
 if(j) {
-copystatus = copy_to_user(buf, temp_tail, j);
+if (copy_to_user(buf, temp_tail, j))
+	return -EFAULT;
 temp_tail += j;
 buf += j;
 bytes_read+=j;
