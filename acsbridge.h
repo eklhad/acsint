@@ -1117,6 +1117,87 @@ int ss_events(void);
 int acs_ss_events(void);
 
 /*********************************************************************
+Ask whether the synthesizer is still talking.
+If not, then it is ready for more speech.
+This is a subtle function, and its implementation may vary with the style.
+
+One thing we can't do is poll ss_fd1,
+and ask whether writing would block.
+Most units have an on-board buffer and will happily accept
+the next sentence while it is in the middle of speaking the current sentence.
+And if you're going through a unix pipe, it has an internal buffer
+before you get to the child process.
+This is not very helpful when it comes to synchronized speech.
+
+The Doubletalk uses RI (ring indicator) to tell us whether it is
+actually speaking, and that is perfect if you have low level
+access to the uart, as we did when the adapter was in the kernel.
+But when working through /dev/ttyS0, you can't get this information.
+It's just not available.
+So that won't work either.
+Besides, that is Doubletalk specific.
+
+You could time it, and say each word takes so many seconds to speak
+at the current speech rate.
+I've done this before, and it's ugly!
+But it's all you have in SS_STYLE_GENERIC.
+
+The last and best solution is index markers.
+Attach a marker to each word, and the unit passes that marker back to you
+when it is speaking the corresponding word.
+I move the reading cursor along as these markers are returned.
+Thus the reading cursor is on the words you are hearing.
+This is handled for you in acsbridge.c.
+In addition these markers tell us whether the unit is still talking.
+So whenever index markers are available here is what I'm going to do.
+If you send a one time string to the synth, like reading the current character,
+or current word, or announcing "louder" as you increase volume,
+or any little snippit of text without index markers,
+then I'm going to assume it is instantly read,
+and the synthesizer is ready for more text.
+The theory is that you won't type faster than it can speak these bits of text,
+especially if it is speaking fast, which is usually the case.
+There is an exception to this rule; if you hold down a key
+that reads the next letter or word, and the key repeats,
+then you could buzz through your text reading sequential letters or words.
+These could collect in the synthesizer's on-board buffer
+and it could have 30 seconds of speech,
+and we don't even know it.
+it could be "still talking",
+and yet ss_stillTalking() returns 0.
+I'll try to think of a way around this, but meantime
+let's just say that small bits of text, without index markers,
+are spoken right away.
+In contrast, a sentence or phrase or line
+should be sent with index markers,
+and those markers are used to track the reading cursor
+and maintain talking status.
+The unit is "still talking" until the penultimate marker is returned.
+And that point it is done talking and the adapter can
+gather up and transmit the next sentence.
+
+Thus stillTalking() has two purposes:
+to tell the adapter when to send the next sentence,
+and to tell the adapter that it should interrupt speech on a keystroke.
+It doesn't really mean the unit is talking, it means it is talking
+*and* speaking a sentence that should be interrupted,
+rather than just the last half second of a snippet of text,
+which we don't really need to interrupt.
+
+You don't have to wake up every second and call this function;
+set up a handler for index markers,
+and each time you get an index marker,
+ask whether the unit is still talking.
+If not, then send out the next sentence.
+If I have done everything right,
+then everything is event driven, and you don't have to wake up from time to time
+and see if there is something to do.
+That's my goal.
+*********************************************************************/
+
+int ss_stillTalking(void);
+
+/*********************************************************************
 Send a character or a string to the synthesizer to be spoken right away.
 I will append the cr, to tell the synth to start speking.
 But it isn't always a cr.

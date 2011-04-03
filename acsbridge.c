@@ -51,13 +51,20 @@ static bnsf; // counting control f's from bns
 static void indexSet(int n)
 {
 if(!imark_start) return;
+
 if(ss_style == SS_STYLE_BNS || ss_style == SS_STYLE_ACE) {
 ++bnsf;
 n = imark_end + bnsf;
-}
+} else {
 n -= imark_first;
+}
 if(n < 0 || n >= imark_end) return;
 rb->cursor = imark_start + imark_loc[n];
+if(n == imark_end - 1) {
+/* last index marker, sentence is finished */
+imark_start = 0;
+imark_end = 0;
+}
 } // indexSet
 
 int acs_debug = 0;
@@ -1479,6 +1486,7 @@ int acs_ss_wait(void)
 int rc;
 int nfds;
 
+memset(&channels, 0, sizeof(channels));
 FD_SET(acs_fd, &channels);
 FD_SET(ss_fd0, &channels);
 
@@ -2269,4 +2277,52 @@ break;
 
 return rc;
 } /* ss_setvoice */
+
+/* Would the synth block if we sent it more text? */
+int ss_blocking(void)
+{
+int rc;
+int nfds;
+struct timeval now;
+
+memset(&channels, 0, sizeof(channels));
+FD_SET(ss_fd1, &channels);
+now.tv_sec = 0;
+now.tv_usec = 0;
+nfds = ss_fd1 + 1;
+rc = select(nfds, 0, &channels, 0, &now);
+if(rc < 0) return 0; // should never happen
+rc = 0;
+if(FD_ISSET(ss_fd1, &channels)) rc = 1;
+return rc ^ 1;
+} /* ss_blocking */
+
+/* Is the synth still talking? */
+int ss_stillTalking(void)
+{
+/* If we're blocked then we're definitely still talking. */
+if(ss_blocking()) return 1;
+
+/* Might put in some special code for doubletalk,
+ * as they use ring indicator to indicate speech in progress.
+ * Maybe later. */
+
+/* If there is no index marker, then we're not speaking a sentence.
+ * Just a word or letter or command confirmation phrase.
+ * We don't need to interrupt that, and it's ok to send the next thing. */
+if(!imark_start) return 0;
+
+/* If we have reached the last index marker, the sentence is done.
+ * In that case imark_start should be 0, and we shouldn't be here.
+ * But if we are on the penultimate index marker,
+ * the sentence is nearly done, and that's close enough.
+ * Start sending the next sentence, and things won't be so choppy. */
+if(imark_end < 2) return 0;
+if(!rb->cursor) return 0; /* should never happen */
+if(rb->cursor - imark_start == imark_loc[imark_end-2])
+return 0;
+
+/* Still waiting for index markers. */
+return 1;
+} /* ss_stillTalking */
 
