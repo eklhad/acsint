@@ -35,7 +35,7 @@ MODULE_PARM_DESC(major,
 		 "major number for /dev/acsint, default is dynamic allocation through misc_register");
 
 
-// For various critical sections of code
+/* For various critical sections of code. */
 static DEFINE_RAW_SPINLOCK(acslock);
 
 
