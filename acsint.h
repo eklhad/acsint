@@ -45,7 +45,7 @@ ACSINT_PRINTK,
 };
 
 /* Here is a bound; you can't capture keys at or beyond this point. */
-#define ACS_NUM_KEYS 112
+#define ACS_NUM_KEYS 128
 
 /* Shiftstates */
 #define ACS_SS_SHIFT 0x01
