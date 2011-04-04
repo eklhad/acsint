@@ -14,6 +14,7 @@ and declared in acsbridge.h.
 #include <sys/select.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <linux/vt.h>
 
 #include "acsbridge.h"
 
@@ -120,7 +121,7 @@ return errorDesc;
 } // acs_errordesc
 
 // Maintain the tty log for each virtual console.
-static struct readingBuffer tty_log[NUMVIRTUALCONSOLES];
+static struct readingBuffer tty_log[MAX_NR_CONSOLES];
 static struct readingBuffer *tl; // current tty log
 static struct readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
@@ -189,7 +190,7 @@ return -1;
 if(acs_debug) unlink(debuglog);
 
 tl = tty_log;
-for(j=0; j<NUMVIRTUALCONSOLES; ++j, ++tl) {
+for(j=0; j<MAX_NR_CONSOLES; ++j, ++tl) {
 tl->start = tl->end = tl->area + 1;
 tl->area[0] = 0;
 tl->end[0] = 0;

@@ -43,7 +43,7 @@ struct cbuf { // circular buffer
 char area[TTYLOGSIZE1];
 char *start, *end, *head, *tail, *mark;
 };
-static struct cbuf cbuf_tty[NUMVIRTUALCONSOLES];
+static struct cbuf cbuf_tty[MAX_NR_CONSOLES];
 /* Staging area to copy tty data to user space */
 static char cb_staging[TTYLOGSIZE];
 
@@ -148,7 +148,7 @@ struct cbuf *cb;
 if (in_use) return -EBUSY;
 
 cb = cbuf_tty;
-for(j=0; j<NUMVIRTUALCONSOLES; ++j, ++cb)
+for(j=0; j<MAX_NR_CONSOLES; ++j, ++cb)
 cb_reset(cb);
 
 clear_keys();
@@ -158,7 +158,7 @@ key_divert = key_bypass = key_echo = 0;
  * Place this directive in rbuf to be read. */
 rbuf[0] = ACSINT_FGC;
 last_fgc = fg_console+1;
-if(last_fgc <= 0 || last_fgc > 6)
+if(last_fgc <= 0 || last_fgc > MAX_NR_CONSOLES)
 last_fgc = 1; // should never happen
 rbuf[1] = last_fgc;
 rbuf_tail=rbuf;
@@ -528,7 +528,7 @@ goto done;
 if (type == VT_UPDATE) {
 new_fgc = fg_console+1;
 //temporary hack
-if (new_fgc > 6) new_fgc = 1;
+if (new_fgc > MAX_NR_CONSOLES) new_fgc = 1;
 if (new_fgc != last_fgc) {
 last_fgc = new_fgc;
 	raw_spin_lock_irqsave(&acslock, irqflags);

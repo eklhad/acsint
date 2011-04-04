@@ -12,7 +12,6 @@
 #define TTYLOGSIZE 50000
 #define TTYLOGSIZE1 (TTYLOGSIZE+1)
 #define TTYLOGSIZE2 (TTYLOGSIZE+2)
-#define NUMVIRTUALCONSOLES 6
 
 /* Commands that Acsint sends or receives */
 enum acs_command {
