@@ -142,7 +142,7 @@ flags:	CON_ENABLED,
  * What follows is kinda complicated, but it actually works.
  */
 
-#define MAXKEYPENDING 24
+#define MAXKEYPENDING 8
 static char inkeybuffer[MAXKEYPENDING];
 static unsigned long inkeytime[MAXKEYPENDING];
 static short nkeypending;	/* number of keys pending */
@@ -175,7 +175,7 @@ unsigned long flags;
 		return 0;
 
 /*
- * The other access to this lock, shown below,
+ * The other access to this lock, in keyboard notifier,
  * is part of the keyboard interrupt handler.
  * If it starts spinning, it never gets swapped out to let this routine
  * release the lock; and all linux shuts down.
@@ -451,14 +451,14 @@ static int soundFromChar(char c, int minor)
 	if (!(ttyclicks_on&ttyclicks_tty))
 		return 0;
 
-/* sound the bell on background screens, but nothing else */
-	if (c != '\07' && minor != fg_console + 1)
-		return 0;
-
 	if (c == '\07') {
 		ttyclicks_bell();
 		return 0;
 	}
+
+/* Don't click for background screens */
+	if (minor != fg_console + 1)
+		return 0;
 
 	if (c == '\n') {
 		ttyclicks_cr();
@@ -482,7 +482,6 @@ static int soundFromChar(char c, int minor)
 }				/* soundFromChar */
 
 /* Get char from the console, and make the sound. */
-
 static int
 vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 {
