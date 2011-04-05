@@ -57,7 +57,7 @@ cb->end = cb->area + TTYLOGSIZE1;
 /* Put a character on the end of the circular buffer. */
 /* Already under a spinlock when this is called. */
 static void
-cb_append(struct cbuf *cb, char c)
+cb_append(struct cbuf *cb, int c)
 {
 *cb->head = c;
 ++cb->head;
@@ -460,13 +460,14 @@ static struct miscdevice acsint_dev = {
 };
 
 
-// Push a character onto the tty log.
-// Called from the vt notifyer and from my printk console.
+/* Push a character onto the tty log.
+ * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(char c, int minor)
+pushlog(int c, int minor, int from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
+bool echo = false;
 int mino = minor - 1;
 struct cbuf *cb = cbuf_tty + mino;
 
@@ -496,7 +497,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 if(!in_use) return;
 	while (len--) {
 		c = *msg++;
-pushlog(c, last_fgc);
+pushlog(c, last_fgc, 0);
 	}
 }				// my_printk
 
@@ -516,7 +517,6 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vc_data *vc = param->vc;
 	int minor = vc->vc_num + 1;
 	int unicode = param->c;
-	char c = param->c;
 	unsigned long irqflags;
 int new_fgc;
 bool wake = false;
@@ -560,7 +560,7 @@ goto done;
 		goto done;
 	}
 
-pushlog(c, minor);
+pushlog(unicode, minor, 1);
 
 done:
 	return NOTIFY_DONE;
