@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "acsbridge.h"
 
@@ -92,7 +93,6 @@ alarm(3);
 
 // states
 static char screenmode = 0;
-static char echo = 0;
 
 static const short scale[] = {
 400, 20, 447, 20, 500, 20,  533, 20,
@@ -193,7 +193,6 @@ break;
 int
 main(int argc, char **argv)
 {
-char line[60];
 ++argv, --argc;
 
 if(argc > 0 && stringEqual(argv[0], "-d")) {

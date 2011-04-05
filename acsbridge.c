@@ -46,7 +46,7 @@ static achar *imark_start;
 // location of each index marker relative to imark_start
 static unsigned short imark_loc[100];
 static int imark_first, imark_end;
-static bnsf; // counting control f's from bns
+static int bnsf; // counting control f's from bns
 
 // move the cursor to the index marker
 static void indexSet(int n)
@@ -1593,7 +1593,6 @@ return -1;
 
 } // looping through input characters
 
-done:
 leftover = nr - i;
 if(leftover) memmove(ss_inbuf, ss_inbuf+i, leftover);
 
@@ -1616,7 +1615,7 @@ static int lowerword(const achar *w)
 {
 achar c;
 int i;
-for(i=0; c = *w; ++i, ++w) {
+for(i=0; (c = *w); ++i, ++w) {
 if(i == WORDLEN) return -1;
 if(!isalpha(c)) return -1;
 lowerdict[i] = tolower(c);
