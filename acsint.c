@@ -98,6 +98,9 @@ acsint_keys[i]=0;
  * or data is lost.
  * That's not a problem, because you just can't type faster
  * than the daemon can gather up those keystrokes.
+ * Every event is 4 bytes.
+ * Thus everything stays 4 byte aligned.
+ * This is necessary to pass down unicodes.
  */
 
 #define RBUF_LEN 400
@@ -158,11 +161,9 @@ key_divert = key_bypass = key_echo = 0;
  * Place this directive in rbuf to be read. */
 rbuf[0] = ACSINT_FGC;
 last_fgc = fg_console+1;
-if(last_fgc <= 0 || last_fgc > MAX_NR_CONSOLES)
-last_fgc = 1; // should never happen
 rbuf[1] = last_fgc;
 rbuf_tail=rbuf;
-rbuf_head=rbuf + 2;
+rbuf_head=rbuf + 4;
 
 in_use = 1;
 
@@ -184,6 +185,7 @@ struct cbuf *cb;
 bool catchup;
 /* catch up length - how many bytes to copy down to user space */
 int culen = 0;
+int culen1; /* round up to 4 byte boundary */
 char cu_cmd[4]; // for the catch up command
 char *temp_head, *temp_tail, *t;
 int j, j2;
@@ -208,13 +210,9 @@ temp_head = rbuf_head;
 temp_tail = rbuf_tail;
 
 /* Skip ahead to the last FGC event, if present. */
-for(t=temp_tail; t<temp_head; ++t) {
-if(*t == ACSINT_FGC) {
+for(t=temp_tail; t<temp_head; t += 4) {
+if(*t == ACSINT_FGC)
 temp_tail = t;
-t += 2;
-} else if(*t == ACSINT_KEYSTROKE) {
-t += 4;
-} else ++t;
 }
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
@@ -222,7 +220,7 @@ t += 4;
 catchup = false;
 if(cb->head != cb->mark) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
-for(t=temp_tail; t<temp_head; ++t) {
+for(t=temp_tail; t<temp_head; t+=4) {
 if(*t == ACSINT_TTY_MORECHARS) continue;
 catchup = true;
 break;
@@ -254,23 +252,24 @@ cb->mark = cb->head;
 
 /* Now pass down the events. */
 /* First fgc, then catch up, then the rest. */
-if(*temp_tail == ACSINT_FGC && len >= 2) {
-if (copy_to_user(buf, temp_tail, 2))
+if(*temp_tail == ACSINT_FGC && len >= 4) {
+if (copy_to_user(buf, temp_tail, 4))
 return -EFAULT;
-temp_tail+=2;
-bytes_read += 2;
-buf += 2;
-len -= 2;
+temp_tail+=4;
+bytes_read += 4;
+buf += 4;
+len -= 4;
 }
 
-if(catchup && len >= culen+4) {
+culen1 = (culen+3) & ~3;
+if(catchup && len >= culen1+4) {
 if (copy_to_user(buf, cu_cmd, 4))
 return -EFAULT;
 if(culen && copy_to_user(buf+4, cb_staging, culen))
 return -EFAULT;
-bytes_read += culen+4;
-buf += culen+4;
-len -= culen+4;
+bytes_read += culen1+4;
+buf += culen1+4;
+len -= culen1+4;
 }
 
 /* And the rest of the events. */
@@ -406,10 +405,10 @@ break;
 
 case ACSINT_REFRESH:
 	raw_spin_lock_irqsave(&acslock, irqflags);
-if(rbuf_head < rbuf_end) {
+if(rbuf_head <= rbuf_end-4) {
 *rbuf_head = ACSINT_REFRESH;
 if(rbuf_head == rbuf_tail) wake_up_interruptible(&wq);
-++rbuf_head;
+rbuf_head += 4;
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 break;
@@ -472,11 +471,11 @@ int mino = minor - 1;
 struct cbuf *cb = cbuf_tty + mino;
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
-if(cb->mark == cb->head && minor == last_fgc && rbuf_head < rbuf_end) {
+if(cb->mark == cb->head && minor == last_fgc && rbuf_head <= rbuf_end-4) {
 // throw the "more stuff" event
 if(rbuf_head == rbuf_tail) wake = true;
 *rbuf_head = ACSINT_TTY_MORECHARS;
-++rbuf_head;
+rbuf_head += 4;
 }
 
 cb_append(cb, c);
@@ -532,11 +531,11 @@ if (new_fgc > MAX_NR_CONSOLES) new_fgc = 1;
 if (new_fgc != last_fgc) {
 last_fgc = new_fgc;
 	raw_spin_lock_irqsave(&acslock, irqflags);
-if(rbuf_head <= rbuf_end-2) {
+if(rbuf_head <= rbuf_end-4) {
 if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0]=ACSINT_FGC;
 rbuf_head[1]=new_fgc;
-rbuf_head += 2;
+rbuf_head += 4;
 if(wake) wake_up_interruptible(&wq);
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);

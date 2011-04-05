@@ -22,7 +22,7 @@ and declared in acsbridge.h.
 
 #define MAX_ERRMSG_LEN 256 // description of error
 #define MAXNOTES 10 // how many notes to play in one call
-#define IOBUFSIZE (TTYLOGSIZE + 2000) // size of input buffer
+#define IOBUFSIZE (TTYLOGSIZE + 2000) /* size of input buffer */
 #define ATTRIBOFFSET 20000 // about half of TTYLOGSIZE
 #define SSBUFSIZE 64 // synthesizer buffer for events
 
@@ -612,7 +612,8 @@ int acs_events(void)
 {
 int nr; // number of bytes read
 int i;
-int culen; // catch up length
+int culen; /* catch up length */
+int culen1; /* round up to 4 byte boundary */
 achar *custart; // where does catch up start
 int nlen; // length of new area
 int diff;
@@ -634,37 +635,35 @@ return -1;
 }
 
 i = 0;
-while(i < nr) {
-switch(iobuf[i++]) {
+while(i <= nr-4) {
+switch(iobuf[i]) {
 case ACSINT_KEYSTROKE:
 imark_start = 0;
-if(nr-i < 3) goto done;
-if(acs_debug) acs_log("key %d\n", iobuf[i]);
+if(acs_debug) acs_log("key %d\n", iobuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
 if(screenmode && !refreshed) { screenSnap(); refreshed = 1; }
 // check for macro here.
 if(acs_key_h != swallow_key_h && acs_key_h != swallow1_h) {
 // get the modified key code.
-int mkcode = acs_build_mkcode(iobuf[i], iobuf[i+1]);
+int mkcode = acs_build_mkcode(iobuf[i+1], iobuf[i+2]);
 // see if this key has a macro
 char *m = acs_getmacro(mkcode);
-if(!m && iobuf[i+1]&ACS_SS_ALT) {
+if(!m && iobuf[i+2]&ACS_SS_ALT) {
 // couldn't find it on left alt or right alt, try generic alt
-mkcode = acs_build_mkcode(iobuf[i], ACS_SS_ALT);
+mkcode = acs_build_mkcode(iobuf[i+1], ACS_SS_ALT);
 m = acs_getmacro(mkcode);
 }
-if(m) { acs_injectstring(m); i += 3; break; }
+if(m) { acs_injectstring(m); i += 4; break; }
 }
-if(acs_key_h) acs_key_h(iobuf[i], iobuf[i + 1], iobuf[i+2]);
-i += 3;
+if(acs_key_h) acs_key_h(iobuf[i+1], iobuf[i + 2], iobuf[i+3]);
+i += 4;
 break;
 
 case ACSINT_FGC:
 imark_start = 0;
-if(nr-i < 1) goto done;
-if(acs_debug) acs_log("fg %d\n", iobuf[i]);
-acs_fgc = iobuf[i];
+if(acs_debug) acs_log("fg %d\n", iobuf[i+1]);
+acs_fgc = iobuf[i+1];
 if(screenmode) {
 // I sure hope linux has actually done the console switch by this time.
 if(!refreshed) { screenSnap(); refreshed = 1; }
@@ -672,29 +671,31 @@ if(!refreshed) { screenSnap(); refreshed = 1; }
 rb = tty_log + acs_fgc - 1;
 }
 if(acs_fgc_h) acs_fgc_h();
-i += 1;
+i += 4;
 break;
 
 case ACSINT_TTY_MORECHARS:
 if(acs_debug) acs_log("more stuff\n", 0);
 // no automatic refresh here; you have to call it if you want it
 if(acs_more_h) acs_more_h();
+i += 4;
 break;
 
 case ACSINT_REFRESH:
 if(acs_debug) acs_log("refresh\n", 0);
+i += 4;
 break;
 
 case ACSINT_TTY_NEWCHARS:
 // this is the refresh data in line mode
-if(nr-i < 3) goto done;
 // minor is always the foreground console; we could probably discard it
-minor = iobuf[i];
-culen = iobuf[i+1] | ((unsigned short)iobuf[i+2]<<8);
+minor = iobuf[i+1];
+culen = iobuf[i+2] | ((unsigned short)iobuf[i+3]<<8);
+culen1 = (culen+3) & ~3;
 if(acs_debug) acs_log("new %d\n", culen);
-i += 3;
+i += 4;
 if(!culen) break;
-if(nr-i < culen) break;
+if(nr-i < culen1) break;
 tl = tty_log + minor - 1;
 nlen = tl->end - tl->start + culen;
 diff = nlen - TTYLOGSIZE;
@@ -725,24 +726,23 @@ tl->end += culen;
 tl->end[0] = 0;
 }
 if(tl->cursor == 0) tl->cursor = tl->end - 1;
-i += culen;
+i += culen1;
 postprocess(custart);
 if(acs_debug) acs_log("<<\n%s>>\n", (int)custart);
 // But if you're in screen mode, I haven't moved your reading cursor,
 // or imark _start, appropriately.
-// Don't know what to do here.
+// Don't know what to do about that.
 break;
 
 default:
 // Perhaps a phase error.
 // Not sure what to do here.
 // Just give up.
-if(acs_debug) acs_log("unknown command %d\n", iobuf[i-1]);
+if(acs_debug) acs_log("unknown command %d\n", iobuf[i]);
+i += 4;
 } // switch
-
 } // looping through events
 
-done:
 return 0;
 } // acs_events
 
