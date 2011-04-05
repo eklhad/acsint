@@ -7,6 +7,7 @@
 #include <linux/notifier.h>
 #include <linux/keyboard.h>
 #include <linux/kbd_kern.h>
+#include <linux/ctype.h>
 #include <linux/vt.h>
 #include <linux/vt_kern.h>	/* for fg_console */
 #include <linux/console.h>
@@ -57,7 +58,7 @@ cb->end = cb->area + TTYLOGSIZE1;
 /* Put a character on the end of the circular buffer. */
 /* Already under a spinlock when this is called. */
 static void
-cb_append(struct cbuf *cb, int c)
+cb_append(struct cbuf *cb, unsigned int c)
 {
 *cb->head = c;
 ++cb->head;
@@ -460,18 +461,124 @@ static struct miscdevice acsint_dev = {
 };
 
 
+/* Variables to remember the entered keystrokes, to watch for echo.
+ * If these keys reappear on screen in a timely fashion,
+ * they are considered echo chars. */
+
+#define MAXKEYPENDING 8
+/* This holds unicodes */
+static unsigned int inkeybuffer[MAXKEYPENDING];
+static unsigned long inkeytime[MAXKEYPENDING];
+static short nkeypending; /* number of keys pending */
+/* Key echo states:
+ * 0 nothing special
+ * 1 tab or ^i match space, more spaces coming
+* 2 return matches cr, lf coming back
+ * 3 control char matches ^, letter coming back
+ * 4 delete or ^h matches ^h, space is next
+ * 5 ^h expected, move back to 0
+*/
+static short keyechostate;
+#define flushInKeyBuffer() (nkeypending = keyechostate = 0)
+#define ECHOOLDLIMIT 3 /* in seconds */
+
+static void
+dropKeysPending(int mark)
+{
+int i, j;
+for(i=0, j=mark; j<nkeypending; ++i, ++j) {
+inkeybuffer[i] = inkeybuffer[j];
+inkeytime[i] = inkeytime[j];
+}
+nkeypending -= mark;
+if(!nkeypending) flushInKeyBuffer();
+} /* dropKeysPending */
+
+/* char is displayed on screen; is it echo? */
+/* This is run from within a spinlock */
+static int
+isEcho(unsigned int c)
+{
+unsigned int d;
+int j;
+
+/* when echo is based only on states */
+if(keyechostate == 1 && c == ' ')
+return 2;
+if(keyechostate == 2 && c == '\n') {
+keyechostate = 0;
+return 2;
+}
+if(keyechostate == 3 && c < 256 && isalpha(c)) {
+keyechostate = 0;
+return 2;
+}
+if(keyechostate == 4 && c == ' ') {
+keyechostate = 5;
+return 2;
+}
+if(keyechostate == 5 && c == '\b') {
+keyechostate = 0;
+return 2;
+}
+
+keyechostate = 0;
+	if (!nkeypending)
+		return 0;
+
+/* drop old keys */
+for(j=0; j<nkeypending; ++j)
+if(inkeytime[j] + HZ*ECHOOLDLIMIT < jiffies)
+break;
+if(j) dropKeysPending(j);
+
+	if (!nkeypending)
+		return 0;
+
+/* to jump into the state machine we need to match on the first character */
+d = inkeybuffer[0];
+if(d == '\t' && c == ' ') {
+keyechostate = 1;
+return 2;
+}
+if(d == '\r' && c == '\r') {
+keyechostate = 2;
+return 2;
+}
+if(d < ' ' && c == '^') {
+keyechostate = 3;
+return 2;
+}
+if((d == '\b' || d == 0x7f) && c == '\b') {
+keyechostate = 4;
+return 2;
+}
+
+for(j=0; j<nkeypending; ++j) {
+if(inkeybuffer[j] != c) continue;
+/* straight echo match */
+dropKeysPending(j+1);
+return 1;
+}
+
+return 0;
+} /* isEcho */
+
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(int c, int minor, int from_vt)
+pushlog(unsigned int c, int minor, int from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
-bool echo = false;
+int echo = 0;
 int mino = minor - 1;
 struct cbuf *cb = cbuf_tty + mino;
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
+
+if(from_vt) echo = isEcho(c);
+
 if(cb->mark == cb->head && minor == last_fgc && rbuf_head <= rbuf_end-4) {
 // throw the "more stuff" event
 if(rbuf_head == rbuf_tail) wake = true;
@@ -497,7 +604,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 if(!in_use) return;
 	while (len--) {
 		c = *msg++;
-pushlog(c, last_fgc, 0);
+pushlog((unsigned char)c, last_fgc, 0);
 	}
 }				// my_printk
 
@@ -516,7 +623,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
 	int minor = vc->vc_num + 1;
-	int unicode = param->c;
+	unsigned int unicode = param->c;
 	unsigned long irqflags;
 int new_fgc;
 bool wake = false;
