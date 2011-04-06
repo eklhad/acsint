@@ -676,6 +676,7 @@ if (type == VT_UPDATE) {
 new_fgc = fg_console+1;
 if (new_fgc != last_fgc) {
 last_fgc = new_fgc;
+checkAlloc(fg_console);
 	raw_spin_lock_irqsave(&acslock, irqflags);
 if(rbuf_head <= rbuf_end-4) {
 if(rbuf_head == rbuf_tail) wake = true;
@@ -685,7 +686,6 @@ rbuf_head += 4;
 if(wake) wake_up_interruptible(&wq);
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
-checkAlloc(fg_console);
 } /* console switch */
 } /* vt_update */
 
