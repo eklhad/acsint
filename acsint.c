@@ -8,6 +8,7 @@
 #include <linux/keyboard.h>
 #include <linux/kbd_kern.h>
 #include <linux/ctype.h>
+#include <linux/slab.h> /* malloc and free */
 #include <linux/vt.h>
 #include <linux/vt_kern.h>	/* for fg_console */
 #include <linux/console.h>
@@ -44,15 +45,37 @@ struct cbuf { // circular buffer
 char area[TTYLOGSIZE1];
 char *start, *end, *head, *tail, *mark;
 };
-static struct cbuf cbuf_tty[MAX_NR_CONSOLES];
+static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
+/* in case we can't malloc a buffer */
+/* set to 1 if you have sent the nomem message down to the user */
+static unsigned char cb_nomem_refresh[MAX_NR_CONSOLES];
+/* set to 1 if you have tried to allocate */
+static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
+static const char cb_nomem_message[] = "Kernel cannot allocate space for this console";
 /* Staging area to copy tty data to user space */
 static char cb_staging[TTYLOGSIZE];
 
+/* check to see if buffer was allocated. */
+/* If never attempted, try to allocate it. */
 static void
 cb_reset(struct cbuf *cb)
 {
+if(!cb) return;
 cb->start = cb->head = cb->tail = cb->mark = cb->area;
 cb->end = cb->area + TTYLOGSIZE1;
+}
+
+static void
+checkAlloc(int mino)
+{
+struct cbuf *cb = cbuf_tty[mino];
+if(cb) return;
+if(cb_nomem_alloc[mino]) return;
+cb_nomem_alloc[mino] = 1;
+cb = kmalloc(sizeof(struct cbuf), GFP_KERNEL);
+if(!cb) return;
+cb_reset(cb);
+cbuf_tty[mino] = cb;
 }
 
 /* Put a character on the end of the circular buffer. */
@@ -60,6 +83,7 @@ cb->end = cb->area + TTYLOGSIZE1;
 static void
 cb_append(struct cbuf *cb, unsigned int c)
 {
+if(!cb) return; /* should never happen */
 *cb->head = c;
 ++cb->head;
 if(cb->head == cb->end) cb->head = cb->start;
@@ -151,9 +175,12 @@ struct cbuf *cb;
 /* A theoretical race condition here; too unlikely for me to worry about. */
 if (in_use) return -EBUSY;
 
-cb = cbuf_tty;
-for(j=0; j<MAX_NR_CONSOLES; ++j, ++cb)
+for(j=0; j<MAX_NR_CONSOLES; ++j, ++cb) {
+cb = cbuf_tty[j];
 cb_reset(cb);
+cb_nomem_refresh[j] = 0;
+cb_nomem_alloc[j] = 0;
+}
 
 clear_keys();
 key_divert = key_bypass = key_echo = 0;
@@ -165,9 +192,9 @@ last_fgc = fg_console+1;
 rbuf[1] = last_fgc;
 rbuf_tail=rbuf;
 rbuf_head=rbuf + 4;
+checkAlloc(fg_console);
 
 in_use = 1;
-
 return 0;
 }
 
@@ -203,7 +230,7 @@ return 0;
 // you can only read on behalf of the foreground console
 minor = last_fgc;
 mino = minor - 1;
-cb = cbuf_tty + mino;
+cb = cbuf_tty[mino];
 
 /* Use temp pointers, more keystrokes could be appended while
  * we're doing this; that's ok. */
@@ -219,7 +246,8 @@ temp_tail = t;
 	raw_spin_lock_irqsave(&acslock, irqflags);
 
 catchup = false;
-if(cb->head != cb->mark) {
+if((!cb && !cb_nomem_refresh[mino]) ||
+cb->head != cb->mark) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
 for(t=temp_tail; t<temp_head; t+=4) {
 if(*t == ACSINT_TTY_MORECHARS) continue;
@@ -229,13 +257,20 @@ break;
 }
 
 if(catchup) {
+if(cb) {
 if(cb->mark == 0) cb->mark = cb->tail;
 if(cb->head >= cb->mark) culen = cb->head - cb->mark;
 else culen = (cb->end - cb->mark) + (cb->head - cb->start);
+} else {
+culen = sizeof(cb_nomem_message) - 1;
+}
+
 cu_cmd[0] = ACSINT_TTY_NEWCHARS;
 cu_cmd[1] = minor;
 cu_cmd[2] = culen;
 cu_cmd[3] = (culen >> 8);
+
+if(cb) {
 /* One clump or two. */
 if(cb->head >= cb->mark) {
 if(culen) memcpy(cb_staging, cb->mark, culen);
@@ -245,8 +280,11 @@ memcpy(cb_staging, cb->mark, j);
 j2 = cb->head - cb->start;
 if(j2) memcpy(cb_staging + j, cb->start, j2);
 }
-
 cb->mark = cb->head;
+} else {
+memcpy(cb_staging, cb_nomem_message, culen);
+cb_nomem_refresh[mino] = 1;
+}
 } // catching up
 
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
@@ -573,7 +611,9 @@ unsigned long irqflags;
 bool wake = false;
 int echo = 0;
 int mino = minor - 1;
-struct cbuf *cb = cbuf_tty + mino;
+struct cbuf *cb = cbuf_tty[mino];
+
+if(!cb) return;
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
 
@@ -622,7 +662,8 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 {
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
-	int minor = vc->vc_num + 1;
+	int mino = vc->vc_num;
+int minor = mino + 1;
 	unsigned int unicode = param->c;
 	unsigned long irqflags;
 int new_fgc;
@@ -633,8 +674,6 @@ goto done;
 
 if (type == VT_UPDATE) {
 new_fgc = fg_console+1;
-//temporary hack
-if (new_fgc > MAX_NR_CONSOLES) new_fgc = 1;
 if (new_fgc != last_fgc) {
 last_fgc = new_fgc;
 	raw_spin_lock_irqsave(&acslock, irqflags);
@@ -646,6 +685,7 @@ rbuf_head += 4;
 if(wake) wake_up_interruptible(&wq);
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
+checkAlloc(fg_console);
 } /* console switch */
 } /* vt_update */
 
@@ -667,6 +707,7 @@ goto done;
 		goto done;
 	}
 
+checkAlloc(mino);
 pushlog(unicode, minor, 1);
 
 done:
@@ -827,6 +868,9 @@ unregister_chrdev(major, ACSINT_DEVICE);
 
 static void __exit acsint_exit(void)
 {
+int j;
+struct cbuf *cb;
+
 	unregister_console(&acsintconsole);
 	unregister_keyboard_notifier(&nb_key);
 	unregister_vt_notifier(&nb_vt);
@@ -834,6 +878,11 @@ if(major == 0)
 misc_deregister(&acsint_dev);
 else
 unregister_chrdev(major, ACSINT_DEVICE);
+
+for(j=0; j<MAX_NR_CONSOLES; ++j) {
+cb = cbuf_tty[j];
+if(cb) kfree(cb);
+}
 }				/* acsint_exit */
 
 module_init(acsint_init);
