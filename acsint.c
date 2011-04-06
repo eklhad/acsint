@@ -704,6 +704,8 @@ goto done;
 if (type == VT_UPDATE) {
 if (fg_console != last_fgc) {
 last_fgc = fg_console;
+/* retry alloc on console switch */
+cb_nomem_alloc[fg_console] = 0;
 checkAlloc(fg_console, true);
 	raw_spin_lock_irqsave(&acslock, irqflags);
 flushInKeyBuffer();
