@@ -66,16 +66,16 @@ cb->end = cb->area + TTYLOGSIZE1;
 }
 
 static void
-checkAlloc(int mino)
+checkAlloc(void)
 {
-struct cbuf *cb = cbuf_tty[mino];
+struct cbuf *cb = cbuf_tty[fg_console];
 if(cb) return;
-if(cb_nomem_alloc[mino]) return;
-cb_nomem_alloc[mino] = 1;
+if(cb_nomem_alloc[fg_console]) return;
+cb_nomem_alloc[fg_console] = 1;
 cb = kmalloc(sizeof(struct cbuf), GFP_KERNEL);
 if(!cb) return;
 cb_reset(cb);
-cbuf_tty[mino] = cb;
+cbuf_tty[fg_console] = cb;
 }
 
 /* Put a character on the end of the circular buffer. */
@@ -137,7 +137,7 @@ static char *rbuf_tail, *rbuf_head;
 DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static int in_use; /* only one process opens this device at a time */
-static int last_fgc; /* last foreground console */
+static int last_fgc; /* last fg_console */
 
 /* Push characters onto the input queue of the foreground tty.
  * This is for macros, or cut&paste. */
@@ -146,7 +146,7 @@ tty_pushstring(const char *cp, int len)
 {
 char c;
 	struct tty_struct *tty;
-	struct vc_data *d = vc_cons[last_fgc-1].d;
+	struct vc_data *d = vc_cons[fg_console].d;
 if(!d) return;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 tty = d->vc_tty;
@@ -188,11 +188,11 @@ key_divert = key_bypass = key_echo = 0;
 /* At startup we tell the process which virtual console it is on.
  * Place this directive in rbuf to be read. */
 rbuf[0] = ACSINT_FGC;
-last_fgc = fg_console+1;
-rbuf[1] = last_fgc;
+rbuf[1] = fg_console + 1; /* minor number */
 rbuf_tail=rbuf;
 rbuf_head=rbuf + 4;
-checkAlloc(fg_console);
+last_fgc = fg_console;
+checkAlloc();
 
 in_use = 1;
 return 0;
@@ -208,7 +208,6 @@ return 0;
 static ssize_t device_read(struct file *file, char *buf, size_t len, loff_t *offset)
 {
 int bytes_read=0;
-int mino, minor;
 struct cbuf *cb;
 bool catchup;
 /* catch up length - how many bytes to copy down to user space */
@@ -227,10 +226,9 @@ if (retval==ERESTARTSYS) {
 return 0;
 }
 
-// you can only read on behalf of the foreground console
-minor = last_fgc;
-mino = minor - 1;
-cb = cbuf_tty[mino];
+/* you can only read on behalf of the foreground console */
+checkAlloc();
+cb = cbuf_tty[fg_console];
 
 /* Use temp pointers, more keystrokes could be appended while
  * we're doing this; that's ok. */
@@ -246,7 +244,7 @@ temp_tail = t;
 	raw_spin_lock_irqsave(&acslock, irqflags);
 
 catchup = false;
-if((!cb && !cb_nomem_refresh[mino]) ||
+if((!cb && !cb_nomem_refresh[fg_console]) ||
 cb->head != cb->mark) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
 for(t=temp_tail; t<temp_head; t+=4) {
@@ -266,7 +264,8 @@ culen = sizeof(cb_nomem_message) - 1;
 }
 
 cu_cmd[0] = ACSINT_TTY_NEWCHARS;
-cu_cmd[1] = minor;
+/* Put in the minor number here, though I don't think we need it. */
+cu_cmd[1] = fg_console+1;
 cu_cmd[2] = culen;
 cu_cmd[3] = (culen >> 8);
 
@@ -283,7 +282,7 @@ if(j2) memcpy(cb_staging + j, cb->start, j2);
 cb->mark = cb->head;
 } else {
 memcpy(cb_staging, cb_nomem_message, culen);
-cb_nomem_refresh[mino] = 1;
+cb_nomem_refresh[fg_console] = 1;
 }
 } // catching up
 
@@ -605,12 +604,11 @@ return 0;
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(unsigned int c, int minor, int from_vt)
+pushlog(unsigned int c, int mino, int from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
 int echo = 0;
-int mino = minor - 1;
 struct cbuf *cb = cbuf_tty[mino];
 
 if(!cb) return;
@@ -619,8 +617,8 @@ if(!cb) return;
 
 if(from_vt) echo = isEcho(c);
 
-if(cb->mark == cb->head && minor == last_fgc && rbuf_head <= rbuf_end-4) {
-// throw the "more stuff" event
+if(cb->mark == cb->head && mino == fg_console && rbuf_head <= rbuf_end-4) {
+/* throw the "more stuff" event */
 if(rbuf_head == rbuf_tail) wake = true;
 *rbuf_head = ACSINT_TTY_MORECHARS;
 rbuf_head += 4;
@@ -644,7 +642,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 if(!in_use) return;
 	while (len--) {
 		c = *msg++;
-pushlog((unsigned char)c, last_fgc, 0);
+pushlog((unsigned char)c, fg_console, 0);
 	}
 }				// my_printk
 
@@ -663,25 +661,22 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
 	int mino = vc->vc_num;
-int minor = mino + 1;
 	unsigned int unicode = param->c;
 	unsigned long irqflags;
-int new_fgc;
 bool wake = false;
 
 if(!in_use)
 goto done;
 
 if (type == VT_UPDATE) {
-new_fgc = fg_console+1;
-if (new_fgc != last_fgc) {
-last_fgc = new_fgc;
-checkAlloc(fg_console);
+if (fg_console != last_fgc) {
+last_fgc = fg_console;
 	raw_spin_lock_irqsave(&acslock, irqflags);
+flushInKeyBuffer();
 if(rbuf_head <= rbuf_end-4) {
 if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0]=ACSINT_FGC;
-rbuf_head[1]=new_fgc;
+rbuf_head[1]=fg_console + 1;
 rbuf_head += 4;
 if(wake) wake_up_interruptible(&wq);
 }
@@ -707,8 +702,7 @@ goto done;
 		goto done;
 	}
 
-checkAlloc(mino);
-pushlog(unicode, minor, 1);
+pushlog(unicode, mino, 1);
 
 done:
 	return NOTIFY_DONE;
