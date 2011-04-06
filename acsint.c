@@ -186,7 +186,7 @@ int j;
 if (in_use) return -EBUSY;
 
 for(j=0; j<MAX_NR_CONSOLES; ++j) {
-cb_reset(cbuff_tty[j]);
+cb_reset(cbuf_tty[j]);
 cb_nomem_refresh[j] = 0;
 cb_nomem_alloc[j] = 0;
 }
