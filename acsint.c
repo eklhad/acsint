@@ -699,10 +699,13 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 bool wake = false;
 
 if(!in_use)
-goto done;
+	return NOTIFY_DONE;
 
-if (type == VT_UPDATE) {
-if (fg_console != last_fgc) {
+switch(type) {
+case VT_UPDATE:
+if (fg_console == last_fgc)
+break; /* it's the same console */
+
 last_fgc = fg_console;
 /* retry alloc on console switch */
 cb_nomem_alloc[fg_console] = 0;
@@ -717,17 +720,14 @@ rbuf_head += 4;
 if(wake) wake_up_interruptible(&wq);
 }
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
-} /* console switch */
-} /* vt_update */
+break;
 
-	if (type != VT_PREWRITE)
-		goto done;
-
+case VT_PREWRITE:
 /* I don't log, or pass back, null bytes in the output stream. */
 if(unicode == 0)
-goto done;
+break;
 
-	if (unicode >= 256) {
+	if (unicode >= 256)
 /* I don't handle international chars beyond ISO8859-1.
  * thus unicode beyond 256 is discarded.
  * If you are using another character set,
@@ -735,13 +735,12 @@ goto done;
  * and this is the place to do it.
  * That means we need a setlocale command.
  * None of this is implemented yet. */
-		goto done;
-	}
+break;
 
 checkAlloc(mino, true);
 pushlog(unicode, mino, true);
+} /* switch */
 
-done:
 	return NOTIFY_DONE;
 } /* vt_out */
 
