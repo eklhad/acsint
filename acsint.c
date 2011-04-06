@@ -50,8 +50,6 @@ char *head, *tail;
 char *mark;
 /* new output characters, not yet copied to user space */
 char *output;
-/* Roughly, if head has gone beyond output then you have to refresh,
- * and you want to refresh starting at mark. */
 };
 static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
 /* in case we can't malloc a buffer */
@@ -78,13 +76,13 @@ cb->output = cb->start;
 }
 
 static void
-checkAlloc(int mino)
+checkAlloc(int mino, bool from_vt)
 {
 struct cbuf *cb = cbuf_tty[mino];
 if(cb) return;
 if(cb_nomem_alloc[mino]) return;
 cb_nomem_alloc[mino] = 1;
-cb = kmalloc(sizeof(struct cbuf), GFP_KERNEL);
+cb = kmalloc(sizeof(struct cbuf), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
 if(!cb) return;
 cb_reset(cb);
 cbuf_tty[mino] = cb;
@@ -205,7 +203,7 @@ rbuf[1] = fg_console + 1; /* minor number */
 rbuf_tail=rbuf;
 rbuf_head=rbuf + 4;
 last_fgc = fg_console;
-checkAlloc(fg_console);
+checkAlloc(fg_console, false);
 
 in_use = 1;
 return 0;
@@ -257,7 +255,7 @@ temp_tail = t;
 
 catchup = false;
 if((!cb && !cb_nomem_refresh[fg_console]) ||
-cb->head != cb->output) {
+cb->head != cb->mark) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
 for(t=temp_tail; t<temp_head; t+=4) {
 if(*t == ACSINT_TTY_MORECHARS) continue;
@@ -589,18 +587,22 @@ dropKeysPending(j);
 /* to jump into the state machine we need to match on the first character */
 d = inkeybuffer[0];
 if(d == '\t' && c == ' ') {
+dropKeysPending(1);
 keyechostate = 1;
 return 2;
 }
 if((d == '\r' || d == '\n') && c == '\r') {
+dropKeysPending(1);
 keyechostate = 2;
 return 1;
 }
 if(d < ' ' && c == '^') {
+dropKeysPending(1);
 keyechostate = 3;
 return 2;
 }
 if((d == '\b' || d == 0x7f) && c == '\b') {
+dropKeysPending(1);
 keyechostate = 4;
 return 2;
 }
@@ -635,7 +637,7 @@ if(from_vt) echo = isEcho(c);
 if(cb->output == cb->head) athead = true;
 }
 
-if(athead && rbuf_head <= rbuf_end-4) {
+if((athead || echo) && rbuf_head <= rbuf_end-4) {
 /* throw the "more stuff" event */
 if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0] = ACSINT_TTY_MORECHARS;
@@ -702,7 +704,7 @@ goto done;
 if (type == VT_UPDATE) {
 if (fg_console != last_fgc) {
 last_fgc = fg_console;
-checkAlloc(fg_console);
+checkAlloc(fg_console, true);
 	raw_spin_lock_irqsave(&acslock, irqflags);
 flushInKeyBuffer();
 if(rbuf_head <= rbuf_end-4) {
@@ -734,7 +736,7 @@ goto done;
 		goto done;
 	}
 
-checkAlloc(mino);
+checkAlloc(mino, true);
 pushlog(unicode, mino, true);
 
 done:
