@@ -58,9 +58,10 @@ fclose(f);
 static char moreStuff = 0;
 static char doneRead = 0;
 
-static void setMoreStuff(void)
+static void setMoreStuff(int echo, unsigned int c)
 {
-moreStuff = 1;
+/* if not an echo character, then the computer is generating more output to read */
+if(!echo) moreStuff = 1;
 } // setMoreStuff
 
 /*********************************************************************

@@ -619,6 +619,7 @@ int nlen; // length of new area
 int diff;
 int minor;
 char refreshed = 0;
+unsigned int d;
 
 clearError();
 if(acs_fd < 0) {
@@ -675,9 +676,14 @@ i += 4;
 break;
 
 case ACSINT_TTY_MORECHARS:
-if(acs_debug) acs_log("more stuff\n", 0);
+d = (iobuf[i+2] | (iobuf[i+3]<<8));
+if(acs_debug) {
+acs_log("output echo %d", iobuf[i+1]);
+if(iobuf[i+1]) acs_log(" 0x%x", d);
+acs_log("\n", 0);
+}
 // no automatic refresh here; you have to call it if you want it
-if(acs_more_h) acs_more_h();
+if(acs_more_h) acs_more_h(iobuf[i+1], d);
 i += 4;
 break;
 
@@ -1213,7 +1219,7 @@ strcpy(speechcommandlist[mkcode], s);
 } // acs_setspeechcommand
 
 static achar *punclist[256];
-static const achar *firstpunclist[256] = {
+static const char *firstpunclist[256] = {
 "null", 0, 0, 0, 0, 0, 0, "bell",
 "backspace", "tab", "newline", 0, "formfeed", "return", 0, 0,
 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1929,7 +1935,7 @@ free(dict2[i]);
 numdictwords = 0;
 
 for(i=0; i<256; ++i)
-acs_setpunc(i, firstpunclist[i]);
+acs_setpunc(i, (achar*)firstpunclist[i]);
 
 for(i=0; i<MK_BLOCK*8; ++i) {
 acs_clearmacro(i);

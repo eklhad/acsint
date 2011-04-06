@@ -41,9 +41,17 @@ MODULE_PARM_DESC(major,
 static DEFINE_RAW_SPINLOCK(acslock);
 
 
-struct cbuf { // circular buffer
+/* circular buffer of output characters received from the tty */
+struct cbuf {
 char area[TTYLOGSIZE1];
-char *start, *end, *head, *tail, *mark;
+char *start, *end;
+char *head, *tail;
+/* mark the place where we last copied data to user space */
+char *mark;
+/* new output characters, not yet copied to user space */
+char *output;
+/* Roughly, if head has gone beyond output then you have to refresh,
+ * and you want to refresh starting at mark. */
 };
 static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
 /* in case we can't malloc a buffer */
@@ -61,21 +69,25 @@ static void
 cb_reset(struct cbuf *cb)
 {
 if(!cb) return;
-cb->start = cb->head = cb->tail = cb->mark = cb->area;
+cb->start = cb->area;
 cb->end = cb->area + TTYLOGSIZE1;
+cb->head = cb->start;
+cb->tail = cb->start;
+cb->mark = cb->start;
+cb->output = cb->start;
 }
 
 static void
-checkAlloc(void)
+checkAlloc(int mino)
 {
-struct cbuf *cb = cbuf_tty[fg_console];
+struct cbuf *cb = cbuf_tty[mino];
 if(cb) return;
-if(cb_nomem_alloc[fg_console]) return;
-cb_nomem_alloc[fg_console] = 1;
+if(cb_nomem_alloc[mino]) return;
+cb_nomem_alloc[mino] = 1;
 cb = kmalloc(sizeof(struct cbuf), GFP_KERNEL);
 if(!cb) return;
 cb_reset(cb);
-cbuf_tty[fg_console] = cb;
+cbuf_tty[mino] = cb;
 }
 
 /* Put a character on the end of the circular buffer. */
@@ -88,8 +100,9 @@ if(!cb) return; /* should never happen */
 ++cb->head;
 if(cb->head == cb->end) cb->head = cb->start;
 if(cb->head == cb->tail) {
-// buffer full, drop the last character
+/* buffer full, drop the last character */
 if(cb->tail == cb->mark) cb->mark = 0;
+if(cb->tail == cb->output) cb->output = 0;
 ++cb->tail;
 if(cb->tail == cb->end) cb->tail = cb->start;
 }
@@ -133,7 +146,7 @@ static char rbuf[RBUF_LEN];
 static const char *rbuf_end=rbuf+RBUF_LEN;
 static char *rbuf_tail, *rbuf_head;
 
-// Wait until this driver has some data to read.
+/* Wait until this driver has some data to read. */
 DECLARE_WAIT_QUEUE_HEAD(wq);
 
 static int in_use; /* only one process opens this device at a time */
@@ -192,7 +205,7 @@ rbuf[1] = fg_console + 1; /* minor number */
 rbuf_tail=rbuf;
 rbuf_head=rbuf + 4;
 last_fgc = fg_console;
-checkAlloc();
+checkAlloc(fg_console);
 
 in_use = 1;
 return 0;
@@ -213,7 +226,7 @@ bool catchup;
 /* catch up length - how many bytes to copy down to user space */
 int culen = 0;
 int culen1; /* round up to 4 byte boundary */
-char cu_cmd[4]; // for the catch up command
+char cu_cmd[4]; /* the catch up command */
 char *temp_head, *temp_tail, *t;
 int j, j2;
 int retval;
@@ -227,7 +240,6 @@ return 0;
 }
 
 /* you can only read on behalf of the foreground console */
-checkAlloc();
 cb = cbuf_tty[fg_console];
 
 /* Use temp pointers, more keystrokes could be appended while
@@ -245,7 +257,7 @@ temp_tail = t;
 
 catchup = false;
 if((!cb && !cb_nomem_refresh[fg_console]) ||
-cb->head != cb->mark) {
+cb->head != cb->output) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
 for(t=temp_tail; t<temp_head; t+=4) {
 if(*t == ACSINT_TTY_MORECHARS) continue;
@@ -280,11 +292,12 @@ j2 = cb->head - cb->start;
 if(j2) memcpy(cb_staging + j, cb->start, j2);
 }
 cb->mark = cb->head;
+cb->output = cb->head;
 } else {
 memcpy(cb_staging, cb_nomem_message, culen);
 cb_nomem_refresh[fg_console] = 1;
 }
-} // catching up
+} /* catching up */
 
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 
@@ -339,9 +352,9 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len, loff
 char c;
 const char *p = buf;
 int j, key, shiftstate, bytes_write;
-int nn; // number of notes
+int nn; /* number of notes */
 short notes[2*(10+1)];
-int isize; // size of input to inject
+int isize; /* size of input to inject */
 unsigned long irqflags;
 
 if(!in_use) return 0; /* should never happen */
@@ -480,7 +493,7 @@ if (rbuf_head > rbuf_tail)
 mask = POLLIN | POLLRDNORM;
 poll_wait(fp, &wq, pt);
 return mask;
-} // device_poll
+}
 
 static struct file_operations fops={
 owner: THIS_MODULE,
@@ -517,7 +530,7 @@ static short nkeypending; /* number of keys pending */
 */
 static short keyechostate;
 #define flushInKeyBuffer() (nkeypending = keyechostate = 0)
-#define ECHOOLDLIMIT 3 /* in seconds */
+#define ECHOEXPIRE 3 /* in seconds */
 
 static void
 dropKeysPending(int mark)
@@ -565,12 +578,13 @@ keyechostate = 0;
 
 /* drop old keys */
 for(j=0; j<nkeypending; ++j)
-if(inkeytime[j] + HZ*ECHOOLDLIMIT < jiffies)
+if(inkeytime[j] + HZ*ECHOEXPIRE >= jiffies)
 break;
-if(j) dropKeysPending(j);
-
+if(j) {
+dropKeysPending(j);
 	if (!nkeypending)
 		return 0;
+}
 
 /* to jump into the state machine we need to match on the first character */
 d = inkeybuffer[0];
@@ -578,9 +592,9 @@ if(d == '\t' && c == ' ') {
 keyechostate = 1;
 return 2;
 }
-if(d == '\r' && c == '\r') {
+if((d == '\r' || d == '\n') && c == '\r') {
 keyechostate = 2;
-return 2;
+return 1;
 }
 if(d < ' ' && c == '^') {
 keyechostate = 3;
@@ -604,10 +618,11 @@ return 0;
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(unsigned int c, int mino, int from_vt)
+pushlog(unsigned int c, int mino, bool from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
+bool athead = false; /* output is at the head */
 int echo = 0;
 struct cbuf *cb = cbuf_tty[mino];
 
@@ -615,23 +630,39 @@ if(!cb) return;
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
 
+if(mino == fg_console) {
 if(from_vt) echo = isEcho(c);
+if(cb->output == cb->head) athead = true;
+}
 
-if(cb->mark == cb->head && mino == fg_console && rbuf_head <= rbuf_end-4) {
+if(athead && rbuf_head <= rbuf_end-4) {
 /* throw the "more stuff" event */
 if(rbuf_head == rbuf_tail) wake = true;
-*rbuf_head = ACSINT_TTY_MORECHARS;
+rbuf_head[0] = ACSINT_TTY_MORECHARS;
+rbuf_head[1] = echo;
+/* only short unicodes for now */
+if(echo && c <= 0xffff) {
+rbuf_head[2] = c;
+rbuf_head[3] = (c>>8);
+} else {
+rbuf_head[2] = 0;
+rbuf_head[3] = 0;
+}
 rbuf_head += 4;
 }
 
 cb_append(cb, c);
+
+/* If you were caught up before, and you receive an echo char,
+ * then you're still caught up. */
+if(athead && echo) cb->output = cb->head;
 
 if(wake) wake_up_interruptible(&wq);
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 } /* pushlog */
 
 /*
- * And now we need a console to capture printk() text
+ * We need a console to capture printk() text
  * and push it onto the buffer.
  * It didn't come from the tty, but we want to read it nonetheless.
  */
@@ -642,9 +673,9 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 if(!in_use) return;
 	while (len--) {
 		c = *msg++;
-pushlog((unsigned char)c, fg_console, 0);
+pushlog((unsigned char)c, fg_console, false);
 	}
-}				// my_printk
+}
 
 static struct console acsintconsole = {
 name:	"acsint",
@@ -671,6 +702,7 @@ goto done;
 if (type == VT_UPDATE) {
 if (fg_console != last_fgc) {
 last_fgc = fg_console;
+checkAlloc(fg_console);
 	raw_spin_lock_irqsave(&acslock, irqflags);
 flushInKeyBuffer();
 if(rbuf_head <= rbuf_end-4) {
@@ -687,7 +719,7 @@ if(wake) wake_up_interruptible(&wq);
 	if (type != VT_PREWRITE)
 		goto done;
 
-// I don't log, or pass back to the adapter, null bytes in the output stream
+/* I don't log, or pass back, null bytes in the output stream. */
 if(unicode == 0)
 goto done;
 
@@ -702,7 +734,8 @@ goto done;
 		goto done;
 	}
 
-pushlog(unicode, mino, 1);
+checkAlloc(mino);
+pushlog(unicode, mino, true);
 
 done:
 	return NOTIFY_DONE;
@@ -733,10 +766,10 @@ if(!in_use) goto done;
 	if (downflag == 0)
 		goto done;
 
-	if (type == KBD_KEYSYM) {
-/* we didn't eat the key code for this, we let it through.
- * So the actual key symbol must be destined for the console as well.
- * Remember this key, to check for echo. */
+#if 0
+/* This is how we should be putting keystrokes in the echo queue. */
+/* But I don't get any unicode events from my keyboard. */
+if(type == KBD_UNICODE) {
 	raw_spin_lock_irqsave(&acslock, irqflags);
 if(nkeypending == MAXKEYPENDING) dropKeysPending(1);
 inkeybuffer[nkeypending] = key;
@@ -745,6 +778,7 @@ inkeytime[nkeypending] = jiffies;
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 goto done;
 }
+#endif
 
 	if (type != KBD_KEYCODE)
 		goto done;
@@ -786,7 +820,7 @@ goto regular;
 
 if(action != ACS_SS_ALL) {
 if(!(action&ss)) goto regular;
-// only one of shift, lalt, ralt, or control
+/* only one of shift, lalt, ralt, or control */
 if(ischort[ss]) goto regular;
 }
 keep = true;
@@ -812,14 +846,45 @@ if(wake) wake_up_interruptible(&wq);
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 }
 
-if(send) goto done;
+if(send) {
+/* Remember this key, to check for echo.
+ * I should be responding to KBD_UNICODE, and storing the unicode,
+ * but my keyboard doesn't generate that event.  Don't know why.
+ * And trying to deal with KEYSYM is a nightmare.
+ * So that leaves KEYCODE, which I must (roughly) translate.
+ * If your keyboard isn't qwerty, we're screwed.
+ * Somebody help me with this one. */
+char keychar;
+static const char lowercode[] =
+" \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
+static const char uppercode[] =
+" \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
+if(key == 96) key = 28;
+/* pull keycode down to numbers if numlock numpad keys are hit */
+/* not yet implemented */
+if(key > KEY_SPACE) goto done;
+keychar = (ss&ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
+if(keychar == ' ' && key != KEY_SPACE) goto done;
+if(keychar == '\r') ss = 0;
+/* don't know how to echo alt keys */
+if(ss & ACS_SS_ALT) goto done;
+if(ss & ACS_SS_CTRL && isalpha(keychar))
+keychar = (keychar|0x20) - ('a'-1);
+	raw_spin_lock_irqsave(&acslock, irqflags);
+if(nkeypending == MAXKEYPENDING) dropKeysPending(1);
+inkeybuffer[nkeypending] = keychar;
+inkeytime[nkeypending] = jiffies;
+++nkeypending;
+	raw_spin_unlock_irqrestore(&acslock, irqflags);
+goto done;
+}
 
 stop:
 return NOTIFY_STOP;
 
 done:
 	return NOTIFY_DONE;
-}				// keystroke
+} /* keystroke */
 
 static struct notifier_block nb_key = {
 	.notifier_call = keystroke,
@@ -868,7 +933,7 @@ unregister_chrdev(major, ACSINT_DEVICE);
 	register_console(&acsintconsole);
 
 	return 0;
-}				// acsint_init
+}
 
 static void __exit acsint_exit(void)
 {
@@ -887,7 +952,7 @@ for(j=0; j<MAX_NR_CONSOLES; ++j) {
 cb = cbuf_tty[j];
 if(cb) kfree(cb);
 }
-}				/* acsint_exit */
+}
 
 module_init(acsint_init);
 module_exit(acsint_exit);

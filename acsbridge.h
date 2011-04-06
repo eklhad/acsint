@@ -292,14 +292,16 @@ Linear is the default at startup.
 void acs_screenmode(int enabled);
 
 /*********************************************************************
-Notify the adapter when more characters have been posted to the tty log
+Notify the adapter when more characters have been posted to the tty.
 since your last keystroke or refresh command.
 (Remember that I bring the buffer up to date with each key command.)
 This is a callback function, or handler, that you provide.
 Leave it null if you don't need this information.
+echo is 0 for output characters, 1 for an echo of a key that you typed,
+and 2 for an indirect echo, such as spaces for tab.
 *********************************************************************/
 
-typedef void (*more_handler_t)(void);
+typedef void (*more_handler_t)(int echo, unsigned int c);
 extern more_handler_t acs_more_h;
 
 
@@ -438,10 +440,14 @@ The string is entered, and we're ready to go.
 
 Finally, monitor can be used to look at every key,
 those that are captured and those that go on to the console.
-This is used to echo the keys verbally as they are typed.
-Some people like this feedback, others find it distracting.
-In any case, the monitor command lets you see the keys
-as they pass through to the console, and act on them if you wish.
+You can use this feature to echo keys as they are pressed.
+However, most people respond to the echo characters from the tty,
+and speak them then.
+Thus you know the computer has responded to the key you pressed.
+You typed e, and e has appeared on the screen,
+and your adapter says "e".
+This is managed through the more_h handler described in section 3.
+So monitor is a function that you probably won't need.
 *********************************************************************/
 
 int acs_bypass(void);
