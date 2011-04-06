@@ -181,14 +181,12 @@ get_user(c, cp);
 static int device_open(struct inode *inode, struct file *file)
 {
 int j;
-struct cbuf *cb;
 
 /* A theoretical race condition here; too unlikely for me to worry about. */
 if (in_use) return -EBUSY;
 
-for(j=0; j<MAX_NR_CONSOLES; ++j, ++cb) {
-cb = cbuf_tty[j];
-cb_reset(cb);
+for(j=0; j<MAX_NR_CONSOLES; ++j) {
+cb_reset(cbuff_tty[j]);
 cb_nomem_refresh[j] = 0;
 cb_nomem_alloc[j] = 0;
 }
@@ -941,7 +939,6 @@ unregister_chrdev(major, ACSINT_DEVICE);
 static void __exit acsint_exit(void)
 {
 int j;
-struct cbuf *cb;
 
 	unregister_console(&acsintconsole);
 	unregister_keyboard_notifier(&nb_key);
@@ -951,10 +948,9 @@ misc_deregister(&acsint_dev);
 else
 unregister_chrdev(major, ACSINT_DEVICE);
 
-for(j=0; j<MAX_NR_CONSOLES; ++j) {
-cb = cbuf_tty[j];
-if(cb) kfree(cb);
-}
+for(j=0; j<MAX_NR_CONSOLES; ++j)
+if(cbuf_tty[j])
+kfree(cbuf_tty[j]);
 }
 
 module_init(acsint_init);
