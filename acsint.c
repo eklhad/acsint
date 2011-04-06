@@ -723,7 +723,7 @@ static int
 keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 {
 	struct keyboard_notifier_param *param = data;
-	char key = param->value;
+	unsigned int key = param->value;
 	int downflag = param->down;
 	int ss = param->shift;
 char action;
@@ -735,14 +735,24 @@ unsigned long irqflags;
 
 if(!in_use) goto done;
 
-	if (type != KBD_KEYCODE)
-		goto done;
-
 /* Only the key down events */
 	if (downflag == 0)
 		goto done;
 
-	if (key == 0 || key >= 128)
+	if (type == KBD_KEYSYM) {
+/* we didn't eat the key code for this, we let it through.
+ * So the actual key symbol must be destined for the console as well.
+ * Remember this key, to check for echo. */
+	raw_spin_lock_irqsave(&acslock, irqflags);
+if(nkeypending == MAXKEYPENDING) dropKeysPending(1);
+inkeybuffer[nkeypending] = key;
+inkeytime[nkeypending] = jiffies;
+++nkeypending;
+	raw_spin_unlock_irqrestore(&acslock, irqflags);
+goto done;
+}
+
+	if (type != KBD_KEYCODE)
 		goto done;
 
 ss &= 0xf;
