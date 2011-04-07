@@ -2279,6 +2279,8 @@ ss_writeString(acestring);
 rc = 0;
 break;
 
+default:
+rc = -2; /* no voice function for this synth */
 } // switch
 
 return rc;
