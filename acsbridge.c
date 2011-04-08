@@ -51,16 +51,18 @@ static int bnsf; // counting control f's from bns
 // move the cursor to the index marker
 static void indexSet(int n)
 {
-if(!imark_start) return;
-
 if(ss_style == SS_STYLE_BNS || ss_style == SS_STYLE_ACE) {
+/* don't return until you have done this bookkeeping. */
 ++bnsf;
 n = imark_end + bnsf;
 } else {
 n -= imark_first;
 }
+
+if(!imark_start) return;
 if(n < 0 || n >= imark_end) return;
 rb->cursor = imark_start + imark_loc[n];
+
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
 imark_start = 0;
@@ -166,11 +168,12 @@ acs_screenmode(int enabled)
 if(enabled) {
 screenmode = 1;
 rb = &screenBuf;
+rb->cursor = rb->v_cursor;
 } else {
 screenmode = 0;
 rb = tty_log + acs_fgc - 1;
 }
-} // acs_linear
+} /* acs_screenmode */
 
 
 // Open and close the device.
@@ -595,7 +598,7 @@ continue;
 tl->end = t;
 *t = 0;
 
-if(tl->cursor >= t)
+if(tl->cursor && tl->cursor >= t)
 tl->cursor = (t > tl->start ? t-1 : t);
 } // postprocess
 
@@ -705,9 +708,11 @@ if(nr-i < culen1) break;
 tl = tty_log + minor - 1;
 nlen = tl->end - tl->start + culen;
 diff = nlen - TTYLOGSIZE;
+
 if(diff >= tl->end-tl->start) {
-// complete replacement
-// should never be greater; diff = tl->end - tl->start
+/* complete replacement
+ * should never be greater; diff = tl->end - tl->start */
+/* copy the new stuff */
 custart = tl->start;
 memcpy(custart, iobuf+i, TTYLOGSIZE);
 tl->end = tl->start + TTYLOGSIZE;
@@ -726,18 +731,25 @@ imark_start -= diff;
 if(imark_start < tl->start) imark_start = 0;
 }
 }
+/* copy the new stuff */
 custart = tl->end;
 memcpy(custart, iobuf+i, culen);
 tl->end += culen;
 tl->end[0] = 0;
 }
-if(tl->cursor == 0) tl->cursor = tl->end - 1;
-i += culen1;
+
+/* if(tl->cursor == 0) set it to the beginning? or end? or leave it null? */
+/* I choose to leave it null, although there are tradeoffs. */
+
 postprocess(custart);
+
 if(acs_debug) acs_log("<<\n%s>>\n", (int)custart);
+
 // But if you're in screen mode, I haven't moved your reading cursor,
 // or imark _start, appropriately.
 // Don't know what to do about that.
+
+i += culen1;
 break;
 
 default:
@@ -776,12 +788,13 @@ rb->cursor = tc;
 
 achar acs_getc(void)
 {
-return *tc;
+return (tc ? *tc : 0);
 } // acs_getc
 
 int acs_forward(void)
 {
 if(rb->end == rb->start) return 0;
+if(!tc) return 0;
 if(++tc == rb->end) return 0;
 return 1;
 } // acs_forward
@@ -789,6 +802,7 @@ return 1;
 int acs_back(void)
 {
 if(rb->end == rb->start) return 0;
+if(!tc) return 0;
 if(tc-- == rb->start) return 0;
 return 1;
 } // acs_back
@@ -797,6 +811,7 @@ int acs_startline(void)
 {
 int colno = 0;
 if(rb->end == rb->start) return 0;
+if(!tc) return 0;
 do ++colno;
 while(acs_back() && acs_getc() != '\n');
 acs_forward();
@@ -806,6 +821,7 @@ return colno;
 int acs_endline(void)
 {
 if(rb->end == rb->start) return 0;
+if(!tc) return 0;
 while(acs_getc() != '\n') {
 if(acs_forward()) continue;
 acs_back();
@@ -920,6 +936,7 @@ if(tc != rb->start) --tc;
 void acs_lspc(void)
 {
 if(rb->end == rb->start) return;
+if(!tc) return;
 	if(!acs_back()) goto done;
 	while(acs_getc() == ' ')
 		if(!acs_back()) break;
@@ -931,6 +948,7 @@ done:
 void acs_rspc(void)
 {
 if(rb->end == rb->start) return;
+if(!tc) return;
 	if(!acs_forward()) goto done;
 	while(acs_getc() == ' ')
 		if(!acs_forward()) break;
@@ -994,6 +1012,7 @@ int acs_bufsearch(const achar *string, int back, int newline)
 	achar c, first;
 
 if(rb->end == rb->start) return 0;
+if(!tc) return 0;
 
 	if(newline) {
 		if(back) acs_startline(); else acs_endline();
@@ -1283,6 +1302,11 @@ unsigned short *o = offsets;
 int j, l;
 achar c;
 char spaces = 1, alnum = 0;
+
+if(!s) {
+errno = EFAULT;
+return -1;
+}
 
 if(destlen <= 0) {
 errno = ENOMEM;
@@ -2326,7 +2350,7 @@ if(!imark_start) return 0;
  * the sentence is nearly done, and that's close enough.
  * Start sending the next sentence, and things won't be so choppy. */
 if(imark_end < 2) return 0;
-if(!rb->cursor) return 0; /* should never happen */
+if(!rb->cursor) return 0;
 if(rb->cursor - imark_start == imark_loc[imark_end-2])
 return 0;
 

@@ -190,10 +190,15 @@ This is the only thing in the buffer you should change.
 Everything else is treated as readonly.
 
 If lots of tty output pushes your cursor off the back of the buffer,
-it will be moved to the front of the buffer, to read the latest text.
+it will be left as null.
 Example: cat a large file.
+So be sure to ehcek for null at the top of your event handler.
+You may, upon this condition,
+stop reading, or sound a beep, or speak a quick overflow message.
 
 If in screen mode, v_cursor points to the visual cursor on screen.
+The reding cursor is set to the visual cursor when
+you switch to screen mode.
 
 The characters in the buffer are ascii or ISO8859-1.
 They leave the tty as utf8, and are converted by linux vt.c into unicode.
