@@ -946,10 +946,7 @@ is the compression of a repeated punctuation mark into one token.
 This is indicated by the sentence preparation mark,
 a character that almost never appears in real text.
 I use 0x80.  See the definition of SP_MARK below.
-two of these in a row means it actually exists in the text,
-like %% in printf.
-But
-SP_MARK SP_REPEAT 20 -
+SP_MARK SP_REPEAT - 20 SP_MARK
 means there were 20 dashes.
 I've seen thousands of dots in a row, for instance, when a program
 uses these to indicate it is working on a task and making progress.

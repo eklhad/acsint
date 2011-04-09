@@ -1324,6 +1324,9 @@ return 0;
 if(o) memset(o, 0, sizeof(unsigned short)*destlen);
 
 while((c = *s) && t < destend) {
+if(c == SP_MARK && prop&ACS_GS_REPEAT)
+c = ' ';
+
 if(c == ' ') {
 alnum = 0;
 if(prop&ACS_GS_ONEWORD) {
@@ -1388,13 +1391,14 @@ if(o) o[t-dest] = s-rb->cursor;
 // check for repeat
 if(prop&ACS_GS_REPEAT &&
 c == s[1] && c == s[2] && c == s[3] && c == s[4]) {
-char reptoken[12]; // repeat token
+char reptoken[12]; /* repeat token */
 reptoken[0] = SP_MARK;
 reptoken[1] = SP_REPEAT;
+reptoken[2] = c;
 for(j=5; c == s[j]; ++j)  ;
-sprintf(reptoken+2, "%d", j);
+sprintf(reptoken+3, "%d", j);
 l = strlen(reptoken);
-reptoken[l++] = c;
+reptoken[l++] = SP_MARK;
 reptoken[l] = 0;
 if(t+l >= destend) break; // no room
 strcpy(t, reptoken);
@@ -1404,11 +1408,6 @@ continue;
 }
 
 // just a punctuation mark on its own
-if(c == SP_MARK && prop&ACS_GS_REPEAT) {
-if(t+1 == destend) break;
-// do it twice
-*t++ = c;
-}
 *t++ = c;
 ++s;
 } // loop over characters in the tty buffer
