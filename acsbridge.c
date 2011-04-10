@@ -775,7 +775,7 @@ tl->end[0] = 0;
 
 postprocess(custart);
 
-if(acs_debug) acs_log("<<\n%s>>\n", (int)custart);
+if(acs_debug) acs_log("<<\n%s>>\n", custart);
 
 // But if you're in screen mode, I haven't moved your reading cursor,
 // or imark _start, appropriately.
