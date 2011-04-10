@@ -15,6 +15,7 @@ and declared in acsbridge.h.
 #include <ctype.h>
 #include <unistd.h>
 #include <linux/vt.h>
+#include <stdarg.h>
 
 #include "acsbridge.h"
 
@@ -74,11 +75,17 @@ int acs_debug = 0;
 // for debugging: save a message, without sending it to tty,
 // which would just generate more events.
 static const char debuglog[] = "acslog";
-int acs_log(const char *msg, int n)
+int acs_log(const char *msg, ...)
 {
-FILE *f = fopen(debuglog, "a");
-fprintf(f, msg, n);
+va_list args;
+FILE *f;
+va_start(args, msg);
+if ((f = fopen(debuglog, "a")) == NULL)
+return -1;
+vfprintf(f, msg, args);
+va_end(args);
 fclose(f);
+return 0;
 } // acs_log
 
 key_handler_t acs_key_h;
