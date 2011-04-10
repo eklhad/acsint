@@ -191,9 +191,11 @@ acs_screenmode(int enabled)
  * and that is what I am expecting / assuming,
  * then yes the buffer will be caught up.
  * If it is called by some other automated process, or at startup,
- * then you will want to call acs_refresh to bring the buffer up to date. */
+ * then you will want to call acs_refresh to bring the buffer up to date,
+ * at least in line mode.  I call screenSnap for you in screen mode. */
 if(enabled) {
 screenmode = 1;
+screenSnap();
 rb = &screenBuf;
 rb->cursor = rb->v_cursor;
 } else {
@@ -685,7 +687,9 @@ if(acs_debug) acs_log("fg %d\n", iobuf[i+1]);
 acs_fgc = iobuf[i+1];
 if(screenmode) {
 /* I hope linux has done the console switch by this time. */
-if(!refreshed) { screenSnap(); refreshed = 1; }
+screenSnap();
+refreshed = 1;
+rb->cursor = rb->v_cursor;
 } else {
 checkAlloc();
 }
