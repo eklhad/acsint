@@ -123,11 +123,14 @@ return errorDesc;
 } // acs_errordesc
 
 // Maintain the tty log for each virtual console.
-static struct readingBuffer tty_log[MAX_NR_CONSOLES];
+static struct readingBuffer *tty_log[MAX_NR_CONSOLES];
+static struct readingBuffer tty_nomem = { /* in case we can't allocate */
+.area = "\0Acsint bridge cannot allocate space for this console",
+};
 static struct readingBuffer *tl; // current tty log
 static struct readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
-struct readingBuffer *rb = tty_log; // current reading buffer for the application
+struct readingBuffer *rb; /* current reading buffer for the application */
 
 static void screenSnap(void)
 {
@@ -157,21 +160,45 @@ screenBuf.end = t;
 screenBuf.v_cursor = screenBuf.area + 1 + csr * (ncols+1) + csc;
 } // screenSnap
 
+/* check to see if a tty reading buffer has been allocated */
+static void
+checkAlloc(void)
+{
+rb = tty_log[acs_fgc - 1];
+if(rb && rb != &tty_nomem)
+return; /* already allocated */
+
+rb = malloc(sizeof(struct readingBuffer));
+if(!rb) rb = &tty_nomem;
+tty_log[acs_fgc-1] = rb;
+rb->start = rb->area + 1;
+rb->end = rb->start;
+if(rb == &tty_nomem) {
+rb->end = rb->start + strlen(rb->start);
+} else {
+rb->area[0] = 0;
+rb->area[1] = 0;
+}
+rb->cursor = rb->start;
+rb->v_cursor = 0;
+rb->attribs = 0;
+} /* checkAlloc */
+
 void
 acs_screenmode(int enabled)
 {
-// If you issued this command at the call of a keystroke,
-// and that is what I am expecting / assuming,
-// then yes the buffer will be caught up.
-// If it is called by some other automated process, or at startup,
-// then you will want to call acs_refresh to bring the buffer up to date.
+/* If you issued this command at the call of a keystroke,
+ * and that is what I am expecting / assuming,
+ * then yes the buffer will be caught up.
+ * If it is called by some other automated process, or at startup,
+ * then you will want to call acs_refresh to bring the buffer up to date. */
 if(enabled) {
 screenmode = 1;
 rb = &screenBuf;
 rb->cursor = rb->v_cursor;
 } else {
 screenmode = 0;
-rb = tty_log + acs_fgc - 1;
+checkAlloc();
 }
 } /* acs_screenmode */
 
@@ -181,8 +208,6 @@ rb = tty_log + acs_fgc - 1;
 int
 acs_open(const char *devname)
 {
-int j;
-
 if(acs_fd >= 0) {
 // already open
 errno = EEXIST;
@@ -191,16 +216,6 @@ return -1;
 }
 
 if(acs_debug) unlink(debuglog);
-
-tl = tty_log;
-for(j=0; j<MAX_NR_CONSOLES; ++j, ++tl) {
-tl->start = tl->end = tl->area + 1;
-tl->area[0] = 0;
-tl->end[0] = 0;
-tl->attribs = 0;
-tl->cursor = tl->end;
-tl->v_cursor = 0;
-}
 
 vcs_fd = open("/dev/vcsa", O_RDONLY);
 if(vcs_fd < 0) {
@@ -605,12 +620,12 @@ tl->cursor = (t > tl->start ? t-1 : t);
 void acs_clearbuf(void)
 {
 if(!screenmode)
-rb->end = rb->cursor = rb->start;
 imark_start = 0;
+if(rb && rb != &tty_nomem)
+rb->end = rb->cursor = rb->start;
 } // acs_clearbuf
 
 // events coming back
-
 int acs_events(void)
 {
 int nr; // number of bytes read
@@ -669,10 +684,10 @@ imark_start = 0;
 if(acs_debug) acs_log("fg %d\n", iobuf[i+1]);
 acs_fgc = iobuf[i+1];
 if(screenmode) {
-// I sure hope linux has actually done the console switch by this time.
+/* I hope linux has done the console switch by this time. */
 if(!refreshed) { screenSnap(); refreshed = 1; }
 } else {
-rb = tty_log + acs_fgc - 1;
+checkAlloc();
 }
 if(acs_fgc_h) acs_fgc_h();
 i += 4;
@@ -696,8 +711,8 @@ i += 4;
 break;
 
 case ACSINT_TTY_NEWCHARS:
-// this is the refresh data in line mode
-// minor is always the foreground console; we could probably discard it
+/* this is the refresh data in line mode
+ * minor is always the foreground console; we could probably discard it. */
 minor = iobuf[i+1];
 culen = iobuf[i+2] | ((unsigned short)iobuf[i+3]<<8);
 culen1 = (culen+3) & ~3;
@@ -705,7 +720,13 @@ if(acs_debug) acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
 if(nr-i < culen1) break;
-tl = tty_log + minor - 1;
+tl = tty_log[minor - 1];
+if(!tl || tl == &tty_nomem) {
+/* not allocated; no room for this data */
+i += culen1;
+break;
+}
+
 nlen = tl->end - tl->start + culen;
 diff = nlen - TTYLOGSIZE;
 
@@ -753,9 +774,9 @@ i += culen1;
 break;
 
 default:
-// Perhaps a phase error.
-// Not sure what to do here.
-// Just give up.
+/* Perhaps a phase error.
+ * Not sure what to do here.
+ * Just give up. */
 if(acs_debug) acs_log("unknown command %d\n", iobuf[i]);
 i += 4;
 } // switch
@@ -768,7 +789,7 @@ int acs_refresh(void)
 {
 iobuf[0] = ACSINT_REFRESH;
 if(acs_write(1)) return -1;
-screenSnap();
+if(screenmode) screenSnap();
 return acs_events();
 } // acs_refresh
 
