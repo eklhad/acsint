@@ -231,9 +231,8 @@ unsigned long irqflags;
 if(!in_use) return 0; /* should never happen */
 
 retval = wait_event_interruptible(wq, (rbuf_head > rbuf_tail));
-if (retval==ERESTARTSYS) {
-return 0;
-}
+if (retval)
+return retval;
 
 /* you can only read on behalf of the foreground console */
 cb = cbuf_tty[fg_console];
