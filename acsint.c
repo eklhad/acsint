@@ -172,7 +172,7 @@ static char *rbuf_tail, *rbuf_head;
 /* Wait until this driver has some data to read. */
 DECLARE_WAIT_QUEUE_HEAD(wq);
 
-static int in_use; /* only one process opens this device at a time */
+static bool in_use; /* only one process opens this device at a time */
 static int last_fgc; /* last fg_console */
 
 /* Push characters onto the input queue of the foreground tty.
@@ -183,7 +183,9 @@ tty_pushstring(const char *cp, int len)
 char c;
 	struct tty_struct *tty;
 	struct vc_data *d = vc_cons[fg_console].d;
+
 if(!d) return;
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 tty = d->vc_tty;
 #else
@@ -244,13 +246,13 @@ rbuf_head=rbuf + 4;
 last_fgc = fg_console;
 checkAlloc(fg_console, false);
 
-in_use = 1;
+in_use = true;
 return 0;
 }
 
 static int device_close(struct inode *inode, struct file *file)
 {
-in_use=0;
+in_use=false;
 rbuf_head = rbuf_tail = rbuf;
 return 0;
 }
@@ -938,7 +940,7 @@ static int __init acsint_init(void)
 {
 	int rc;
 
-in_use=0;
+in_use=false;
 clear_keys();
 
 if(major == 0)
