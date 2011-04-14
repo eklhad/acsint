@@ -471,7 +471,7 @@ goto cleanup;
 // This only works on a qwerty layout; not sure how to fix this.
 keychar = (ss&ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
 if(keychar == ' ' && key != KEY_SPACE) goto bad;
-if(leds & ACS_LEDS_CAPSLOCK && isalpha(keychar))
+if(leds & K_CAPSLOCK && isalpha(keychar))
 keychar ^= 0x20;
 
 // looks ok, but is there room?

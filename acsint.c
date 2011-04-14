@@ -836,7 +836,7 @@ if(bypass) {key_bypass = 0; send = true; goto event; }
 
 /* keypad is assumed to be numbers with numlock on,
  * perhaps speech functions otherwise. */
-if(param->ledstate & ACS_LEDS_NUMLOCK &&
+if(param->ledstate & K_NUMLOCK &&
 key >= KEY_KP7 && key <= KEY_KPDOT &&
 key != KEY_KPMINUS && key != KEY_KPPLUS)
 goto regular;

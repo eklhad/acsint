@@ -356,7 +356,7 @@ since alt-F2 will be captured and you won't be able to switch to console 2.
 When F2 is pressed, your keyboard handler will be called with
 KEY_F2, shiftstate, leds.
 Leds are the settings for capslock, numlock, scrolllock.
-Example ACS_LEDS_NUMLOCK if numlock is on.
+Example K_NUMLOCK if numlock is on.
 See the handler below.
 
 If you are capturing all variations of a key,
