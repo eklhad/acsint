@@ -174,9 +174,6 @@ So if you wanted insert to act like the right alt key,
 you would tell me that insert was meta.
 This capability does not exist today.
 
-* Find and use standard symbols for shift states and led states,
-instead of reinventing our own in acsint.h.
-
 * Just before submission, move acsint.h and ttyclicks.h into include/linux,
 and use the include style #include <linux/foo.h>
 

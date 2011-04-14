@@ -6,6 +6,7 @@
 /* input.h has symbolic constants for all the keys on the keyboard; let's use those. */
 #include <linux/input.h>
 #include <linux/kd.h>
+#include <linux/keyboard.h>
 
 
 /* The size of the tty log; store this many characters of tty output.
@@ -47,15 +48,16 @@ ACSINT_PRINTK,
 /* Here is a bound; you can't capture keys at or beyond this point. */
 #define ACS_NUM_KEYS 128
 
-/* Symbolic constans for the keys are in input.h */
+/* Symbolic constants for the keys are in input.h */
 
-/* Symbolic constans for the led states are in kd.h */
+/* Symbolic constants for the led states are in kd.h */
 
-/* Shiftstates */
-#define ACS_SS_SHIFT 0x01
-#define ACS_SS_RALT 0x02
-#define ACS_SS_CTRL 0x04
-#define ACS_SS_LALT 0x08
+/* Symbolic constants for the shift states are derived from keyboard.h,
+ * but then I add a couple of my own. */
+#define ACS_SS_SHIFT (1<<KG_SHIFT)
+#define ACS_SS_RALT (1<<KG_ALTGR)
+#define ACS_SS_CTRL (1<<KG_CTRL)
+#define ACS_SS_LALT (1<<KG_ALT)
 #define ACS_SS_ALT 0x0a
 /* and these are new */
 #define ACS_SS_PLAIN 0x10

@@ -5,7 +5,6 @@
 
 #include <linux/kernel.h>
 #include <linux/notifier.h>
-#include <linux/keyboard.h>
 #include <linux/kbd_kern.h>
 #include <linux/ctype.h>
 #include <linux/slab.h> /* malloc and free */
