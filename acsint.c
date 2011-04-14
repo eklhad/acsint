@@ -51,22 +51,29 @@ char *mark;
 /* new output characters, not yet copied to user space */
 char *output;
 };
+
+/* These are allocated, one per console, as needed. */
 static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
+
 /* in case we can't malloc a buffer */
-/* set to 1 if you have sent the nomem message down to the user */
+static const char cb_nomem_message[] = "Kernel cannot allocate space for this console";
+
+/* set to 1 if you have sent the above nomem message down to the user */
 static unsigned char cb_nomem_refresh[MAX_NR_CONSOLES];
+
 /* set to 1 if you have tried to allocate */
 static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
-static const char cb_nomem_message[] = "Kernel cannot allocate space for this console";
-/* Staging area to copy tty data to user space */
+
+/* Staging area to copy tty data down to user space */
+/* This is a snapshot of the circular buffer. */
 static char cb_staging[TTYLOGSIZE];
 
-/* check to see if buffer was allocated. */
-/* If never attempted, try to allocate it. */
+/* Initialize / reset the variables in the circular buffer. */
 static void
 cb_reset(struct cbuf *cb)
 {
-if(!cb) return;
+if(!cb)
+return; /* never allocated */
 cb->start = cb->area;
 cb->end = cb->area + TTYLOGSIZE1;
 cb->head = cb->start;
@@ -75,12 +82,17 @@ cb->mark = cb->start;
 cb->output = cb->start;
 }
 
+/* check to see if the circular buffer was allocated. */
+/* If never attempted, try to allocate it. */
+/* mino is minor-1, a 0 based index into arrays, similar to fg_console. */
 static void
 checkAlloc(int mino, bool from_vt)
 {
 struct cbuf *cb = cbuf_tty[mino];
-if(cb) return;
-if(cb_nomem_alloc[mino]) return;
+if(cb)
+return; /* already allocated */
+if(cb_nomem_alloc[mino])
+return; /* already tried to allocate */
 cb_nomem_alloc[mino] = 1;
 cb = kmalloc(sizeof(struct cbuf), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
 if(!cb) return;
@@ -88,8 +100,10 @@ cb_reset(cb);
 cbuf_tty[mino] = cb;
 }
 
-/* Put a character on the end of the circular buffer. */
-/* Already under a spinlock when this is called. */
+/* Put a character on the end of the circular buffer.
+ * Drop the oldest character if the buffer is full.
+ * This is called under a spinlock, so we don't have to worry about the reader
+ * draining characters while this routine adds characters on. */
 static void
 cb_append(struct cbuf *cb, unsigned int c)
 {
@@ -107,8 +121,11 @@ if(cb->tail == cb->end) cb->tail = cb->start;
 }
 
 
-/*
- * Indicate which keys should be passed on to userspace.
+/* Indicate which keys, by key code, are meta.  For example,
+ * shift, alt, numlock, etc.  These are the state changing keys. */
+static bool ismeta[ACS_NUM_KEYS];
+
+/* Indicate which keys should be passed on to userspace.
  * Each element should be set to the appropriate shiftstate(s)
  * as defined in acsint.h.
  * Relay keys in those designated shift states.
@@ -193,6 +210,20 @@ cb_nomem_alloc[j] = 0;
 
 clear_keys();
 key_divert = key_bypass = key_echo = 0;
+
+/* Set certain keys as meta by default */
+for(j=0; j<ACS_NUM_KEYS; ++j)
+ismeta[j] = false;
+/* These all have to be less than ACS_NUM_KEYS */
+ismeta[KEY_LEFTCTRL] = true;
+ismeta[KEY_RIGHTCTRL] = true;
+ismeta[KEY_LEFTSHIFT] = true;
+ismeta[KEY_RIGHTSHIFT] = true;
+ismeta[KEY_LEFTALT] = true;
+ismeta[KEY_RIGHTALT] = true;
+ismeta[KEY_CAPSLOCK] = true;
+ismeta[KEY_NUMLOCK] = true;
+ismeta[KEY_SCROLLLOCK] = true;
 
 /* At startup we tell the process which virtual console it is on.
  * Place this directive in rbuf to be read. */
@@ -788,7 +819,7 @@ if(!ss) ss = ACS_SS_PLAIN;
 
 action = 0;
 if(key < ACS_NUM_KEYS)
-action = acsint_keys[(int)key];
+action = acsint_keys[key];
 if(action < 0) goto stop;
 
 divert = key_divert;
@@ -796,15 +827,7 @@ echo = key_echo;
 bypass = key_bypass;
 /* But we don't redirect the meta keys */
 if(divert|echo|bypass) {
-if(key == KEY_LEFTCTRL ||
-key == KEY_RIGHTCTRL ||
-key == KEY_LEFTSHIFT ||
-key == KEY_RIGHTSHIFT ||
-key == KEY_LEFTALT ||
-key == KEY_RIGHTALT ||
-key == KEY_CAPSLOCK ||
-key == KEY_NUMLOCK ||
-key == KEY_SCROLLLOCK)
+if(key < ACS_NUM_KEYS && ismeta[key])
 divert = echo = bypass = 0;
 }
 
