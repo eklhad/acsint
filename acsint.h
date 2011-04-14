@@ -58,7 +58,7 @@ ACSINT_PRINTK,
 #define ACS_SS_RALT (1<<KG_ALTGR)
 #define ACS_SS_CTRL (1<<KG_CTRL)
 #define ACS_SS_LALT (1<<KG_ALT)
-#define ACS_SS_ALT 0x0a
+#define ACS_SS_ALT (ACS_SS_LALT|ACS_SS_RALT)
 /* and these are new */
 #define ACS_SS_PLAIN 0x10
 #define ACS_SS_ALL 0x20
