@@ -133,7 +133,6 @@ static bool ismeta[ACS_NUM_KEYS];
  */
 
 static char acsint_keys[ACS_NUM_KEYS];
-static char key_divert, key_bypass, key_echo;
 
 static void clear_keys(void)
 {
@@ -141,6 +140,16 @@ int i;
 for (i=0; i<ACS_NUM_KEYS; i++)
 acsint_keys[i]=0;
 }
+
+/* divert all keys to user space, to grab the next key or build a string. */
+static bool key_divert;
+
+/* Monitor keystrokes that are passed to the console, by sending
+ * them to user space as well. This is like /usr/bin/tee. */
+static bool key_monitor;
+
+/* pass the next key through to the console. */
+static bool key_bypass;
 
 
 /* The array "rbuf" is used for passing key/tty events to user space.
@@ -208,9 +217,11 @@ cb_nomem_alloc[j] = 0;
 }
 
 clear_keys();
-key_divert = key_bypass = key_echo = 0;
+key_divert = false;
+key_monitor = false;
+key_bypass = false;
 
-/* Set certain keys as meta by default */
+/* Set certain keys as meta, consistent with the standard key map */
 for(j=0; j<ACS_NUM_KEYS; ++j)
 ismeta[j] = false;
 /* These all have to be less than ACS_NUM_KEYS */
@@ -462,21 +473,21 @@ p += 3;
 break;
 
 case ACSINT_BYPASS:
-key_bypass = 1;
+key_bypass = true;
 break;
 
 case ACSINT_DIVERT:
 if(len < 1) break;
 get_user(c, p++);
 len--;
-key_divert = c;
+key_divert = (c != 0);
 break;
 
-case ACSINT_ECHO:
+case ACSINT_MONITOR:
 if(len < 1) break;
 get_user(c, p++);
 len--;
-key_echo = c;
+key_monitor = (c != 0);
 break;
 
 case ACSINT_REFRESH:
@@ -787,7 +798,7 @@ char action;
 static char ischort[] = {
 0,0,0,1,0,1,1,1,0,1,1,1,1,1,1,1,0};
 bool wake = false, keep = false, send = false;
-char divert, echo, bypass;
+bool divert, monitor, bypass;
 unsigned long irqflags;
 
 if(!in_use) goto done;
@@ -822,16 +833,23 @@ action = acsint_keys[key];
 if(action < 0) goto stop;
 
 divert = key_divert;
-echo = key_echo;
+monitor = key_monitor;
 bypass = key_bypass;
 /* But we don't redirect the meta keys */
-if(divert|echo|bypass) {
-if(key < ACS_NUM_KEYS && ismeta[key])
-divert = echo = bypass = 0;
+if(divert||monitor||bypass) {
+if(key < ACS_NUM_KEYS && ismeta[key]) {
+divert = false;
+monitor = false;
+bypass = false;
+}
 }
 
-if(divert | echo) keep = true;
-if(bypass) {key_bypass = 0; send = true; goto event; }
+if(divert || monitor) keep = true;
+if(bypass) {
+key_bypass = 0;
+send = true;
+goto event;
+}
 
 /* keypad is assumed to be numbers with numlock on,
  * perhaps speech functions otherwise. */

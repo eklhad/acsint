@@ -384,7 +384,7 @@ return acs_write(2);
 int
 acs_monitor(int enabled) 
 {
-iobuf[0] = ACSINT_ECHO;
+iobuf[0] = ACSINT_MONITOR;
 iobuf[1] = enabled;
 return acs_write(2);
 } // acs_monitor

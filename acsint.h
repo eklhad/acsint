@@ -35,7 +35,7 @@ ACSINT_NOTES, /* series of notes */
 ACSINT_REFRESH,
 /* should keys go to the adapter or console or both */
 ACSINT_BYPASS, /* send next char through */
-ACSINT_ECHO, /* to support echo feature as you type */
+ACSINT_MONITOR, /* to monitor keystrokes as you type */
 ACSINT_DIVERT, /* adapter grabs a string of text */
 /* events coming back */
 ACSINT_KEYSTROKE,
