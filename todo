@@ -62,27 +62,14 @@ This is probably not vital, but we might want to look at it some day.
 of the clicks in ttyclicks.c?
 It would be course, perhaps one of 5 levels, but better than nothing.
 
-* Convert acsint.c to unicodes.
-I'm sure it won't be accepted without this change,
-and it's a good idea anyways.
-We have to support speech in other languages.
-Linux applications crank out utf8,
-or iso8859 on some older boxes.
-This is converted by vt.c to unicodes.
-And thus, unicodes are passed to acsint by the vt notifier.
-I could store unicodes in an array of ints, instead of ascii
-or 8859-x in an array of unsigned chars.
-I could then pass these ints down to the bridge.
-The bridge can continue to convert them back into chars for the application.
-I'm not worried about that right now.
-The first step is to make the acsint driver fully flexible,
-so that it is accepted by the Linux community;
-the bridge can catch up later.
-I have already made all commands 4 bytes, so they line up with
-4 byte unicodes in the pass-down stream.
-We have also made buffers dynamic, allocated as needed,
-which is even more important if we make those buffers 4 times as large
-to hold unicodes.
+* Write methods to provide buffer characters in unicode, ascii, or iso8859
+according to your locale.
+getsentence(), setpunc(), replaceword() -
+all these functions should probably come in 3 versions,
+ascii, iso8859-x, and unicode.
+For now it's pretty much ascii across the board,
+with iso8859-1 shoehorned in if you need it.
+That covers Spanish French German etc, and will do for now.
 
 * The detection of echo in the acsint driver is bad.
 It doesn't work for unicodes, only ascii,

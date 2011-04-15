@@ -109,7 +109,7 @@ int dump_fd;
 char grab[20];
 int mkcode; // modified key code
 char *cmd; // the speech command
-achar c;
+char c;
 
 mkcode = acs_build_mkcode(key, ss);
 cmd = acs_getspeechcommand(mkcode);
@@ -163,7 +163,12 @@ case 'd':
 sprintf(dumpfile, "dump%d", acs_fgc);
 dump_fd = open(dumpfile, O_WRONLY|O_TRUNC|O_CREAT, 0666);
 if(dump_fd >= 0) {
-write(dump_fd, rb->start, rb->end-rb->start);
+acs_startbuf();
+/* nobody said this was efficient */
+while(c = acs_getc()) {
+write(dump_fd, &c, 1);
+acs_forward();
+}
 close(dump_fd);
 puts(dumpfile);
 }

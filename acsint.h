@@ -3,7 +3,6 @@
 
 /* Prototypes and definitions for the acsint device driver. */
 
-/* input.h has symbolic constants for all the keys on the keyboard; let's use those. */
 #include <linux/input.h>
 #include <linux/kd.h>
 #include <linux/keyboard.h>
@@ -14,6 +13,9 @@
 #define TTYLOGSIZE 50000
 #define TTYLOGSIZE1 (TTYLOGSIZE+1)
 #define TTYLOGSIZE2 (TTYLOGSIZE+2)
+
+/* The c type that corresponds to a 4 byte unicode character */
+typedef unsigned int uc_type;
 
 /* Commands that Acsint sends or receives */
 enum acs_command {

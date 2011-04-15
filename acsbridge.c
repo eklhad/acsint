@@ -23,8 +23,12 @@ and declared in acsbridge.h.
 
 #define MAX_ERRMSG_LEN 256 // description of error
 #define MAXNOTES 10 // how many notes to play in one call
-#define IOBUFSIZE (TTYLOGSIZE + 2000) /* size of input buffer */
-#define ATTRIBOFFSET 20000 // about half of TTYLOGSIZE
+#define IOBUFSIZE (TTYLOGSIZE*4 + 2000) /* size of input buffer */
+/* I assume the screen doesn't have more than 5000 characters,
+ * and TTYLOGSIZE is at least 10000.
+ * 40 rows by 120 columns is, for instance, 4800 */
+#define ATTRIBOFFSET 5000
+#define VCREADOFFSET 7000
 #define SSBUFSIZE 64 // synthesizer buffer for events
 
 int acs_fd = -1; // file descriptor for /dev/acsint
@@ -36,16 +40,16 @@ static unsigned char vcs_header[4];
 #define csc (int)vcs_header[2] // cursor column
 int acs_fgc = 1; // current foreground console
 int acs_postprocess = 0xf; // postprocess the text from the tty
-static const achar crbyte = '\r';
-static const achar kbyte = '\13';
+static const char crbyte = '\r';
+static const char kbyte = '\13';
 
 int ss_style;
 int ss_curvolume, ss_curpitch, ss_curspeed, ss_curvoice;
 
 // The start of the sentence that is sent with index markers.
-static achar *imark_start;
+static uc_type *imark_start;
 // location of each index marker relative to imark_start
-static unsigned short imark_loc[100];
+static ofs_type imark_loc[100];
 static int imark_first, imark_end;
 static int bnsf; // counting control f's from bns
 
@@ -96,8 +100,8 @@ ks_echo_handler_t acs_ks_echo_h;
 static int cerror; /* Indicate communications error. */
 static char errorDesc[MAX_ERRMSG_LEN];
 
-static achar iobuf[IOBUFSIZE]; // input output buffer for acsint
-static achar ss_inbuf[SSBUFSIZE]; // input buffer for the synthesizer
+static unsigned char iobuf[IOBUFSIZE]; // input output buffer for acsint
+static char ss_inbuf[SSBUFSIZE]; // input buffer for the synthesizer
 
 // set, clear, and report errors
 
@@ -131,9 +135,8 @@ return errorDesc;
 
 // Maintain the tty log for each virtual console.
 static struct readingBuffer *tty_log[MAX_NR_CONSOLES];
-static struct readingBuffer tty_nomem = { /* in case we can't allocate */
-.area = "\0Acsint bridge cannot allocate space for this console",
-};
+static struct readingBuffer tty_nomem; /* in case we can't allocate */
+static const char nomem_message[] = "Acsint bridge cannot allocate space for this console";
 static struct readingBuffer *tl; // current tty log
 static struct readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
@@ -141,19 +144,19 @@ struct readingBuffer *rb; /* current reading buffer for the application */
 
 static void screenSnap(void)
 {
-achar *s, *t;
-achar *a;
+uc_type *t;
+unsigned char *a, *s;
 int i, j;
 
 lseek(vcs_fd, 0, 0);
 read(vcs_fd, vcs_header, 4);
-read(vcs_fd, screenBuf.area+4, 2*nrows*ncols);
 
-screenBuf.attribs = a = screenBuf.area + ATTRIBOFFSET;
-t = screenBuf.area + 1;
-s = t + 3;
-screenBuf.start = t;
 screenBuf.area[0] = 0;
+screenBuf.start = t = screenBuf.area + 1;
+screenBuf.attribs = a = (unsigned char *) (screenBuf.area + ATTRIBOFFSET);
+s = (unsigned char *) (screenBuf.area + VCREADOFFSET);
+read(vcs_fd, s, 2*nrows*ncols);
+
 for(i=0; i<nrows; ++i) {
 for(j=0; j<ncols; ++j) {
 *t++ = *s++;
@@ -164,7 +167,8 @@ for(j=0; j<ncols; ++j) {
 }
 *t = 0;
 screenBuf.end = t;
-screenBuf.v_cursor = screenBuf.area + 1 + csr * (ncols+1) + csc;
+
+screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
 } // screenSnap
 
 /* check to see if a tty reading buffer has been allocated */
@@ -179,13 +183,18 @@ rb = malloc(sizeof(struct readingBuffer));
 if(!rb) rb = &tty_nomem;
 tty_log[acs_fgc-1] = rb;
 rb->start = rb->area + 1;
-rb->end = rb->start;
-if(rb == &tty_nomem) {
-rb->end = rb->start + strlen(rb->start);
-} else {
 rb->area[0] = 0;
+if(rb == &tty_nomem) {
+int j;
+for(j=0; nomem_message[j]; ++j)
+rb->start[j] = nomem_message[j];
+rb->start[j] = 0;
+rb->end = rb->start + j;
+} else {
+rb->end = rb->start;
 rb->area[1] = 0;
 }
+
 rb->cursor = rb->start;
 rb->v_cursor = 0;
 rb->attribs = 0;
@@ -396,15 +405,16 @@ iobuf[0] = ACSINT_BYPASS;
 return acs_write(1);
 } // acs_bypass
 
-// Use divert to swallow a string.
-static achar *swallow_string;
+/* Use divert to swallow a string.
+ * This is not unicode at present. */
+static char *swallow_string;
 static int swallow_max, swallow_len;
 static int swallow_prop, swallow_rc;
 static key_handler_t save_key_h;
 static void swallow_key_h(int key, int ss, int leds);
 static void swallow1_h(int key, int ss, int leds);
 
-int acs_keystring(achar *buf, int buflen, int properties)
+int acs_keystring(char *buf, int buflen, int properties)
 {
 if(buflen <= 0) {
 errno = ENOMEM;
@@ -432,15 +442,15 @@ acs_events();
 return swallow_rc;
 } // acs_keystring
 
-static const achar lowercode[] =
+static const char lowercode[] =
 " \0331234567890-=\b qwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
-static const achar uppercode[] =
+static const char uppercode[] =
 " \033!@#$%^&*()_+\b QWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
 
 // special handler for keystring()
 static void swallow_key_h(int key, int ss, int leds)
 {
-achar keychar;
+char keychar;
 
 if(key > KEY_SPACE) goto bad;
 if(ss&ACS_SS_ALT) goto bad;
@@ -523,10 +533,10 @@ acs_key_h = save_key_h;
 acs_divert(0);
 } // swallow1_h
 
-int acs_get1char(achar *p)
+int acs_get1char(char *p)
 {
 int key, state;
-achar keychar;
+char keychar;
 *p = 0;
 if(acs_get1key(&key, &state)) return -1;
 if(key > KEY_SPACE ||
@@ -563,9 +573,9 @@ return acs_write(1);
 } // acs_clearkeys
 
 static void
-postprocess(achar *s)
+postprocess(uc_type *s)
 {
-achar *t;
+uc_type *t;
 
 if(!acs_postprocess) return;
 
@@ -594,15 +604,15 @@ continue;
 if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_STRIP_ESCB) {
 int j;
 for(j=2; s[j] && j<20; ++j)
-if(isalpha(s[j])) break;
+if(s[j] < 256 && isalpha(s[j])) break;
 if(j < 20 && s[j]) {
-			// a letter indicates end of escape sequence.
-			// If the letter is H, we are repositioning the cursor.
-			// Most of the time we are starting a new line.
-			// If not, we are at least starting a new word or phrase.
-			// In either case I find it helpful to introduce a newline.
-			// That deliniates a new block of text,
-			// and most of the time said text is indeed on a new line.
+/* a letter indicates end of escape sequence.
+ * If the letter is H, we are repositioning the cursor.
+ * Most of the time we are starting a new line.
+ * If not, we are at least starting a new word or phrase.
+ * In either case I find it helpful to introduce a newline.
+ * That deliniates a new block of text,
+ * and most of the time said text is indeed on a new line. */
 			if(*s == 'H') *t++ = '\n';
 s += j+1;
 continue;
@@ -628,10 +638,11 @@ tl->cursor = (t > tl->start ? t-1 : t);
 
 void acs_clearbuf(void)
 {
-if(!screenmode)
+if(!screenmode) {
 imark_start = 0;
 if(rb && rb != &tty_nomem)
 rb->end = rb->cursor = rb->start;
+}
 } // acs_clearbuf
 
 // events coming back
@@ -640,13 +651,12 @@ int acs_events(void)
 int nr; // number of bytes read
 int i;
 int culen; /* catch up length */
-int culen1; /* round up to 4 byte boundary */
-achar *custart; // where does catch up start
+uc_type *custart; // where does catch up start
 int nlen; // length of new area
 int diff;
 int minor;
 char refreshed = 0;
-unsigned int d;
+uc_type d;
 
 clearError();
 if(acs_fd < 0) {
@@ -705,15 +715,16 @@ i += 4;
 break;
 
 case ACSINT_TTY_MORECHARS:
-d = (iobuf[i+2] | (iobuf[i+3]<<8));
+if(i > nr-8) break;
+d = *(uc_type *) (iobuf+i+4);
 if(acs_debug) {
 acs_log("output echo %d", iobuf[i+1]);
 if(iobuf[i+1]) acs_log(" 0x%x", d);
-acs_log("\n", 0);
+acs_log("\n");
 }
 // no automatic refresh here; you have to call it if you want it
 if(acs_more_h) acs_more_h(iobuf[i+1], d);
-i += 4;
+i += 8;
 break;
 
 case ACSINT_REFRESH:
@@ -726,15 +737,14 @@ case ACSINT_TTY_NEWCHARS:
  * minor is always the foreground console; we could probably discard it. */
 minor = iobuf[i+1];
 culen = iobuf[i+2] | ((unsigned short)iobuf[i+3]<<8);
-culen1 = (culen+3) & ~3;
 if(acs_debug) acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
-if(nr-i < culen1) break;
+if(nr-i < culen*4) break;
 tl = tty_log[minor - 1];
 if(!tl || tl == &tty_nomem) {
 /* not allocated; no room for this data */
-i += culen1;
+i += culen*4;
 break;
 }
 
@@ -746,7 +756,7 @@ if(diff >= tl->end-tl->start) {
  * should never be greater; diff = tl->end - tl->start */
 /* copy the new stuff */
 custart = tl->start;
-memcpy(custart, iobuf+i, TTYLOGSIZE);
+memcpy(custart, iobuf+i, TTYLOGSIZE*4);
 tl->end = tl->start + TTYLOGSIZE;
 tl->end[0] = 0;
 tl->cursor = 0;
@@ -754,7 +764,7 @@ if(!screenmode) imark_start = 0;
 } else {
 if(diff > 0) {
 // partial replacement
-memmove(tl->start, tl->start+diff, tl->end-tl->start - diff);
+memmove(tl->start, tl->start+diff, (tl->end-tl->start - diff)*4);
 tl->end -= diff;
 tl->cursor -= diff;
 if(tl->cursor < tl->start) tl->cursor = 0;
@@ -765,23 +775,24 @@ if(imark_start < tl->start) imark_start = 0;
 }
 /* copy the new stuff */
 custart = tl->end;
-memcpy(custart, iobuf+i, culen);
+memcpy(custart, iobuf+i, culen*4);
 tl->end += culen;
 tl->end[0] = 0;
 }
 
-/* if(tl->cursor == 0) set it to the beginning? or end? or leave it null? */
-/* I choose to leave it null, although there are tradeoffs. */
-
 postprocess(custart);
 
-if(acs_debug) acs_log("<<\n%s>>\n", custart);
+if(acs_debug) {
+/* Log the new characters, but they're in unicode, so convert back to ascii. */
+/* Not yet implemented. */
+;
+}
 
-// But if you're in screen mode, I haven't moved your reading cursor,
-// or imark _start, appropriately.
-// Don't know what to do about that.
+/* If you're in screen mode, I haven't moved your reading cursor,
+ * or imark _start, appropriately.
+ * See the todo file for tracking the cursor in screen mode. */
 
-i += culen1;
+i += culen*4;
 break;
 
 default:
@@ -806,7 +817,7 @@ return acs_events();
 
 
 // cursor commands.
-static achar *tc; // temp cursor
+static uc_type *tc; // temp cursor
 
 void acs_cursorset(void)
 {
@@ -818,10 +829,45 @@ void acs_cursorsync(void)
 rb->cursor = tc;
 } // acs_cursorsync
 
-achar acs_getc(void)
+/* This routine lowers a unicode down to an ascii symbol that is essentially equivalent.
+ * If this unicode is not in our table then we return the same unicode,
+ * unless the unicode is greater than 256, whence we return dot.
+ * This effectively retains the iso8859-1 chars;
+ * we should really have code here that converts to other pages
+ * based on your locale. */
+static uc_type downshift(uc_type u)
+{
+static const uc_type in_c[] = {
+0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
+0xa0, 0xad, 0x96, 0x97, 0x85,
+0};
+static char out_c[] =
+"*'`'`'`' ----";
+/* There are other 3 byte unicodes that are essentially ` ' - etc,
+ * but I don't have those handy. */
+int i;
+
+for(i=0; in_c[i]; ++i)
+if(u == in_c[i]) return out_c[i];
+
+if(u >= 256) return '.';
+return u;
+}
+
+/* Return the character pointed to by the temp cursor.
+ * This is the iso version, using downshift().
+ * The unicode version follows. */
+int acs_getc(void)
+{
+uc_type c;
+if(!tc) return 0;
+return downshift(*tc);
+} // acs_getc
+
+uc_type acs_getc_uc(void)
 {
 return (tc ? *tc : 0);
-} // acs_getc
+} // acs_getc_uc
 
 int acs_forward(void)
 {
@@ -879,7 +925,8 @@ int acs_startword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	achar c = acs_getc();
+	uc_type c = acs_getc();
+/* calling getc() means we are in the range for the ctype functions */
 
 if(!c) return 0;
 
@@ -920,7 +967,8 @@ int acs_endword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	achar c = acs_getc();
+	uc_type c = acs_getc();
+/* calling getc() means we are in the range for the ctype functions */
 
 if(!c) return 0;
 
@@ -1016,20 +1064,21 @@ if(!acs_back()) return 0;
 return acs_startword();
 } // acs_prevword
 
-// Case insensitive match.  Assumes the first letters already match.
-static int stringmatch(const achar *s)
+/* Case insensitive match.  Assumes the first letters already match.
+ * This is an iso8859 match, not a unicode match. */
+static int stringmatch(const char *s)
 {
-	achar x, y;
+	unsigned char x, y;
 	short count = 0;
 
-	if(!(y = *++s)) return 1;
+	if(!(y = (unsigned char)*++s)) return 1;
 y = tolower(y);
 
 	while(++count, acs_forward()) {
 		x = acs_getc();
 x = tolower(x);
 if(x != y) break;
-		if(!(y = *++s)) return 1;
+		if(!(y = (unsigned char)*++s)) return 1;
 y = tolower(y);
 	} /* while matches */
 
@@ -1038,10 +1087,10 @@ y = tolower(y);
 	return 0;
 } // stringmatch
 
-int acs_bufsearch(const achar *string, int back, int newline)
+int acs_bufsearch(const char *string, int back, int newline)
 {
 	int ok;
-	achar c, first;
+	unsigned char c, first;
 
 if(rb->end == rb->start) return 0;
 if(!tc) return 0;
@@ -1053,7 +1102,7 @@ if(!tc) return 0;
 	ok = back ? acs_back() : acs_forward();
 	if(!ok) return 0;
 
-first = *string;
+first = (unsigned char) *string;
 first = tolower(first);
 
 	do {
@@ -1134,7 +1183,7 @@ int acs_ascii2mkcode(const char *s, char **endptr)
 {
 int ss = 0;
 int key;
-achar c;
+unsigned char c;
 	static const unsigned char numpad[] = {
 KEY_KPASTERISK, KEY_KPPLUS, 0, KEY_KPMINUS, KEY_KPDOT, KEY_KPSLASH,
 KEY_KP0, KEY_KP1, KEY_KP2, KEY_KP3, KEY_KP4,
@@ -1153,14 +1202,14 @@ else if(s[0] == '@') ss = ACS_SS_ALT, ++s;
 else if((s[0] == 'l' || s[0] == 'L') && s[1] == '@') ss = ACS_SS_LALT, s += 2;
 else if((s[0] == 'r' || s[0] == 'R') && s[1] == '@') ss = ACS_SS_RALT, s += 2;
 
-if((s[0] == 'f' || s[0] == 'F') && isdigit((achar)s[1])) {
+if((s[0] == 'f' || s[0] == 'F') && isdigit((unsigned char)s[1])) {
 ++s;
 key = 0;
-c = (achar)s[0];
+c = (unsigned char)s[0];
 while(isdigit(c)) {
 key = 10*key + c - '0';
 ++s;
-c = (achar)s[0];
+c = (unsigned char)s[0];
 }
 if(key <= 0 || key > 12) goto error;
 // the real keycode
@@ -1170,7 +1219,7 @@ goto done;
 }
 
 if(s[0] == '#' && s[1] && strchr("*+.-/0123456789", s[1])) {
-c = *++s;
+c = (unsigned char) *++s;
 ++s;
 		key = numpad[c-'*'];
 goto done;
@@ -1206,15 +1255,15 @@ s += 4;
 goto done;
 }
 
-c = s[0] | 0x20;
+c = (unsigned char) s[0] | 0x20;
 if(c < 'a' || c > 'z') goto error;
 key = lettercode[c-'a'];
 ++s;
-c = s[0] | 0x20;
+c = (unsigned char) s[0] | 0x20;
 if(c >= 'a' && c <= 'z') goto error;
 
 done:
-if(endptr) *endptr = (char *)s;
+if(endptr) *endptr = (char*)s;
 // save these for line_configure
 key1key = key;
 if(!ss) ss = ACS_SS_PLAIN;
@@ -1269,7 +1318,7 @@ speechcommandlist[mkcode] = malloc(strlen(s) + 1);
 strcpy(speechcommandlist[mkcode], s);
 } // acs_setspeechcommand
 
-static achar *punclist[256];
+static char *punclist[256];
 static const char *firstpunclist[256] = {
 "null", 0, 0, 0, 0, 0, 0, "bell",
 "backspace", "tab", "newline", 0, "formfeed", "return", 0, 0,
@@ -1306,36 +1355,39 @@ static const char *firstpunclist[256] = {
 "o stroke", "u grave", "u acute", "u circumflex", "u diaeresis", "y acute", "thorn", "y diaeresis"
 };
 
-void acs_clearpunc(achar c)
+void acs_clearpunc(int c)
 {
+c &= 0xff;
 if(punclist[c]) free(punclist[c]);
 punclist[c] = 0;
 } // acs_clearpunc
 
-achar *acs_getpunc(achar c)
+char *acs_getpunc(int c)
 {
+c &= 0xff;
 return punclist[c];
 } // acs_getpunc
 
-void acs_setpunc(achar c, const achar *s)
+void acs_setpunc(int c, const char *s)
 {
+c &= 0xff;
 acs_clearpunc(c);
 if(!s) return;
 punclist[c] = malloc(strlen(s) + 1);
 strcpy(punclist[c], s);
 } // acs_setpunc
 
-int acs_getsentence(achar *dest, int destlen, unsigned short *offsets, int prop)
+int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int prop)
 {
-const achar *destend = dest + destlen - 1; // end of destination array
-const achar *s = rb->cursor;
-achar *t = dest;
-unsigned short *o = offsets;
+const char *destend = dest + destlen - 1; // end of destination array
+const uc_type *s = rb->cursor;
+char *t = dest;
+ofs_type *o = offsets;
 int j, l;
-achar c;
+int c;
 char spaces = 1, alnum = 0;
 
-if(!s) {
+if(!s || !t) {
 errno = EFAULT;
 return -1;
 }
@@ -1353,9 +1405,10 @@ return 0;
 }
 
 // zero offsets by default
-if(o) memset(o, 0, sizeof(unsigned short)*destlen);
+if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
+c = downshift(c);
 if(c == SP_MARK && prop&ACS_GS_REPEAT)
 c = ' ';
 
@@ -1397,17 +1450,20 @@ continue;
 }
 
 if(c == '\'' && alnum && isalpha(s[1])) {
-const achar *u;
-// this is treated as a letter, as in wouldn't,
-// unless there is another apostrophe before or after, or digits are involved.
-for(u=t-1; u>=dest && isalpha(*u); --u)  ;
+const char *u;
+const uc_type *v;
+uc_type v0;
+/* this is treated as a letter, as in wouldn't,
+ * unless there is another apostrophe before or after,
+ * or digits are involved. */
+for(u=t-1; u>=dest && isalpha((unsigned char)*u); --u)  ;
 if(u >= dest) {
 if(*u == '\'') goto punc;
-if(isdigit(*u)) goto punc;
+if(isdigit((unsigned char)*u)) goto punc;
 }
-for(u=s+1; isalpha(*u); ++u)  ;
-if(*u == '\'') goto punc;
-if(isdigit(*u)) goto punc;
+for(v=s+1; isalpha(v0 = downshift(*v)); ++v)  ;
+if(v0 == '\'') goto punc;
+if(isdigit(v0)) goto punc;
 // keep alnum alive
 *t++ = c;
 ++s;
@@ -1422,12 +1478,15 @@ if(o) o[t-dest] = s-rb->cursor;
 
 // check for repeat
 if(prop&ACS_GS_REPEAT &&
-c == s[1] && c == s[2] && c == s[3] && c == s[4]) {
+c == downshift(s[1]) &&
+c == downshift(s[2]) &&
+c == downshift(s[3]) &&
+c == downshift(s[4])) {
 char reptoken[12]; /* repeat token */
 reptoken[0] = SP_MARK;
 reptoken[1] = SP_REPEAT;
 reptoken[2] = c;
-for(j=5; c == s[j]; ++j)  ;
+for(j=5; c == downshift(s[j]); ++j)  ;
 sprintf(reptoken+3, "%d", j);
 l = strlen(reptoken);
 reptoken[l++] = SP_MARK;
@@ -1450,7 +1509,7 @@ if(o) o[t-dest] = s-rb->cursor;
 return 0;
 } // acs_getsentence
 
-void acs_endsentence(achar *dest)
+void acs_endsentence(char *dest)
 {
 } // acs_endsentence
 
@@ -1530,6 +1589,7 @@ return -1;
 		// Some units like to see this to establish baud rate.
 usleep(5000);
 write(ss_fd1, &crbyte, 1);
+usleep(2000);
 
 return 0;
 } // ess_open
@@ -1581,7 +1641,7 @@ if(nr < 0) return -1;
 i = 0;
 nr += leftover;
 while(i < nr) {
-achar c = ss_inbuf[i];
+char c = ss_inbuf[i];
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
@@ -1609,7 +1669,7 @@ i += 8;
 continue;
 }
 if(nr-i < 9) break;
-if(ss_inbuf[i+8] == 'z' && isdigit(ss_inbuf[i+7])) {
+if(ss_inbuf[i+8] == 'z' && isdigit((unsigned char)ss_inbuf[i+7])) {
 c = ss_inbuf[i+7] - '0';
 if(acs_debug) acs_log("index %d\n", c);
 indexSet(c);
@@ -1618,7 +1678,7 @@ i += 9;
 continue;
 }
 if(nr-i < 10) break;
-if(ss_inbuf[i+9] == 'z' && isdigit(ss_inbuf[i+7]) && isdigit(ss_inbuf[i+8])) {
+if(ss_inbuf[i+9] == 'z' && isdigit((unsigned char)ss_inbuf[i+7]) && isdigit((unsigned char)ss_inbuf[i+8])) {
 c = ss_inbuf[i+7] - '0';
 c = 10*c + ss_inbuf[i+8] - '0';
 if(acs_debug) acs_log("index %d\n", c);
@@ -1667,18 +1727,21 @@ if(source&2) ss_events();
 if(source&1) acs_events();
 } // acs_ss_events
 
+/* The replacement dictionary is all iso, no unicodes. */
+/* You might get away with n tilde, but nothing beyond a byte. */
+
 static char *dict1[NUMDICTWORDS];
 static char *dict2[NUMDICTWORDS];
 static int numdictwords;
-static achar lowerdict[WORDLEN+1];
+static char lowerdict[WORDLEN+1];
 
-static int lowerword(const achar *w)
+static int lowerword(const char *w)
 {
-achar c;
+char c;
 int i;
 for(i=0; (c = *w); ++i, ++w) {
 if(i == WORDLEN) return -1;
-if(!isalpha(c)) return -1;
+if(!isalpha((unsigned char)c)) return -1;
 lowerdict[i] = tolower(c);
 }
 lowerdict[i] = 0;
@@ -1694,7 +1757,7 @@ if(stringEqual(lowerdict, dict1[i])) return i;
 return -1;
 } // inDictionary
 
-int acs_setword(const achar *word1, const achar *word2)
+int acs_setword(const char *word1, const char *word2)
 {
 int j;
 if(lowerword(word1)) return -1;
@@ -1726,7 +1789,7 @@ dict1[numdictwords] = dict2[numdictwords] = 0;
 return 0;
 } // acs_setword
 
-achar *acs_replace(const achar *word1)
+char *acs_replace(const char *word1)
 {
 int j;
 if(lowerword(word1)) return 0;
@@ -1756,13 +1819,13 @@ static int isvowel(int c)
 return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
 } // isvowel
 
-static achar rootword[WORDLEN+8];
+static char rootword[WORDLEN+8];
 
 // Twelve regular English suffixes.
-static const achar suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
+static const char suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
 
 // Which suffixes drop e or y when appended?
-static const achar sufdrop[] = "  y  e   y  ";
+static const char sufdrop[] = "  y  e   y  ";
 
 // Which suffixes double the final consonent, as in dropped.
 static const char sufdouble[] = {
@@ -1771,11 +1834,11 @@ static const char sufdouble[] = {
 // extract the root word
 static int mkroot(void)
 {
-	achar l0, l1, l2, l3, l4; /* trailing letters */
+	char l0, l1, l2, l3, l4; /* trailing letters */
 	short wdlen, l;
 
 strcpy(rootword, lowerdict);
-	wdlen = strlen((char*)rootword);
+	wdlen = strlen(rootword);
 	l = wdlen - 5;
 	if(l < 0) return 0; // word too short to safely rootinize
 	l4 = rootword[l+4];
@@ -1785,7 +1848,7 @@ strcpy(rootword, lowerdict);
 	l0 = rootword[l+0];
 
 	if(l4 == 's') { // possible plural
-		if(strchr("siau", (char)l3)) return 0;
+		if(strchr("siau", l3)) return 0;
 		if(l3 == '\'') {
 			rootword[l+3] = 0;
 			return 11;
@@ -1796,7 +1859,7 @@ strcpy(rootword, lowerdict);
 				rootword[l+3] = 0;
 				return 3;
 			}
-			if(strchr("shz", (char)l2)) {
+			if(strchr("shz", l2)) {
 				rootword[l+3] = 0;
 				return 2;
 			}
@@ -1851,14 +1914,14 @@ strcpy(rootword, lowerdict);
 // reconstruct the word based upon its root and the removed suffix
 static void reconst(int root)
 {
-	achar *t;
+	char *t;
 	short i, wdlen;
-	achar c;
+	char c;
 
 	if(!root) return; /* nothing to do */
 
 	--root;
-	wdlen = strlen((char*)rootword);
+	wdlen = strlen(rootword);
 	t = rootword + wdlen-1;
 	if(sufdouble[root]) c = *t, *++t = c;
 	if(sufdrop[root] == *t) --t;
@@ -1870,10 +1933,10 @@ static void reconst(int root)
 	*++t = 0;
 } // reconst
 
-achar *acs_smartreplace(const achar *s)
+char *acs_smartreplace(const char *s)
 {
 int i, root;
-achar *t;
+char *t;
 int len = strlen(s);
 	if(len > WORDLEN) return 0; // too long
 t = acs_replace(s);
@@ -1884,7 +1947,7 @@ if(!root) return 0;
 t = acs_replace(rootword);
 if(!t) return 0;
 		for(i=0; t[i]; ++i)
-			if(!isalpha(t[i])) return 0;
+			if(!isalpha((unsigned char)t[i])) return 0;
 strcpy(rootword, t);
 		reconst(root);
 return rootword;
@@ -1953,16 +2016,16 @@ return 0;
 // at this point we are setting the pronunciation of a punctuation or a word
 c = *s;
 if(!c) return 0; // empty line
-if(isdigit((achar)c)) return -1;
+if(isdigit((unsigned char)c)) return -1;
 
 t = strpbrk(s, " \t");
 if(t) { save = *t; *t = 0; }
 
-if(isalpha((achar)c)) {
-if(!t) return acs_setword((achar*)s, 0);
+if(isalpha((unsigned char)c)) {
+if(!t) return acs_setword(s, 0);
 u = t;
 skipWhite(&u);
-rc = acs_setword((achar*)s, (achar*)u);
+rc = acs_setword(s, u);
 *t = save;
 return rc;
 }
@@ -1973,7 +2036,7 @@ if(!t) return -1;
 *t = save;
 skipWhite(&t);
 if(!*t) return -1;
-acs_setpunc((achar)c, (achar*)t);
+acs_setpunc(c, t);
 return 0;
 } // acs_line_configure
 
@@ -1990,7 +2053,7 @@ free(dict2[i]);
 numdictwords = 0;
 
 for(i=0; i<256; ++i)
-acs_setpunc(i, (achar*)firstpunclist[i]);
+acs_setpunc(i, firstpunclist[i]);
 
 for(i=0; i<MK_BLOCK*8; ++i) {
 acs_clearmacro(i);
@@ -2005,16 +2068,16 @@ write(ss_fd1, &kbyte, 1);
 write(ss_fd1, &crbyte, 1);
 }
 
-int ss_say_string(const achar *s)
+int ss_say_string(const char *s)
 {
 write(ss_fd1, s, strlen(s));
 ss_cr();
 } // ss_say_string
 
-int ss_say_char(achar c)
+int ss_say_char(char c)
 {
 char c2[2];
-achar *s = acs_getpunc(c);
+char *s = acs_getpunc(c);
 if(!s) {
 c2[0] = c;
 c2[1] = 0;
@@ -2023,9 +2086,9 @@ s = c2;
 ss_say_string(s);
 } // ss_say_char
 
-int ss_say_string_imarks(const achar *s, const unsigned short *o, int mark)
+int ss_say_string_imarks(const char *s, const ofs_type *o, int mark)
 {
-const achar *t;
+const char *t;
 char ibuf[12]; // index mark buffer
 
 imark_start = rb->cursor;
@@ -2072,7 +2135,7 @@ ss_cr();
 
 void ss_shutup(void)
 {
-achar ibyte; // interrupt byte
+char ibyte; // interrupt byte
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:

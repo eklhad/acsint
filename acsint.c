@@ -42,13 +42,13 @@ static DEFINE_RAW_SPINLOCK(acslock);
 
 /* circular buffer of output characters received from the tty */
 struct cbuf {
-char area[TTYLOGSIZE1];
-char *start, *end;
-char *head, *tail;
+uc_type area[TTYLOGSIZE1];
+uc_type *start, *end;
+uc_type *head, *tail;
 /* mark the place where we last copied data to user space */
-char *mark;
+uc_type *mark;
 /* new output characters, not yet copied to user space */
-char *output;
+uc_type *output;
 };
 
 /* These are allocated, one per console, as needed. */
@@ -65,7 +65,7 @@ static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
 
 /* Staging area to copy tty data down to user space */
 /* This is a snapshot of the circular buffer. */
-static char cb_staging[TTYLOGSIZE];
+static uc_type cb_staging[TTYLOGSIZE];
 
 /* Initialize / reset the variables in the circular buffer. */
 static void
@@ -104,7 +104,7 @@ cbuf_tty[mino] = cb;
  * This is called under a spinlock, so we don't have to worry about the reader
  * draining characters while this routine adds characters on. */
 static void
-cb_append(struct cbuf *cb, unsigned int c)
+cb_append(struct cbuf *cb, uc_type c)
 {
 if(!cb) return; /* should never happen */
 *cb->head = c;
@@ -159,7 +159,7 @@ static bool key_bypass;
  * or data is lost.
  * That's not a problem, because you just can't type faster
  * than the daemon can gather up those keystrokes.
- * Every event is 4 bytes.
+ * Every event is 4 bytes, except echo, which is 8.
  * Thus everything stays 4 byte aligned.
  * This is necessary to pass down unicodes.
  */
@@ -262,9 +262,8 @@ static ssize_t device_read(struct file *file, char *buf, size_t len, loff_t *off
 int bytes_read=0;
 struct cbuf *cb;
 bool catchup;
-/* catch up length - how many bytes to copy down to user space */
+/* catch up length - how many characters to copy down to user space */
 int culen = 0;
-int culen1; /* round up to 4 byte boundary */
 char cu_cmd[4]; /* the catch up command */
 char *temp_head, *temp_tail, *t;
 int j, j2;
@@ -289,6 +288,7 @@ temp_tail = rbuf_tail;
 for(t=temp_tail; t<temp_head; t += 4) {
 if(*t == ACSINT_FGC)
 temp_tail = t;
+if(*t == ACSINT_TTY_MORECHARS) t += 4;
 }
 
 	raw_spin_lock_irqsave(&acslock, irqflags);
@@ -298,7 +298,10 @@ if((!cb && !cb_nomem_refresh[fg_console]) ||
 cb->head != cb->mark) {
 /* MORECHARS doesn't force us to catch up, but anything else does. */
 for(t=temp_tail; t<temp_head; t+=4) {
-if(*t == ACSINT_TTY_MORECHARS) continue;
+if(*t == ACSINT_TTY_MORECHARS) {
+t += 4;
+continue;
+}
 catchup = true;
 break;
 }
@@ -322,17 +325,18 @@ cu_cmd[3] = (culen >> 8);
 if(cb) {
 /* One clump or two. */
 if(cb->head >= cb->mark) {
-if(culen) memcpy(cb_staging, cb->mark, culen);
+if(culen) memcpy(cb_staging, cb->mark, culen*4);
 } else {
 j = cb->end - cb->mark;
-memcpy(cb_staging, cb->mark, j);
+memcpy(cb_staging, cb->mark, j*4);
 j2 = cb->head - cb->start;
-if(j2) memcpy(cb_staging + j, cb->start, j2);
+if(j2) memcpy(cb_staging + j, cb->start, j2*4);
 }
 cb->mark = cb->head;
 cb->output = cb->head;
 } else {
-memcpy(cb_staging, cb_nomem_message, culen);
+for(j=0; j<culen; ++j)
+cb_staging[j] = cb_nomem_message[j];
 cb_nomem_refresh[fg_console] = 1;
 }
 } /* catching up */
@@ -350,15 +354,14 @@ buf += 4;
 len -= 4;
 }
 
-culen1 = (culen+3) & ~3;
-if(catchup && len >= culen1+4) {
+if(catchup && len >= (culen+1)*4) {
 if (copy_to_user(buf, cu_cmd, 4))
 return -EFAULT;
-if(culen && copy_to_user(buf+4, cb_staging, culen))
+if(culen && copy_to_user(buf+4, cb_staging, culen*4))
 return -EFAULT;
-bytes_read += culen1+4;
-buf += culen1+4;
-len -= culen1+4;
+bytes_read += (culen+1)*4;
+buf += (culen+1)*4;
+len -= (culen+1)*4;
 }
 
 /* And the rest of the events. */
@@ -555,7 +558,7 @@ static struct miscdevice acsint_dev = {
 
 #define MAXKEYPENDING 8
 /* This holds unicodes */
-static unsigned int inkeybuffer[MAXKEYPENDING];
+static uc_type inkeybuffer[MAXKEYPENDING];
 static unsigned long inkeytime[MAXKEYPENDING];
 static short nkeypending; /* number of keys pending */
 /* Key echo states:
@@ -585,9 +588,9 @@ if(!nkeypending) flushInKeyBuffer();
 /* char is displayed on screen; is it echo? */
 /* This is run from within a spinlock */
 static int
-isEcho(unsigned int c)
+isEcho(uc_type c)
 {
-unsigned int d;
+uc_type d;
 int j;
 
 /* when echo is based only on states */
@@ -660,7 +663,7 @@ return 0;
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(unsigned int c, int mino, bool from_vt)
+pushlog(uc_type c, int mino, bool from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
@@ -677,20 +680,17 @@ if(from_vt) echo = isEcho(c);
 if(cb->output == cb->head) athead = true;
 }
 
-if((athead || echo) && rbuf_head <= rbuf_end-4) {
+if((athead || echo) && rbuf_head <= rbuf_end-8) {
 /* throw the "more stuff" event */
 if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0] = ACSINT_TTY_MORECHARS;
 rbuf_head[1] = echo;
-/* only short unicodes for now */
-if(echo && c <= 0xffff) {
-rbuf_head[2] = c;
-rbuf_head[3] = (c>>8);
+if(echo) {
+*(uc_type*)(rbuf_head+4) = c;
 } else {
-rbuf_head[2] = 0;
-rbuf_head[3] = 0;
+*(uc_type*)(rbuf_head+4) = 0;
 }
-rbuf_head += 4;
+rbuf_head += 8;
 }
 
 cb_append(cb, c);
@@ -734,7 +734,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
 	int mino = vc->vc_num;
-	unsigned int unicode = param->c;
+	uc_type unicode = param->c;
 	unsigned long irqflags;
 bool wake = false;
 

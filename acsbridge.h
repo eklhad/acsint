@@ -60,8 +60,10 @@ Perhaps other stuff too.
 Any time you have to read from more than one device simultaneously
 you need to use the select(2) call,
 and that requires the file descriptors for the various devices.
-So let's not pretend like we can hide this one;
-let's just put it in a global variable for easy access.
+So let's put it in a global variable for easy access.
+However, if you are able to use the acs_ss_wait() and acs_ss_events()
+functions described in section 12 then you should do so,
+rather than reimplementing the select logic.
 *********************************************************************/
 
 extern int acs_fd; // file descriptor
@@ -156,12 +158,16 @@ int acs_highbeeps(void);
 // A quick high beep used by pcclicks to indicate a capital letter.
 int acs_highcap(void);
 
-// A low buzz, indicating a serious problem.
-// I use this when there is no communication with the synthesizer.
-// Obviously I can't talk at that point, so I just buzz to indicate
-// that the serial connection is not good (hardware synth),
-// or the pipe or socket connection to the software synth isn't working,
-// or the synthesizer is not responding properly.
+/*********************************************************************
+A low buzz, indicating a serious problem.
+I use this when there is no communication with the synthesizer.
+Obviously I can't talk at that point, so I just buzz to indicate
+that the serial connection is not good (hardware synth),
+or the pipe or socket connection to the software synth isn't working,
+or the synthesizer is not responding properly.
+Also useful if the reading cursor rolls off the end of the buffer.
+*********************************************************************/
+
 int acs_buzz(void);
 
 
@@ -170,12 +176,12 @@ Section 3: the reading buffer.
 The reading buffer holds the text that you are going to read.
 In screen mode this is a copy of screen memory, also known as a screen snap.
 In line mode this is a log of recent tty output,
-the last 50K or so.
+the last 50 characters or so.
 either way it is guaranteed to be current and up to date
 when your keystroke handler is called.
 When you hit F2, I bring the reading buffer
 up to date (if necessary), and call your keystroke handler with F2,
-whereupon you can commence reading, or whatever F2 does.
+whereupon you can commence reading or whatever F2 does.
 
 Characters are stored between start and end.
 *start and *end are null, and there are no null characters between.
@@ -186,52 +192,53 @@ But in line mode there may be nothing if the tty has not generated any output.
 
 The cursor points to the text you are currently reading.
 You should advance this cursor as you read along.
-This is the only thing in the buffer you should change.
+(Or I will do it for you via index markers.)
+This is the only thing in the buffer that you might change.
 Everything else is treated as readonly.
 
 If lots of tty output pushes your cursor off the back of the buffer,
 it will be left as null.
 Example: cat a large file.
-So be sure to ehcek for null at the top of your event handler.
+So be sure to check for null at the top of your event handler.
 You may, upon this condition,
-stop reading, or sound a beep, or speak a quick overflow message.
+stop reading, or sound a buzz, or speak a quick overflow message.
 
 If in screen mode, v_cursor points to the visual cursor on screen.
-The reding cursor is set to the visual cursor when
+The reading cursor is set to the visual cursor when
 you switch to screen mode.
 
-The characters in the buffer are ascii or ISO8859-1.
-They leave the tty as utf8, and are converted by linux vt.c into unicode.
-That's the way acsint receives them.
-It then throws away everything above 256, leaving only latin-1.
-Now I could, I suppose,
-convert them back to utf8 and put them in the buffer that way.
-Or I could store the unicode symbols in an array of integers.
-Both approaches have their pros and cons.
-Given that my time is limited, I am not doing either one at present.
-I'm just giving you the characters that fit in a byte,
-with the implicit understanding that they satisfy an iso8859 page.
-This services English and many European languages,
-and is compatible with many synthesizers,
-so it will do for now.
-But it's not a great long-term solution.
+The characters in the buffer are 4 byte unicodes.
+They leave the tty as utf8, or iso8859-x on some older systems,
+and are converted by linux vt.c into unicode.
+That's the way acsint receives them,
+and that's the way it stores them,
+and that's the way it passes them down to user space.
+For now, the getc routines, described in section 10,
+convert these unicodes back into latin-1, so that your adapter
+can deal with them as bytes, which is what traditional C does best.
+Eventually unicode routines will be provided as well,
+to move international characters in and out of the bridge layer.
+Meantime you can tap into the buffer yourself if you like.
 
-The following typedef, declaring an acsint character to be an unsigned char,
-is notational convenience, and does not represent programatic flexibility.
-In other words, you can't change it!
-Routines like isalpha() and tolower() only work on an unsigned char,
-according to your locale.
-So we're stuck with it for now.
+Note that this doesn't work in screen mode.
+A character in screen memory is a single byte, not a unicode.
+I map the byte over to a unicode, to keep a uniform interface,
+but I'm sure something gets lost in translation.
+Perhaps iso8859-1 is represented faithfully,
+but I don't know about other charsets.
+It may depend on your locale.
+More research is needed here.
+To be honest, this entire acsint system is biased towards linear adapters
+that read from the tty log.
+Many things work in line mode, but are still under development in screen mode.
 *********************************************************************/
 
-typedef unsigned char achar; // acsint character
-
 struct readingBuffer {
-achar area[TTYLOGSIZE2];
-achar *attribs;
-achar *start, *end;
-achar *cursor;
-achar *v_cursor;
+uc_type area[TTYLOGSIZE2];
+unsigned char *attribs;
+uc_type *start, *end;
+uc_type *cursor;
+uc_type *v_cursor;
 };
 
 /*********************************************************************
@@ -245,7 +252,7 @@ I would declare it const, but you have to be able to update rb->cursor.
 extern struct readingBuffer *rb;
 
 /*********************************************************************
-In screen mode, attribs is an array holding the attributes of each character on screen.
+Within screen mode, attribs is an array holding the attributes of each character on screen.
 Underline, inverse, blinking, etc.
 The attribute of the character pointed to by s is rb->attribs[s-rb->start];
 No, I don't know what any of the bits mean; guess we'll have to look them up in linux documentation.
@@ -284,10 +291,9 @@ In line mode you would not be able to read these messages,
 and if ever there was a message you want to read, this is it.
 So acsint intercepts these messages and adds the text to the tty log.
 There is no interface function here, it just happens automatically.
-It will also invoke your more-characters handler,
+It will also invoke your more-characters handler
 if you have one; just like regular tty output.
 *********************************************************************/
-
 
 /*********************************************************************
 Switch between linear and screen mode.
@@ -297,7 +303,7 @@ Linear is the default at startup.
 void acs_screenmode(int enabled);
 
 /*********************************************************************
-Notify the adapter when more characters have been posted to the tty.
+Notify the adapter when more characters have been posted to the tty
 since your last keystroke or refresh command.
 (Remember that I bring the buffer up to date with each key command.)
 This is a callback function, or handler, that you provide.
@@ -468,6 +474,7 @@ The return key becomes null, and ends the string.
 The text must consist of letters, digits, and punctuation,
 i.e. the keys on the main block.
 Other keys are rejected.
+This is limited to ascii for now.
 Use the property bits to determine whether bad keys simply beep,
 or whether they abort the entry of the string.
 See the property bits below for various operational options.
@@ -492,7 +499,7 @@ or at least it should be,
 while you are typing a string into the adapter.
 *********************************************************************/
 
-int acs_keystring(achar *buf, int buflen, int properties);
+int acs_keystring(char *buf, int buflen, int properties);
 
 // Sound the bell for bad characters like function keys etc
 #define ACS_KS_BADBELL 0x1
@@ -531,7 +538,7 @@ Note that get1key is the opposite of bypass.
 *********************************************************************/
 
 int acs_get1key(int *key_p, int *ss_p);
-int acs_get1char(achar *p);
+int acs_get1char(char *p);
 
 
 /*********************************************************************
@@ -548,7 +555,7 @@ while alt F8 generates the bottom.
 Mark the start and end of a string in the buffer, grab it,
 then inject it into the input stream of this session or another session.
 I typically cut&paste between two virtual consoles.
-Cut&paste is just the greatest thing since sliced bread.
+Cut&paste is just the greatest thing since sliced bread!
 
 This function pushes characters onto the input stream of the current tty.
 In theory you could inject up to 64K of text,
@@ -600,7 +607,7 @@ right  right arrow
 home  home
 
 These are, once again, low levvel functions,
-and you probably should use acs_line_congifure().
+and you probably should use acs_line_configure() instead.
 *********************************************************************/
 
 // Return the modified key code based on key and state.
@@ -650,9 +657,9 @@ Characters from 160 to 255 are preset using iso8859-1.
 You will want to change these if you are working in a different locale.
 *********************************************************************/
 
-void acs_setpunc(achar c, const achar *s);
-achar *acs_getpunc(achar c);
-void acs_clearpunc(achar c);
+void acs_setpunc(int c, const char *s);
+char *acs_getpunc(int c);
+void acs_clearpunc(int c);
 
 /*********************************************************************
 Replace one word with another for improved pronunciation.
@@ -673,8 +680,8 @@ is removed from the dictionary.
 #define WORDLEN 18
 #define NUMDICTWORDS 1000
 
-int acs_setword(const achar *word1, const achar *word2);
-achar *acs_replace(const achar *word1);
+int acs_setword(const char *word1, const char *word2);
+char *acs_replace(const char *word1);
 
 /*********************************************************************
 Smartreplace is a replacement function that understands most English suffixes.
@@ -689,7 +696,7 @@ It is of course English centered;
 folks from other countries will need to reimplement this for their locale.
 *********************************************************************/
 
-achar *acs_smartreplace(const achar *word1);
+char *acs_smartreplace(const char *word1);
 
 /*********************************************************************
 At this point we have described four configuration functions:
@@ -784,7 +791,7 @@ The buffer (screen or line mode) is updated to reflect the new console,
 and is brought up to date.
 *********************************************************************/
 
-extern int acs_fgc; // foreground console, 1 through 6
+extern int acs_fgc;
 
 // Called when the user switches to a new foreground console.
 typedef void (*fgc_handler_t)(void);
@@ -825,20 +832,26 @@ void acs_cursorset(void);
 // Update the reading cursor to agree with the temp cursor.
 void acs_cursorsync(void);
 
-// return the character pointed to by the cursor.
-// Could be null if the buffer is empty.
-achar acs_getc(void);
+/* return the character pointed to by the cursor.
+ * Could be null if the buffer is empty.
+ * This is downshifted from unicode to iso8859-1.
+ * Sorry, no other code pages are implemented at this time.
+ * If the unicode cannot be downshifted, you will get a dot.
+ * See the downshift() routine in acsbridge.c. */
+int acs_getc(void);
+/* And here is the raw unicode version. */
+uc_type acs_getc_uc(void);
 
-// Advance the cursor.
-// Return 0 if it moves off the end of the buffer.
-// At this point you will probably abort, but if not,
-// be sure to move the cursor back, so it is in buffer again.
+/* Advance the cursor.
+ * Return 0 if it moves off the end of the buffer.
+ * At this point you will probably abort, but if not,
+ * be sure to move the cursor back, so it is in-buffer again. */
 int acs_forward(void);
 
-// Back up the cursor.
-// Return 0 if it moves off the end of the buffer.
-// At this point you will probably abort, but if not,
-// be sure to move the cursor forward, so it is in buffer again.
+/* Back up the cursor.
+ * Return 0 if it moves off the end of the buffer.
+ * At this point you will probably abort, but if not,
+ * be sure to move the cursor forward, so it is in-buffer again. */
 int acs_back(void);
 
 // Start and end of line.
@@ -891,13 +904,15 @@ The third parameter causes the search to begin on the previous or next line.
 Return 1 if the string is found,
 whereupon the temp cursor points to the start of the string.
 *********************************************************************/
-int acs_bufsearch(const achar *string, int back, int newline);
+int acs_bufsearch(const char *string, int back, int newline);
 
 
 /*********************************************************************
 Section 11: get a chunk of text to read.
 Starting at the reading cursor, fetch text from the buffer
 and copy it into a destination array that you specify.
+This performs an implicit downshift from unicode to iso8859-1.
+
 If you are reading a word at a time (set ACS_GS_ONEWORD),
 I will fetch one word as defined above, or one punctuation mark.
 This could be a space, newline, control character, etc.
@@ -1005,7 +1020,9 @@ I'm going with unsigned short just to be safe.
 #define SP_MARK 0x80
 #define SP_REPEAT 1
 
-int acs_getsentence(achar *dest, int destlen, unsigned short *offsets, int properties);
+typedef unsigned short ofs_type;
+
+int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int properties);
 
 #define ACS_GS_ONEWORD 0x1
 #define ACS_GS_STOPLINE 0x2
@@ -1033,7 +1050,7 @@ give you enough granularity.
 This is not yet implemented.  Just a stub.
 *********************************************************************/
 
-void acs_endsentence(achar *dest);
+void acs_endsentence(char *dest);
 
 
 /*********************************************************************
@@ -1227,8 +1244,8 @@ So let's say you are doing that, and you believe it is ready to speak
 the next item - you can send it out here.
 *********************************************************************/
 
-int ss_say_char(achar c);
-int ss_say_string(const achar *s);
+int ss_say_char(char c);
+int ss_say_string(const char *s);
 
 /*********************************************************************
 Send a string to the synth, but include an index marker for each
@@ -1263,7 +1280,7 @@ Style must be set properly
 so that I know how to send and watch for index markers.
 *********************************************************************/
 
-int ss_say_string_imarks(const achar *s, const unsigned short *offsets, int firstmark);
+int ss_say_string_imarks(const char *s, const ofs_type *offsets, int firstmark);
 
 /*********************************************************************
 Stop speech immediately.
