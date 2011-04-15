@@ -234,11 +234,11 @@ Many things work in line mode, but are still under development in screen mode.
 *********************************************************************/
 
 struct readingBuffer {
-uc_type area[TTYLOGSIZE2];
+unsigned int area[TTYLOGSIZE2];
 unsigned char *attribs;
-uc_type *start, *end;
-uc_type *cursor;
-uc_type *v_cursor;
+unsigned int *start, *end;
+unsigned int *cursor;
+unsigned int *v_cursor;
 };
 
 /*********************************************************************
@@ -840,7 +840,7 @@ void acs_cursorsync(void);
  * See the downshift() routine in acsbridge.c. */
 int acs_getc(void);
 /* And here is the raw unicode version. */
-uc_type acs_getc_uc(void);
+unsigned int acs_getc_uc(void);
 
 /* Advance the cursor.
  * Return 0 if it moves off the end of the buffer.

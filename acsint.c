@@ -42,13 +42,13 @@ static DEFINE_RAW_SPINLOCK(acslock);
 
 /* circular buffer of output characters received from the tty */
 struct cbuf {
-uc_type area[TTYLOGSIZE1];
-uc_type *start, *end;
-uc_type *head, *tail;
+unsigned int area[TTYLOGSIZE1];
+unsigned int *start, *end;
+unsigned int *head, *tail;
 /* mark the place where we last copied data to user space */
-uc_type *mark;
+unsigned int *mark;
 /* new output characters, not yet copied to user space */
-uc_type *output;
+unsigned int *output;
 };
 
 /* These are allocated, one per console, as needed. */
@@ -65,7 +65,7 @@ static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
 
 /* Staging area to copy tty data down to user space */
 /* This is a snapshot of the circular buffer. */
-static uc_type cb_staging[TTYLOGSIZE];
+static unsigned int cb_staging[TTYLOGSIZE];
 
 /* Initialize / reset the variables in the circular buffer. */
 static void
@@ -104,7 +104,7 @@ cbuf_tty[mino] = cb;
  * This is called under a spinlock, so we don't have to worry about the reader
  * draining characters while this routine adds characters on. */
 static void
-cb_append(struct cbuf *cb, uc_type c)
+cb_append(struct cbuf *cb, unsigned int c)
 {
 if(!cb) return; /* should never happen */
 *cb->head = c;
@@ -558,7 +558,7 @@ static struct miscdevice acsint_dev = {
 
 #define MAXKEYPENDING 8
 /* This holds unicodes */
-static uc_type inkeybuffer[MAXKEYPENDING];
+static unsigned int inkeybuffer[MAXKEYPENDING];
 static unsigned long inkeytime[MAXKEYPENDING];
 static short nkeypending; /* number of keys pending */
 /* Key echo states:
@@ -588,9 +588,9 @@ if(!nkeypending) flushInKeyBuffer();
 /* char is displayed on screen; is it echo? */
 /* This is run from within a spinlock */
 static int
-isEcho(uc_type c)
+isEcho(unsigned int c)
 {
-uc_type d;
+unsigned int d;
 int j;
 
 /* when echo is based only on states */
@@ -663,7 +663,7 @@ return 0;
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void
-pushlog(uc_type c, int mino, bool from_vt)
+pushlog(unsigned int c, int mino, bool from_vt)
 {
 unsigned long irqflags;
 bool wake = false;
@@ -686,9 +686,9 @@ if(rbuf_head == rbuf_tail) wake = true;
 rbuf_head[0] = ACSINT_TTY_MORECHARS;
 rbuf_head[1] = echo;
 if(echo) {
-*(uc_type*)(rbuf_head+4) = c;
+*(unsigned int*)(rbuf_head+4) = c;
 } else {
-*(uc_type*)(rbuf_head+4) = 0;
+*(unsigned int*)(rbuf_head+4) = 0;
 }
 rbuf_head += 8;
 }
@@ -734,7 +734,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vt_notifier_param *param = data;
 	struct vc_data *vc = param->vc;
 	int mino = vc->vc_num;
-	uc_type unicode = param->c;
+	unsigned int unicode = param->c;
 	unsigned long irqflags;
 bool wake = false;
 

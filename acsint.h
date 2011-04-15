@@ -14,9 +14,6 @@
 #define TTYLOGSIZE1 (TTYLOGSIZE+1)
 #define TTYLOGSIZE2 (TTYLOGSIZE+2)
 
-/* The c type that corresponds to a 4 byte unicode character */
-typedef unsigned int uc_type;
-
 /* Commands that Acsint sends or receives */
 enum acs_command {
 ACSINT_NULL,

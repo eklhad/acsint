@@ -47,7 +47,7 @@ int ss_style;
 int ss_curvolume, ss_curpitch, ss_curspeed, ss_curvoice;
 
 // The start of the sentence that is sent with index markers.
-static uc_type *imark_start;
+static unsigned int *imark_start;
 // location of each index marker relative to imark_start
 static ofs_type imark_loc[100];
 static int imark_first, imark_end;
@@ -144,7 +144,7 @@ struct readingBuffer *rb; /* current reading buffer for the application */
 
 static void screenSnap(void)
 {
-uc_type *t;
+unsigned int *t;
 unsigned char *a, *s;
 int i, j;
 
@@ -573,9 +573,9 @@ return acs_write(1);
 } // acs_clearkeys
 
 static void
-postprocess(uc_type *s)
+postprocess(unsigned int *s)
 {
-uc_type *t;
+unsigned int *t;
 
 if(!acs_postprocess) return;
 
@@ -651,12 +651,12 @@ int acs_events(void)
 int nr; // number of bytes read
 int i;
 int culen; /* catch up length */
-uc_type *custart; // where does catch up start
+unsigned int *custart; // where does catch up start
 int nlen; // length of new area
 int diff;
 int minor;
 char refreshed = 0;
-uc_type d;
+unsigned int d;
 
 clearError();
 if(acs_fd < 0) {
@@ -716,7 +716,7 @@ break;
 
 case ACSINT_TTY_MORECHARS:
 if(i > nr-8) break;
-d = *(uc_type *) (iobuf+i+4);
+d = *(unsigned int *) (iobuf+i+4);
 if(acs_debug) {
 acs_log("output echo %d", iobuf[i+1]);
 if(iobuf[i+1]) acs_log(" 0x%x", d);
@@ -817,7 +817,7 @@ return acs_events();
 
 
 // cursor commands.
-static uc_type *tc; // temp cursor
+static unsigned int *tc; // temp cursor
 
 void acs_cursorset(void)
 {
@@ -835,9 +835,9 @@ rb->cursor = tc;
  * This effectively retains the iso8859-1 chars;
  * we should really have code here that converts to other pages
  * based on your locale. */
-static uc_type downshift(uc_type u)
+static unsigned int downshift(unsigned int u)
 {
-static const uc_type in_c[] = {
+static const unsigned int in_c[] = {
 0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
 0xa0, 0xad, 0x96, 0x97, 0x85,
 0};
@@ -859,12 +859,12 @@ return u;
  * The unicode version follows. */
 int acs_getc(void)
 {
-uc_type c;
+unsigned int c;
 if(!tc) return 0;
 return downshift(*tc);
 } // acs_getc
 
-uc_type acs_getc_uc(void)
+unsigned int acs_getc_uc(void)
 {
 return (tc ? *tc : 0);
 } // acs_getc_uc
@@ -925,7 +925,7 @@ int acs_startword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	uc_type c = acs_getc();
+	unsigned int c = acs_getc();
 /* calling getc() means we are in the range for the ctype functions */
 
 if(!c) return 0;
@@ -967,7 +967,7 @@ int acs_endword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	uc_type c = acs_getc();
+	unsigned int c = acs_getc();
 /* calling getc() means we are in the range for the ctype functions */
 
 if(!c) return 0;
@@ -1380,7 +1380,7 @@ strcpy(punclist[c], s);
 int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int prop)
 {
 const char *destend = dest + destlen - 1; // end of destination array
-const uc_type *s = rb->cursor;
+const unsigned int *s = rb->cursor;
 char *t = dest;
 ofs_type *o = offsets;
 int j, l;
@@ -1451,8 +1451,8 @@ continue;
 
 if(c == '\'' && alnum && isalpha(s[1])) {
 const char *u;
-const uc_type *v;
-uc_type v0;
+const unsigned int *v;
+unsigned int v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
