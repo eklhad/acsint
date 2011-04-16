@@ -805,6 +805,8 @@ unsigned long irqflags;
 
 if(!in_use) goto done;
 
+if (param->vc->vc_mode == KD_GRAPHICS) goto done;
+
 /* Only the key down events */
 	if (downflag == 0)
 		goto done;
