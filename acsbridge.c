@@ -1384,11 +1384,12 @@ const unsigned int *s = rb->cursor;
 char *t = dest;
 ofs_type *o = offsets;
 int j, l;
-int c;
+unsigned int c;
 char spaces = 1, alnum = 0;
 
 if(!s || !t) {
 errno = EFAULT;
+setError();
 return -1;
 }
 
@@ -1409,8 +1410,6 @@ if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
 c = downshift(c);
-if(c == SP_MARK && prop&ACS_GS_REPEAT)
-c = ' ';
 
 if(c == ' ') {
 alnum = 0;
@@ -1482,18 +1481,26 @@ c == downshift(s[1]) &&
 c == downshift(s[2]) &&
 c == downshift(s[3]) &&
 c == downshift(s[4])) {
-char reptoken[12]; /* repeat token */
-reptoken[0] = SP_MARK;
-reptoken[1] = SP_REPEAT;
-reptoken[2] = c;
+char reptoken[60];
+const char *pname = acs_getpunc(c); /* punctuation name */
+if(pname) {
+strncpy(reptoken, pname, 30);
+reptoken[30] = 0;
+} else {
+reptoken[0] = c;
+reptoken[1] = 0;
+}
+strcat(reptoken, " length ");
 for(j=5; c == downshift(s[j]); ++j)  ;
-sprintf(reptoken+3, "%d", j);
+sprintf(reptoken+strlen(reptoken), "%d", j);
 l = strlen(reptoken);
-reptoken[l++] = SP_MARK;
-reptoken[l] = 0;
-if(t+l >= destend) break; // no room
+if(t+l+2 >= destend) break; // no room
+if(!spaces)
+*t++ = ' ';
 strcpy(t, reptoken);
 t += l;
+*t++ = ' ';
+spaces = 1;
 s += j;
 continue;
 }

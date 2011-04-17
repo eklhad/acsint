@@ -881,15 +881,13 @@ don't is a word, even though it contains an apostrophe.
 One apostrophe between letters is tolerated.
 3g7j6 is a word, a mix of letters and numbers.
 ----- is a word, five or more repeated punctuation marks.
-You might want to say this as dash length 5, or some such thing.
+This is read as dash length 5, see getsentence() below.
 ---- is 4 separate words.  That's just my convention.
 
 What about the word niño in Spanish?
 I use isalpha() from the ctype library to determine what is a letter,
 so if you call setlocale(3), this just might work.
 I may indeed recognize this as one word.
-Again, this assumes an iso8859 representation,
-one unsigned char per letter.
 *********************************************************************/
 int acs_startword(void);
 int acs_endword(void);
@@ -972,12 +970,8 @@ for grabbing an entire sentence.
 The first translation,
 which you can turn on or off through ACS_GS_REPEAT,
 is the compression of a repeated punctuation mark into one token.
--------------------- is encoded as - and the number 20.
-This is indicated by the sentence preparation mark,
-a character that almost never appears in real text.
-I use 0x80.  See the definition of SP_MARK below.
-SP_MARK SP_REPEAT - 20 SP_MARK
-means there were 20 dashes.
+-------------------- is encoded as dash length 20,
+or minus length 20, etc, according to your setting of acs_setpunc('-').
 I've seen thousands of dots in a row, for instance, when a program
 uses these to indicate it is working on a task and making progress.
 This translation makes it a single token that fits in a sentence.
@@ -1031,9 +1025,6 @@ but the sentence may include a thousand dashes, which are compressed down
 to a single token, and so the word after those dashes has index 1043.
 I'm going with unsigned short just to be safe.
 *********************************************************************/
-
-#define SP_MARK 0x80
-#define SP_REPEAT 1
 
 typedef unsigned short ofs_type;
 
