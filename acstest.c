@@ -21,7 +21,7 @@ A little syntax checker verifies the first letter of each speech command.
 
 static int syntaxcheck(char *s)
 {
-if(strchr("bzhmsklrd", *s)) return 0; // ok
+if(strchr("bcdghklmrswz", *s)) return 0; // ok
 return -1; // don't recognize that one
 } // syntaxcheck
 
@@ -110,6 +110,8 @@ char grab[20];
 int mkcode; // modified key code
 char *cmd; // the speech command
 char c;
+char sentence[400];
+int gsprop = ACS_GS_STOPLINE | ACS_GS_REPEAT;
 
 mkcode = acs_build_mkcode(key, ss);
 cmd = acs_getspeechcommand(mkcode);
@@ -153,10 +155,32 @@ case 'b':
 acs_bypass();
 break;
 
+case 'c':
+if(screenmode) {
+acs_bell();
+} else {
+acs_clearbuf();
+acs_tone_onoff(0);
+}
+break;
+
 case 's':
 screenmode ^= 1;
 acs_screenmode(screenmode);
 acs_tone_onoff(screenmode);
+break;
+
+case 'w': gsprop |= ACS_GS_ONEWORD;
+case 'g':
+acs_startbuf();
+if(acs_getsentence(sentence, sizeof(sentence), 0, gsprop) < 0)
+puts("error");
+else if(!sentence[0])
+puts("nothing");
+else {
+printf("%s", sentence);
+if(cmd[0] == 'w') puts("");
+}
 break;
 
 case 'd':

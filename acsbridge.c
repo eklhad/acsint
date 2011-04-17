@@ -843,14 +843,14 @@ static const unsigned int in_c[] = {
 0};
 static char out_c[] =
 "*'`'`'`' ----";
-/* There are other 3 byte unicodes that are essentially ` ' - etc,
+/* There are other 2 and 3 byte unicodes that are essentially ` ' - etc,
  * but I don't have those handy. */
 int i;
 
 for(i=0; in_c[i]; ++i)
 if(u == in_c[i]) return out_c[i];
 
-if(u >= 256) return '.';
+if(u >= 256) return '?';
 return u;
 }
 
@@ -1379,12 +1379,13 @@ strcpy(punclist[c], s);
 
 int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int prop)
 {
-const char *destend = dest + destlen - 1; // end of destination array
-const unsigned int *s = rb->cursor;
+const char *destend = dest + destlen - 1; /* end of destination array */
 char *t = dest;
+const unsigned int *s = rb->cursor;
 ofs_type *o = offsets;
 int j, l;
 unsigned int c;
+unsigned char c1; /* cut c down to 1 byte */
 char spaces = 1, alnum = 0;
 
 if(!s || !t) {
@@ -1409,7 +1410,7 @@ return 0;
 if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
-c = downshift(c);
+c1 = downshift(c);
 
 if(c == ' ') {
 alnum = 0;
@@ -1436,19 +1437,20 @@ continue;
 
 spaces = 0;
 
-if(isalnum(c)) {
+if(isalnum(c1)) {
 if(!alnum) {
 // new word
 if(o) o[t-dest] = s-rb->cursor;
 }
 // building our word
-*t++ = c;
+*t++ = c1;
 ++s;
 alnum = 1;
 continue;
 }
 
-if(c == '\'' && alnum && isalpha(s[1])) {
+/* some unicodes like 0x92 downshift to apostrophe */
+if(c1 == '\'' && alnum && isalpha(downshift(s[1]))) {
 const char *u;
 const unsigned int *v;
 unsigned int v0;
@@ -1464,7 +1466,7 @@ for(v=s+1; isalpha(v0 = downshift(*v)); ++v)  ;
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive
-*t++ = c;
+*t++ = c1;
 ++s;
 continue;
 }
@@ -1477,41 +1479,47 @@ if(o) o[t-dest] = s-rb->cursor;
 
 // check for repeat
 if(prop&ACS_GS_REPEAT &&
-c == downshift(s[1]) &&
-c == downshift(s[2]) &&
-c == downshift(s[3]) &&
-c == downshift(s[4])) {
+c == s[1] &&
+c == s[2] &&
+c == s[3] &&
+c == s[4]) {
 char reptoken[60];
 const char *pname = acs_getpunc(c); /* punctuation name */
 if(pname) {
 strncpy(reptoken, pname, 30);
 reptoken[30] = 0;
 } else {
-reptoken[0] = c;
+reptoken[0] = c1;
 reptoken[1] = 0;
 }
 strcat(reptoken, " length ");
-for(j=5; c == downshift(s[j]); ++j)  ;
+for(j=5; c == s[j]; ++j)  ;
 sprintf(reptoken+strlen(reptoken), "%d", j);
 l = strlen(reptoken);
-if(t+l+2 >= destend) break; // no room
-if(!spaces)
+if(t+l+2 > destend) break; // no room
+if(t > dest && t[-1] != ' ')
 *t++ = ' ';
 strcpy(t, reptoken);
 t += l;
 *t++ = ' ';
 spaces = 1;
 s += j;
+if(prop & ACS_GS_ONEWORD) break;
 continue;
 }
 
 // just a punctuation mark on its own
-*t++ = c;
+*t++ = c1;
 ++s;
+if(prop & ACS_GS_ONEWORD) break;
 } // loop over characters in the tty buffer
 
 *t = 0;
 if(o) o[t-dest] = s-rb->cursor;
+
+/* get rid of the last space */
+if(t > dest+1 && t[-1] == ' ')
+*--t = 0;
 
 return 0;
 } // acs_getsentence
