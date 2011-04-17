@@ -1035,6 +1035,10 @@ typedef unsigned short ofs_type;
 
 int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int properties);
 
+/* If you want to manage the unicodes yourself */
+int acs_getsentence_uc(unsigned int *dest, int destlen,
+ofs_type *offsets, int properties);
+
 #define ACS_GS_ONEWORD 0x1
 #define ACS_GS_STOPLINE 0x2
 #define ACS_GS_REPEAT 0x4
