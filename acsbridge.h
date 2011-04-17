@@ -668,12 +668,17 @@ Example:   acs_setpunc('}', "right brace");
 Common pronunciations are preloaded, though of course you can change them
 based on the user's wishes or a config file.
 Characters from 160 to 255 are preset using iso8859-1.
-You will want to change these if you are working in a different locale.
+
+The argument is a unicode, though it can be an iso8859-1 unsigned char,
+or an ascii char, since each is compatible with the one before.
+Only 2-byte unicodes can be set in this manner.
+In other words, the punctuation table has size 65536.
+Larger unicodes are simply ignored.
 *********************************************************************/
 
-void acs_setpunc(int c, const char *s);
-char *acs_getpunc(int c);
-void acs_clearpunc(int c);
+void acs_setpunc(unsigned int c, const char *s);
+char *acs_getpunc(unsigned int c);
+void acs_clearpunc(unsigned int c);
 
 /*********************************************************************
 Replace one word with another for improved pronunciation.

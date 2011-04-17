@@ -1318,7 +1318,7 @@ speechcommandlist[mkcode] = malloc(strlen(s) + 1);
 strcpy(speechcommandlist[mkcode], s);
 } // acs_setspeechcommand
 
-static char *punclist[256];
+static char *punclist[65536];
 static const char *firstpunclist[256] = {
 "null", 0, 0, 0, 0, 0, 0, "bell",
 "backspace", "tab", "newline", 0, "formfeed", "return", 0, 0,
@@ -1355,22 +1355,22 @@ static const char *firstpunclist[256] = {
 "o stroke", "u grave", "u acute", "u circumflex", "u diaeresis", "y acute", "thorn", "y diaeresis"
 };
 
-void acs_clearpunc(int c)
+void acs_clearpunc(unsigned int c)
 {
-c &= 0xff;
+if(c > 0xffff) return;
 if(punclist[c]) free(punclist[c]);
 punclist[c] = 0;
 } // acs_clearpunc
 
-char *acs_getpunc(int c)
+char *acs_getpunc(unsigned int c)
 {
-c &= 0xff;
+if(c > 0xffff) return 0;
 return punclist[c];
 } // acs_getpunc
 
-void acs_setpunc(int c, const char *s)
+void acs_setpunc(unsigned int c, const char *s)
 {
-c &= 0xff;
+if(c > 0xffff) return;
 acs_clearpunc(c);
 if(!s) return;
 punclist[c] = malloc(strlen(s) + 1);
@@ -2061,6 +2061,9 @@ numdictwords = 0;
 
 for(i=0; i<256; ++i)
 acs_setpunc(i, firstpunclist[i]);
+
+for(; i<65536; ++i)
+acs_clearpunc(i);
 
 for(i=0; i<MK_BLOCK*8; ++i) {
 acs_clearmacro(i);

@@ -26,7 +26,7 @@ return -1; // don't recognize that one
 } // syntaxcheck
 
 static void
-test_configure(const char *filename)
+load_configure(const char *filename)
 {
 FILE *f;
 char line[200];
@@ -221,7 +221,7 @@ acs_more_h = setMoreStuff;
 // this has to run after the device is open,
 // because it sends "key capture" commands to the acsint driver
 acs_reset_configure();
-test_configure("acstest.cfg");
+load_configure("acstest.cfg");
 
 // This runs forever, you have to hit interrupt to kill it,
 // or kill it from another tty.
