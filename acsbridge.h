@@ -562,6 +562,20 @@ In theory you could inject up to 64K of text,
 but I've only tested up to a few hundred.
 Over 256 is not a problem,
 so cut&paste a large block of text if you wish.
+
+The text can be utf8 or an 8859 codepage, consistent with your linux console.
+The setmacro() function can similarly accept utf8.
+Consider the control #7 macro in acstest.cfg.
+Run acstest, switch to another console, run
+cat >foo
+hit control #7, and then return, and then control d (EOF).
+foo will contain exactly the same utf8 characters
+as the corresponding line in acstest.cfg.
+When doing dynamic cut&paste, grab a block of unicode chars
+from the buffer, convert to utf8 using iconv,
+put ^#7<  in front (or some such key designator),
+and call acs_line_configure().
+It should work.
 *********************************************************************/
 
 int acs_injectstring(const char *s);
@@ -720,6 +734,7 @@ The four functions have the following syntax.
 # macro begins with the modified key follow by less than.
 # < is suppose to remind you of getting input, as in <filename
 +F3 < this is text that should be sent to the console on shift F3
+The text can be international; see the comments on injectstring() above.
 
 # Without the less than sign, it is assumed to be a speech function
 # of your design.  I don't really care what the words are here.
