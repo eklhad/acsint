@@ -856,7 +856,7 @@ void acs_cursorsync(void);
  * Could be null if the buffer is empty.
  * This is downshifted from unicode to iso8859-1.
  * Sorry, no other code pages are implemented at this time.
- * If the unicode cannot be downshifted, you will get a dot.
+ * If the unicode cannot be downshifted you will get a question mark.
  * See the downshift() routine in acsbridge.c. */
 int acs_getc(void);
 /* And here is the raw unicode version. */
