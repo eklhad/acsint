@@ -228,16 +228,16 @@ static const char *firstpunclist[256] = {
 0, 0, 0, 0, 0, 0, 0, 0,
 "break space", "bang up", "cents", "pounds", "currency", "yen", "broken bar", "section",
 "diaeresis", "copyright", "feminine", "backward", "not", "soft hyphen", "registered", "macron",
-"degrees", "plus minus", "super two", "super three", "acute", "micro", "pilcrow", "bullet",
-"cedilla", "super one", "masculine", "forward", "one fourth", "one half", "three fourths", "question up",
-"cap a grave", "cap a acute", "cap a circumflex", "cap a tilde", "cap a diaeresis", "cap a ring above", "cap ligature a e", "cap c cedilla",
-"cap e grave", "cap e acute", "cap e circumflex", "cap e diaeresis", "cap i grave", "cap i acute", "cap i circumflex", "cap i diaeresis",
-"cap e t h", "cap n tilde", "cap o grave", "cap o acute", "cap o circumflex", "cap o tilde", "cap o diaeresis", "times",
-"cap o stroke", "cap u grave", "cap u acute", "cap u circumflex", "cap u diaeresis", "cap y acute", "cap thorn", "sharp s",
-"a grave", "a acute", "a circumflex", "a tilde", "a diaeresis", "a ring above", "ligature a e", "c cedilla",
-"e grave", "e acute", "e circumflex", "e diaeresis", "i grave", "i acute", "i circumflex", "i diaeresis",
-"e t h", "n tilde", "o grave", "o acute", "o circumflex", "o tilde", "o diaeresis", "divided by",
-"o stroke", "u grave", "u acute", "u circumflex", "u diaeresis", "y acute", "thorn", "y diaeresis"
+"degrees", "plus minus", "squared", "cubed", "acute", "micro", "pilcrow", "bullet",
+"cedilla", "to the first", "masculine", "forward", "one fourth", "one half", "three fourths", "question up",
+0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, "times",
+0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0, 0, 0, 0, 0, "divided by",
+0, 0, 0, 0, 0, 0, 0, 0,
 };
 
 void acs_clearpunc(unsigned int c)
