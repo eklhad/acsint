@@ -835,7 +835,7 @@ rb->cursor = tc;
  * This effectively retains the iso8859-1 chars;
  * we should really have code here that converts to other pages
  * based on your locale. */
-static unsigned int downshift(unsigned int u)
+unsigned int acs_downshift(unsigned int u)
 {
 static const unsigned int in_c[] = {
 0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
@@ -861,7 +861,7 @@ int acs_getc(void)
 {
 unsigned int c;
 if(!tc) return 0;
-return downshift(*tc);
+return acs_downshift(*tc);
 } // acs_getc
 
 unsigned int acs_getc_uc(void)
@@ -1165,7 +1165,7 @@ return 0;
 if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
-c1 = downshift(c);
+c1 = acs_downshift(c);
 
 if(c == ' ') {
 alnum = 0;
@@ -1205,7 +1205,7 @@ continue;
 }
 
 /* some unicodes like 0x92 downshift to apostrophe */
-if(c1 == '\'' && alnum && isalpha(downshift(s[1]))) {
+if(c1 == '\'' && alnum && isalpha(acs_downshift(s[1]))) {
 const char *u;
 const unsigned int *v;
 unsigned int v0;
@@ -1217,7 +1217,7 @@ if(u >= dest) {
 if(*u == '\'') goto punc;
 if(isdigit((unsigned char)*u)) goto punc;
 }
-for(v=s+1; isalpha(v0 = downshift(*v)); ++v)  ;
+for(v=s+1; isalpha(v0 = acs_downshift(*v)); ++v)  ;
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive
@@ -1313,7 +1313,7 @@ return 0;
 if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
-c1 = downshift(c);
+c1 = acs_downshift(c);
 
 if(c == ' ') {
 alnum = 0;
@@ -1353,18 +1353,18 @@ continue;
 }
 
 /* some unicodes like 0x92 downshift to apostrophe */
-if(c1 == '\'' && alnum && isalpha(downshift(s[1]))) {
+if(c1 == '\'' && alnum && isalpha(acs_downshift(s[1]))) {
 const unsigned int *v;
 unsigned int v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
-for(v=t-1; v>=dest && isalpha(v0 = downshift(*v)); --v)  ;
+for(v=t-1; v>=dest && isalpha(v0 = acs_downshift(*v)); --v)  ;
 if(v >= dest) {
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 }
-for(v=s+1; isalpha(v0 = downshift(*v)); ++v)  ;
+for(v=s+1; isalpha(v0 = acs_downshift(*v)); ++v)  ;
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive

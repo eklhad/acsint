@@ -858,6 +858,7 @@ void acs_cursorsync(void);
  * Sorry, no other code pages are implemented at this time.
  * If the unicode cannot be downshifted you will get a question mark.
  * See the downshift() routine in acsbridge.c. */
+unsigned int acs_downshift(unsigned int unicode);
 int acs_getc(void);
 /* And here is the raw unicode version. */
 unsigned int acs_getc_uc(void);
