@@ -5,10 +5,10 @@ obj-m += acsint.o
 
 all : acstest
 
-acstest : acstest.o acsbridge.o
-	cc -o acstest acstest.o acsbridge.o
+acstest : acstest.o acsbridge.o acsbind.o
+	cc -o acstest acstest.o acsbridge.o acsbind.o
 
-acstest.o acsbridge.o : acsint.h acsbridge.h
+acstest.o acsbridge.o acsbind.o : acsint.h acsbridge.h
 
 modules:
 	make -C $(KERNELDIR) M=$(shell pwd)
