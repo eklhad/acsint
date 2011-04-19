@@ -634,20 +634,25 @@ int acs_build_mkcode(int keycode, int state);
 // where we left off - like strtol().
 int acs_ascii2mkcode(const char *s, char **endptr);
 
-// Use the modified key code to set and retrieve a macro string.
+/* Use the modified key code to set and retrieve a macro string.
+ * If the macro starts with | it is executed as a system command.
+ * This takes the place of esekeyd, and has the advantage of executing
+ * different comands based on shift state - which esekeyd couldn't do.
+ * If the leading character is not a pipe then it is just a string,
+ * and should be passed to the tty input queue. */
 void acs_setmacro(int mkcode, const char *s);
+
 // return 0 if no macro present
 char *acs_getmacro(int mkcode);
 void acs_clearmacro(int mkcode);
 
-// If the user types lalt F7, you may want to query lalt F7
-// first, and if there is nothing there, then query alt F7,
-// for either left or right alt.
-// And that is a good strategy for bound speech commands too.
-
-// Use the modified key code to set and retrieve a speech function.
-// The bytes could be anything, as long as they end in null.
-// You know what "read next line" means, and these functions don't care.
+/* If the user types lalt F7, you may want to query lalt F7
+ * first, and if there is nothing there, then query alt F7,
+ * for either left or right alt.
+ * And that is a good strategy for bound speech commands too.
+ * Use the modified key code to set and retrieve a speech function.
+ * The bytes could be anything, as long as they end in null.
+ * You know what "read next line" means, and these functions don't care. */
 void acs_setspeechcommand(int mkcode, const char *s);
 
 // return 0 if no speech command present
@@ -741,7 +746,11 @@ The four functions have the following syntax.
 +F3 < this is text that should be sent to the console on shift F3
 The text can be international; see the comments on injectstring() above.
 
-# Without the less than sign, it is assumed to be a speech function
+#  A pipe implies a system command.
+#  Hit alt t, then check the time stamp on /tmp/banana
+r@t|touch /tmp/banana
+
+# Without the less than sign or pipe it is assumed to be a speech function
 # of your design.  I don't really care what the words are here.
 f8 read next line
 

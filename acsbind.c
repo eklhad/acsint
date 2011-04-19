@@ -523,9 +523,10 @@ if(mkcode >= 0) { // key assignment
 
 skipWhite(&s);
 c = *s;
-	if(c == '<') {
+	if(c == '<' || c == '|') {
+if(!s[1]) goto clear;
+if(c == '<')
 ++s;
-if(!*s) goto clear;
 acs_setmacro(mkcode, s);
 keycapture[key1key] |= key1ss;
 acs_setkey(key1key, keycapture[key1key]);

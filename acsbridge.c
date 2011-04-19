@@ -694,7 +694,14 @@ if(!m && iobuf[i+2]&ACS_SS_ALT) {
 mkcode = acs_build_mkcode(iobuf[i+1], ACS_SS_ALT);
 m = acs_getmacro(mkcode);
 }
-if(m) { acs_injectstring(m); i += 4; break; }
+if(m) {
+if(*m == '|')
+system(m+1);
+else
+acs_injectstring(m);
+i += 4;
+break;
+}
 }
 if(acs_key_h) acs_key_h(iobuf[i+1], iobuf[i + 2], iobuf[i+3]);
 i += 4;
