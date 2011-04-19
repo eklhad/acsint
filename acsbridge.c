@@ -249,6 +249,8 @@ setError();
 clearError();
 }
 
+acs_reset_configure();
+
 return acs_fd;
 } // acs_open
 
