@@ -189,7 +189,7 @@ dump_fd = open(dumpfile, O_WRONLY|O_TRUNC|O_CREAT, 0666);
 if(dump_fd >= 0) {
 acs_startbuf();
 /* nobody said this was efficient */
-while(c = acs_getc()) {
+while((c = acs_getc())) {
 write(dump_fd, &c, 1);
 acs_forward();
 }
