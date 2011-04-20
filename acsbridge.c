@@ -6,6 +6,7 @@ and declared in acsbridge.h.
 *********************************************************************/
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -868,7 +869,6 @@ return u;
  * The unicode version follows. */
 int acs_getc(void)
 {
-unsigned int c;
 if(!tc) return 0;
 return acs_downshift(*tc);
 } // acs_getc
