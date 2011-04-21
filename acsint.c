@@ -767,16 +767,6 @@ case VT_PREWRITE:
 if(unicode == 0)
 break;
 
-	if (unicode >= 256)
-/* I don't handle international chars beyond ISO8859-1.
- * thus unicode beyond 256 is discarded.
- * If you are using another character set,
- * then you have to map those unicodes back to bytes,
- * and this is the place to do it.
- * That means we need a setlocale command.
- * None of this is implemented yet. */
-break;
-
 checkAlloc(mino, true);
 pushlog(unicode, mino, true);
 } /* switch */
