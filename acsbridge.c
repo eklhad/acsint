@@ -623,7 +623,7 @@ continue;
 }
 
 // control chars
-if(*s < ' ' && *s != '\7' && *s != '\r' && *s != '\n' &&
+if(*s < ' ' && *s != '\7' && *s != '\r' && *s != '\n' && *s != '\t' &&
 acs_postprocess&ACS_PP_STRIP_CTRL) {
 ++s;
 continue;
