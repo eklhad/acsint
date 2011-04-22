@@ -561,7 +561,7 @@ if(t) { save = *t; *t = 0; }
 
 if(isalpha((unsigned char)c)) {
 if(!t) return acs_setword(s, 0);
-u = t;
+u = t + 1;
 skipWhite(&u);
 rc = acs_setword(s, u);
 *t = save;
