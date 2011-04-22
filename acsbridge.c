@@ -1818,6 +1818,7 @@ static char dtpcstring[] = "[:vo set dd]";
 static char extstring[] = "[:dv g5 dd]";
 static char bnsstring[10];
 static char acestring[] = "\33A5";
+int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
@@ -1825,14 +1826,14 @@ switch(ss_style) {
 case SS_STYLE_DOUBLE:
 doublestring[1] = '0' + n;
 ss_writeString(doublestring);
-return 0;
+break;
 
 case SS_STYLE_DECPC:
 n = 10 + 8*n;
 dtpcstring[9] = '0' + n/10;
 dtpcstring[10] = '0' + n%10;
 ss_writeString(dtpcstring);
-return 0;
+break;
 
 case SS_STYLE_DECEXP:
 /* The Dec Express takes volume levels from 60 to 86. */
@@ -1841,21 +1842,24 @@ n = 60 + n*72/25;
 extstring[8] = '0' + n / 10;
 extstring[9] = '0' + n % 10;
 ss_writeString(extstring);
-return 0;
+break;
 
 case SS_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dV", (n+1) * 16 / 10);
 ss_writeString(bnsstring);
-return 0;
+break;
 
 case SS_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
-return 0;
+break;
 
+default:
+return -2;
 } // switch
 
-return -2;
+ss_curvolume = n0;
+return 0;
 } /* ss_setvolume */
 
 int ss_incvolume(void)
@@ -1863,7 +1867,6 @@ int ss_incvolume(void)
 if(ss_curvolume == 9) return -1;
 if(ss_setvolume(ss_curvolume+1))
 return -2;
-++ss_curvolume;
 return 0;
 }
 
@@ -1872,7 +1875,6 @@ int ss_decvolume(void)
 if(ss_curvolume == 0) return -1;
 if(ss_setvolume(ss_curvolume-1))
 return -2;
---ss_curvolume;
 return 0;
 }
 
@@ -1883,6 +1885,7 @@ static char decstring[] = "[:ra ddd]";
 static char bnsstring[10];
 static char acestring[] = "\33R5";
 static const char acerate[] ="02468ACEGH";
+int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
@@ -1890,27 +1893,30 @@ switch(ss_style) {
 case SS_STYLE_DOUBLE:
 doublestring[1] = doublestring[4] = '0' + n;
 ss_writeString(doublestring);
-return 0;
+break;
 
 case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
 n = 50*n + 120;
 sprintf(decstring+5, "%03d]", n);
 ss_writeString(decstring);
-return 0;
+break;
 
 case SS_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dE", (n+1) * 14 / 10);
 ss_writeString(bnsstring);
-return 0;
+break;
 
 case SS_STYLE_ACE:
 acestring[2] = acerate[n];
 ss_writeString(acestring);
-return 0;
+break;
 
+default:
+return -2;
 } // switch
 
-return -2;
+ss_curspeed = n0;
+return 0;
 } /* ss_setspeed */
 
 int ss_incspeed(void)
@@ -1918,7 +1924,6 @@ int ss_incspeed(void)
 if(ss_curspeed == 9) return -1;
 if(ss_setspeed(ss_curspeed+1))
 return -2;
-++ss_curspeed;
 return 0;
 }
 
@@ -1927,7 +1932,6 @@ int ss_decspeed(void)
 if(ss_curspeed == 0) return -1;
 if(ss_setspeed(ss_curspeed-1))
 return -2;
---ss_curspeed;
 return 0;
 }
 
@@ -1939,6 +1943,7 @@ static const short tohurtz[] = {
 static char decstring[] = "[:dv ap xxx]";
 static char bnsstring[10];
 static char acestring[] = "\33P5";
+int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
@@ -1947,29 +1952,32 @@ case SS_STYLE_DOUBLE:
 n = 9*n + 10;
 doublestring[1] = '0' + n/10;
 ss_writeString(doublestring);
-return 0;
+break;
 
 case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
 n = tohurtz[n];
 sprintf(decstring+8, "%d]", n);
 ss_writeString(decstring);
-return 0;
+break;
 
 case SS_STYLE_BNS:
 /* BNS pitch is 01 through 63.  An increment of 6, giving levels from 6 .. 60
 should work well. */
 sprintf(bnsstring, "\x05%02dP", (n+1) * 6);
 ss_writeString(bnsstring);
-return 0;
+break;
 
 case SS_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
-return 0;
+break;
 
+default:
+return -2;
 } // switch
 
-return -2;
+ss_curpitch = n0;
+return 0;
 } /* ss_setpitch */
 
 int ss_incpitch(void)
@@ -1977,7 +1985,6 @@ int ss_incpitch(void)
 if(ss_curpitch == 9) return -1;
 if(ss_setpitch(ss_curpitch+1))
 return -2;
-++ss_curpitch;
 return 0;
 }
 
@@ -1986,7 +1993,6 @@ int ss_decpitch(void)
 if(ss_curpitch == 0) return -1;
 if(ss_setpitch(ss_curpitch-1))
 return -2;
---ss_curpitch;
 return 0;
 }
 
@@ -1994,7 +2000,6 @@ return 0;
 // Return -1 if the synthesizer cannot support that voice.
 int ss_setvoice(int v)
 {
-int rc = -1;
 	char buf[8];
 static const short doublepitch[] = {
 2,4,2,4,6,4,5,1,8,2};
@@ -2005,34 +2010,31 @@ static char acestring[] = "\33V5";
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
-if(v < 1 || v > 8) break;
+if(v < 1 || v > 8) return -1;
 		sprintf(buf, "\1%do", v-1);
 		ss_writeString(buf);
 ss_cr();
 ss_curpitch = doublepitch[v];
-rc = 0;
 break;
 
 case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
-if(v < 1 || v > 8) break;
+if(v < 1 || v > 8) return -1;
 		sprintf(buf, "[:n%c]", decChars[v]);
 		ss_writeString(buf);
 ss_cr();
 ss_curpitch = decpitch[v];
-rc = 0;
 break;
 
 case SS_STYLE_ACE:
 acestring[2] = '0' + v;
 ss_writeString(acestring);
-rc = 0;
 break;
 
 default:
-rc = -2; /* no voice function for this synth */
+return -2; /* no voice function for this synth */
 } // switch
 
-return rc;
+return 0;
 } /* ss_setvoice */
 
 /* Would the synth block if we sent it more text? */
