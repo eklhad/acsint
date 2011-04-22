@@ -1448,14 +1448,14 @@ imark_handler_t imark_h;
 
 static struct termios tio; // tty io control
 
-// Set up tty with either hardware or software flow control
+/* Set up tty with either hardware or software flow control */
 static unsigned int thisbaud = B9600;
 int ess_flowcontrol(int hw)
 {
 tio.c_iflag = IGNBRK | INPCK | ISTRIP;
 if(!hw) tio.c_iflag |= IXON | IXOFF;
 tio.c_oflag = 0;
-tio.c_cflag = PARENB | HUPCL | CS8 | CREAD | thisbaud;
+tio.c_cflag = PARENB | HUPCL | CS8 | CREAD | thisbaud | CLOCAL;
 if(hw) tio.c_cflag |= CRTSCTS;
 tio.c_lflag = 0;
 tio.c_cc[VSTOP] = 17;
@@ -1465,6 +1465,40 @@ tio.c_cc[VSTART] = 19;
 
 return tcsetattr(ss_fd0, TCSANOW, &tio);
 } // ess_flowcontrol
+
+/* Get signals from the serial device.
+ * Active signals are indicated with the following bit definitions:
+ * TIOCM_RTS Request To Send (output signal)
+ * TIOCM_DTR Data Terminal Ready (output signal)
+ * TIOCM_CAR Data Carrier Detect (input signal)
+ * TIOCM_RNG Ring Indicator (input signal)
+ * TIOCM_DSR Data Set Ready (input signal)
+ * TIOCM_CTS Clear To Send (input signal) */
+static int
+getModemStatus(void)
+{
+int sigs, rc;
+rc = ioctl(ss_fd0, TIOCMGET, &sigs);
+if(rc) sigs = 0;
+return sigs;
+/* We should never need to do this one.
+sigs = TIOCM_RTS | TIOCM_DTR;
+rc = ioctl(fd, TIOCMBIS, &sigs);
+*/
+} /* getModemStatus */
+
+/* For debugging */
+static void
+printModemStatus(void)
+{
+int sigs = getModemStatus();
+printf("serial");
+if(sigs&TIOCM_DSR) printf(" dsr");
+if(sigs&TIOCM_CAR) printf(" carrier");
+if(sigs&TIOCM_RNG) printf(" ring");
+if(sigs&TIOCM_CTS) printf(" cts");
+puts("");
+} /* printModemStatus */
 
 int ess_open(const char *devname, int baud)
 {
@@ -1494,12 +1528,12 @@ errno = EEXIST;
 return -1;
 }
 
-ss_fd0 = open(devname, O_RDWR);
+ss_fd0 = open(devname, O_RDWR|O_NONBLOCK);
 if(ss_fd0 < 0) return 0;
 ss_fd1 = ss_fd0;
 
 // Set up the tty characteristics.
-// Especially important to have no echo and no cooked mode.
+// Especially important to have no echo and no cooked mode and clocal.
 for(j=0; baudvalues[j]; ++j)
 if(baud == baudvalues[j]) thisbaud = baudbits[j];
 // Hardware flow by default, but you can change that.
@@ -1510,6 +1544,11 @@ close(ss_fd0);
 ss_fd0 = ss_fd1 = -1;
 return -1;
 }
+
+/* Now that clocal is set, go back to blocking mode
+ * In other words, clear the nonblock bit.
+ * The other bits can all be zero, they don't mean anything on a serial port. */
+fcntl(ss_fd0, F_SETFL, 0);
 
 	// Send an initial CR.
 		// Some units like to see this to establish baud rate.
