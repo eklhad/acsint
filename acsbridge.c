@@ -1441,7 +1441,7 @@ void acs_endsentence(char *dest)
 
 // Synthesizer descriptor and some routines for a serial connection.
 
-int ss_fd0, ss_fd1;
+int ss_fd0 = -1, ss_fd1;
 
 talking_handler_t talking_h;
 imark_handler_t imark_h;
