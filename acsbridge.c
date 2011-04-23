@@ -40,6 +40,7 @@ static unsigned char vcs_header[4];
 #define csr (int)vcs_header[3] // cursor row
 #define csc (int)vcs_header[2] // cursor column
 int acs_fgc = 1; // current foreground console
+int acs_lang; /* language that the adapter is running in */
 int acs_postprocess = 0xf; // postprocess the text from the tty
 static const char crbyte = '\r';
 static const char kbyte = '\13';
@@ -850,11 +851,11 @@ unsigned int acs_downshift(unsigned int u)
 static const unsigned int in_c[] = {
 0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
 0xa0, 0xad, 0x96, 0x97, 0x85,
+0x2022, 0x25ba, 0x113, 0x2013, 0x2014,
+0x2018, 0x2019, 0x201c, 0x201d,
 0};
 static char out_c[] =
-"*'`'`'`' ----";
-/* There are other 2 and 3 byte unicodes that are essentially ` ' - etc,
- * but I don't have those handy. */
+"*'`'`'`' ----**`--`'";
 int i;
 
 for(i=0; in_c[i]; ++i)
@@ -1191,9 +1192,12 @@ continue;
 if(c == '\n' || c == '\7') {
 alnum = 0;
 if(t > dest && t[-1] == ' ') --t;
+if(prop&ACS_GS_ONEWORD) {
+if(t == dest) *t++ = c, ++s;
+break;
+}
 *t++ = c;
 ++s;
-if(prop&ACS_GS_ONEWORD) break;
 if(prop&ACS_GS_STOPLINE) break;
 spaces = 1;
 continue;
@@ -1339,9 +1343,12 @@ continue;
 if(c == '\n' || c == '\7') {
 alnum = 0;
 if(t > dest && t[-1] == ' ') --t;
+if(prop&ACS_GS_ONEWORD) {
+if(t == dest) *t++ = c, ++s;
+break;
+}
 *t++ = c;
 ++s;
-if(prop&ACS_GS_ONEWORD) break;
 if(prop&ACS_GS_STOPLINE) break;
 spaces = 1;
 continue;

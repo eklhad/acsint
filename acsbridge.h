@@ -799,13 +799,33 @@ int acs_line_configure(char *s, syntax_handler_t syn_fn);
 
 /*********************************************************************
 When you first open the acsint device,
-or when you want to reload the config file,
-you should call acs_reset_configure().
+I call acs_reset_configure() on your behalf.
+This clears all key bindings, and establishes common pronunciations
+for various punctuation marks
+) right parenthesis
+and even some of the higher unicodes.
+Call this function yourself when you want to reload the config file.
 Many daemons respond to a signal to restart or reload;
 that would be a good time to reopen / reset the speech synthesizer,
 call this function, and reprocess the config file.
 This does not reset any handlers you may have assigned.
+
+I use the global variable acs_lang to set up these common pronunciations.
+After all, ) is not called right parenthesis in French.
+So you'll want to set this variable before you do anything else.
+It could be a parameter to your adapter, or it can be derived from
+the environment variable $LANG, as edbrowse does.
+If it is not set, reset_configure assumes English.
+(For now English is all we have,
+so this is mostly planning for the future.)
 *********************************************************************/
+
+enum ACS_LANG {
+LANG_NONE,
+LANG_ENGLISH,
+};
+
+extern int acs_lang;
 
 void acs_reset_configure();
 
