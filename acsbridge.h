@@ -988,6 +988,10 @@ and the punctuations tell all,
 and the newlines really mean nothing.
 In my world that doesn't happen very often, so stopline is usually set.
 
+Set ACS_GS_NLSPACE if newlines are to be treated as spaces.
+this is for the aforementioned story, where newlines mean nothing.
+This is incompatible with ACS_GS_ONEWORD or ACS_GS_STOPLINE.
+
 Don't use this function to read a single character.
 Just grab rb->cursor[0], or call acs_getc(), and go.
 This routine has too much overhead for just one character,
@@ -1008,8 +1012,7 @@ So when you are fetching a word at a time you should set the length
 to 20 or so, rather than the 200 or so that makes sense
 for grabbing an entire sentence.
 
-A translation,
-which you can turn on or off through ACS_GS_REPEAT,
+Another translation, which you can turn on or off through ACS_GS_REPEAT,
 is the compression of a repeated punctuation mark into one token.
 -------------------- is encoded as dash length 20,
 or minus length 20, etc, according to your setting of acs_setpunc('-').
@@ -1078,13 +1081,14 @@ ofs_type *offsets, int properties);
 #define ACS_GS_ONEWORD 0x1
 #define ACS_GS_STOPLINE 0x2
 #define ACS_GS_REPEAT 0x4
+#define ACS_GS_NLSPACE 0x8
 
 
 /*********************************************************************
 Section 12: synthesizer communications.
 Most synthesizers communicate with us over a file descriptor,
 be it a serial port, socket, or pipe.
-If that is the case, you can use ss_fd for this descriptor.
+If that is the case you can use ss_fd for this descriptor.
 Actually we use ss_fd0 for input and ss_fd1 for output.
 These will be the same for a serial port or socket,
 and different if we are talking to a software synth through a pipe.

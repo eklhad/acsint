@@ -1175,6 +1175,9 @@ return 0;
 if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
+if(c == '\n' && prop&ACS_GS_NLSPACE)
+c = ' ';
+
 c1 = acs_downshift(c);
 
 if(c == ' ') {
@@ -1344,6 +1347,9 @@ return 0;
 if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
+if(c == '\n' && prop&ACS_GS_NLSPACE)
+c = ' ';
+
 c1 = acs_downshift(c);
 
 if(c == ' ') {
