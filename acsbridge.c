@@ -1276,18 +1276,36 @@ if(prop & ACS_GS_ONEWORD) break;
 continue;
 }
 
-// just a punctuation mark on its own
+/* just a punctuation mark on its own.
+/* If it's a high unicode, see if it has a downshift,
+ * or if it is pronounceable. */
+if(c >= 256 && c1 == '?') {
+const char *u = acs_getpunc(c);
+if(u) {
+l = strlen(u);
+if(t+l+2 > destend) break; // no room
+if(t > dest && t[-1] != ' ')
+*t++ = ' ';
+strcpy(t, u);
+t += l;
+*t++ = ' ';
+spaces = 1;
+++s;
+if(prop & ACS_GS_ONEWORD) break;
+continue;
+}
+}
+
 *t++ = c1;
 ++s;
 if(prop & ACS_GS_ONEWORD) break;
 } // loop over characters in the tty buffer
 
-*t = 0;
-if(o) o[t-dest] = s-rb->cursor;
-
 /* get rid of the last space */
 if(t > dest+1 && t[-1] == ' ')
-*--t = 0;
+--t;
+*t = 0;
+if(o) o[t-dest] = s-rb->cursor;
 
 return 0;
 } /* acs_getsentence */

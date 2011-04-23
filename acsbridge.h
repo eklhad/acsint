@@ -960,9 +960,15 @@ Section 11: get a chunk of text to read.
 Starting at the reading cursor, fetch text from the buffer
 and copy it into a destination array that you specify.
 This performs an implicit downshift from unicode to iso8859-1.
+Certain unicode characters that are equivalent to apostrophe, dash, star, etc,
+become those ascii symbols.
+Other high unicodes that have been rendered pronounceable,
+by the default values in the bridge layer or by your config file,
+are translated into the corresponding words.
 
 If you are reading a word at a time (set ACS_GS_ONEWORD),
-I will fetch one word as defined above, or one punctuation mark.
+I will fetch one word as defined above,
+or one unicode / punctuation mark.
 This could be a space, newline, control character, etc.
 But if you are reading continuously I will copy text up to the end
 of the destination array, leaving room for the null byte at the end,
@@ -983,9 +989,9 @@ and the newlines really mean nothing.
 In my world that doesn't happen very often, so stopline is usually set.
 
 Don't use this function to read a single character.
-Just grab rb->cursor[0] and go.
+Just grab rb->cursor[0], or call acs_getc(), and go.
 This routine has too much overhead for just one character,
-and it does some translations (see below) that you probably don't want.
+and it does some translations that you may or may not want.
 
 Your destination array should be big enough to hold
 a reasonable phrase or sentence.
@@ -1002,7 +1008,7 @@ So when you are fetching a word at a time you should set the length
 to 20 or so, rather than the 200 or so that makes sense
 for grabbing an entire sentence.
 
-The first translation,
+A translation,
 which you can turn on or off through ACS_GS_REPEAT,
 is the compression of a repeated punctuation mark into one token.
 -------------------- is encoded as dash length 20,
@@ -1014,13 +1020,12 @@ Again, you can turn this feature on or off through ACS_GS_REPEAT.
 
 I also compress spaces down to a single space,
 and remove space from the beginning or the end of the sentence.
-
-These are the only two translations that take place here.
-Other than that you will receive the text as it appears in the buffer.
-
 You could get an empty string if the buffer is empty,
 or consists entirely of spaces and you are reading continuously.
 
+These, along with the pronounceable high unicodes,
+are the only translations that take place here.
+Other than that you will receive the text as it appears in the buffer.
 There is of course much more translation that could be done.
 $3,000 becomes 3 thousand dollars
 02/03/2011 becomes February third 2 thousand eleven
@@ -1029,8 +1034,9 @@ $3,000 becomes 3 thousand dollars
 And so on.
 These changes, that make text more readable,
 will be handled in other routines.
+(Run jupiter tts to see such translations.)
 We shouldn't try to do everything here.
-So this is just the first step.
+This is just the first step.
 
 The offset array, which you provide, is optional, and can be 0.
 If present it must be as long as the sentence array.
