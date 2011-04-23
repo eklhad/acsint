@@ -1055,30 +1055,6 @@ ofs_type *offsets, int properties);
 
 
 /*********************************************************************
-This function tries to find a good place to end a phrase or sentence
-based on punctuation marks.
-There are a few things to watch out for, like breaking a sentence at Mr.
-Smith, who finds life in the U.S.A.
-very plesant now that he works for Acme Inc.
-located on Bleaker street.
-in Detroit.
-In contrast the sentence could be really long or run-on with no punctuation
-marks whatsoever and or your destination array could be short and then I may
-have to cut the sentence in the middle and it may have an unnatural pause
-when read by your synthesizer.
-Most of the time things work out all right.
-
-Call this it you want a story to sound natural, reading sentence by sentence,
-or if your lines are long and reading a line at a time doesn't
-give you enough granularity.
-
-This is not yet implemented.  Just a stub.
-*********************************************************************/
-
-void acs_endsentence(char *dest);
-
-
-/*********************************************************************
 Section 12: synthesizer communications.
 Most synthesizers communicate with us over a file descriptor,
 be it a serial port, socket, or pipe.

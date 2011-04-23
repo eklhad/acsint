@@ -1435,10 +1435,6 @@ if(t > dest+1 && t[-1] == ' ')
 return 0;
 } /* acs_getsentence_uc */
 
-void acs_endsentence(char *dest)
-{
-} // acs_endsentence
-
 // Synthesizer descriptor and some routines for a serial connection.
 
 int ss_fd0 = -1, ss_fd1;
