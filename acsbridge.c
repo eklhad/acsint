@@ -645,10 +645,11 @@ tl->cursor = (t > tl->start ? t-1 : t);
 
 void acs_clearbuf(void)
 {
-if(!screenmode) {
+if(screenmode) return;
 imark_start = 0;
-if(rb && rb != &tty_nomem)
+if(rb && rb != &tty_nomem) {
 rb->end = rb->cursor = rb->start;
+memset(rb->marks, 0, sizeof(rb->marks));
 }
 } // acs_clearbuf
 
