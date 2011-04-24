@@ -193,7 +193,7 @@ for that console since the device was opened.
 
 The cursor points to the text you are currently reading.
 You should advance this cursor as you read along.
-(Or I will do it for you via index markers.)
+Or let me do it for you via index markers.  See section 11.
 The text should probably be treated as readonly.
 
 If lots of tty output pushes your cursor off the back of the buffer,
@@ -201,7 +201,7 @@ it will be left as null.
 Example: cat a large file.
 So be sure to check for null at the top of your event handler.
 You may, upon this condition,
-stop reading, or sound a buzz, or speak a quick overflow message.
+stop reading, or sound a buzz, or speak a quick overflow message, or whatever.
 
 marks[] is an array of pointers into the tty buffer.
 You can set and read these as you wish.
@@ -220,7 +220,7 @@ Move your cursor to the right edge of the block and issue the cut command.
 
 In screen mode these marks are transient,
 and go away if you switch consoles, or switch back to line mode.
-They also do not move with scrolling text.
+They also do not move with scrolling text.  Not implemented yet.
 
 When in screen mode, v_cursor points to the visual cursor on screen.
 The reading cursor is set to the visual cursor when
@@ -232,12 +232,13 @@ and are converted by linux vt.c into unicode.
 That's the way acsint receives them,
 and that's the way it stores them,
 and that's the way it passes them down to user space.
-For now, the getc routines, described in section 10,
-convert these unicodes back into latin-1, so that your adapter
+The acs_getc routine, described in section 10,
+converts these unicodes back into latin-1, so that your adapter
 can deal with them as bytes, which is what traditional C does best.
-Eventually unicode routines will be provided as well
+A few unicode routines are provided as well,
 to move international characters in and out of the bridge layer.
-Meantime you can tap into the buffer yourself if you like.
+See acs_getc_uc() and acs_getsentence_uc() below.
+And you can tap into the buffer yourself if you like.
 
 Note that this doesn't work in screen mode.
 A character in screen memory is a single byte, not a unicode.
@@ -247,20 +248,22 @@ Perhaps iso8859-1 is represented faithfully,
 but I don't know about other charsets.
 It may depend on your locale.
 More research is needed here.
+
 To be honest, this entire acsint system is biased towards linear adapters
 that read from the tty log.
-Many things work in line mode, but are still under development in screen mode.
+Many things work in line mode,
+that are not yet implemented, and may never be implemented, in screen mode.
 *********************************************************************/
 
 #define NUMBUFMARKS 30
 
 struct readingBuffer {
-unsigned int area[TTYLOGSIZE2];
-unsigned char *attribs;
-unsigned int *start, *end;
-unsigned int *cursor;
-unsigned int *v_cursor;
-unsigned int *marks[NUMBUFMARKS];
+	unsigned int area[TTYLOGSIZE2];
+	unsigned char *attribs;
+	unsigned int *start, *end;
+	unsigned int *cursor;
+	unsigned int *v_cursor;
+	unsigned int *marks[NUMBUFMARKS];
 };
 
 /*********************************************************************

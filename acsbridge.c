@@ -721,6 +721,7 @@ if(screenmode) {
 screenSnap();
 refreshed = 1;
 rb->cursor = rb->v_cursor;
+memset(rb->marks, 0, sizeof(rb->marks));
 } else {
 checkAlloc();
 }

@@ -64,14 +64,15 @@ It would be course, perhaps one of 5 levels, but better than nothing.
 
 * Write methods to provide buffer characters in unicode, ascii, or iso8859
 according to your locale.
-getsentence(), setpunc(), replaceword() -
-all these functions should probably come in 3 versions,
-ascii, iso8859-x, and unicode.
-For now it's pretty much ascii across the board,
+Some of this has begun, e.g. getsentence_uc(),
+and macros can handle utf8, as the read side of the tty expects,
+but there is more to do here.
+setpunc(), replaceword(), etc.
+These are basically ascii,
 with iso8859-1 shoehorned in if you need it.
 That covers Spanish French German etc, and will do for now.
 
-* The detection of echo in the acsint driver is bad.
+* The detection of echo in the acsint driver is clunky.
 It doesn't work for unicodes, only ascii,
 and it presupposes a qwerty keyboard.
 If you have another layout like dvorak it won't work at all.
@@ -98,27 +99,6 @@ telling where each line has moved to since our last refresh.
 When this information passes down to the bridge,
 it can move your reading cursor appropriately,
 and any other markers that are tied to the text in screen memory.
-
-* The bridge should track other "pointers" besides the reading cursor.
-As text moves backwards in the tty buffer (line mode),
-or scrolls up the screen (screen mode),
-I keep the reading cursor and any speech index markers
-in sync with the rolling text.
-You won't suddently hear a new sentence unrelated to the one you just heard.
-But I should, perhaps, do the same for some user defined markers.
-At least one, to implement cut&paste.
-Mark the left edge of text, move your reading cursor to the right,
-and when you hear the end of the desired block, issue a command
-to capture text from the left marker to the reading cursor.
-That left marker should track the text, in case any new text is generated.
-But maybe you want to place half a dozen markers in your buffer.
-After all, it's 50K, and that's a lot of realestate.
-Perhaps I should maintain an array of 26 markers,
-and tie them all to the moving text.
-These might correspond to letters, the way you can mark
-lines with letters in ed or in edbrowse.
-I think the bridge should offer this functionality,
-even if the adapters don't use it.
 
 * Fold espeak into the bridge in a seamless fashion.
 That is, set ss_style = SS_STYLE_ESPEAK,
