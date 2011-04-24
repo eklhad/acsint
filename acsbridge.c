@@ -11,12 +11,13 @@ and declared in acsbridge.h.
 #include <stdio.h>
 #include <fcntl.h>
 #include <malloc.h>
+#include <memory.h>
 #include <termios.h>
 #include <sys/select.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <linux/vt.h>
 #include <stdarg.h>
+#include <linux/vt.h>
 
 #include "acsbridge.h"
 
@@ -205,6 +206,7 @@ rb->attribs = 0;
 void
 acs_screenmode(int enabled)
 {
+imark_start = 0;
 /* If you issued this command at the call of a keystroke,
  * and that is what I am expecting / assuming,
  * then yes the buffer will be caught up.
@@ -216,6 +218,7 @@ screenmode = 1;
 screenSnap();
 rb = &screenBuf;
 rb->cursor = rb->v_cursor;
+memset(rb->marks, 0, sizeof(rb->marks));
 } else {
 screenmode = 0;
 checkAlloc();
@@ -653,7 +656,7 @@ rb->end = rb->cursor = rb->start;
 int acs_events(void)
 {
 int nr; // number of bytes read
-int i;
+int i, j;
 int culen; /* catch up length */
 unsigned int *custart; // where does catch up start
 int nlen; // length of new area
@@ -752,6 +755,7 @@ if(acs_debug) acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
 if(nr-i < culen*4) break;
+
 tl = tty_log[minor - 1];
 if(!tl || tl == &tty_nomem) {
 /* not allocated; no room for this data */
@@ -763,25 +767,33 @@ nlen = tl->end - tl->start + culen;
 diff = nlen - TTYLOGSIZE;
 
 if(diff >= tl->end-tl->start) {
-/* complete replacement
- * should never be greater; diff = tl->end - tl->start */
-/* copy the new stuff */
+/* a complete replacement
+ * should never be greater; diff = tl->end - tl->start
+ * copy the new stuff */
 custart = tl->start;
 memcpy(custart, iobuf+i, TTYLOGSIZE*4);
 tl->end = tl->start + TTYLOGSIZE;
 tl->end[0] = 0;
 tl->cursor = 0;
+memset(tl->marks, 0, sizeof(tl->marks));
 if(!screenmode) imark_start = 0;
 } else {
 if(diff > 0) {
 // partial replacement
 memmove(tl->start, tl->start+diff, (tl->end-tl->start - diff)*4);
 tl->end -= diff;
+if(tl->cursor) {
 tl->cursor -= diff;
 if(tl->cursor < tl->start) tl->cursor = 0;
+}
 if(imark_start && !screenmode) {
 imark_start -= diff;
 if(imark_start < tl->start) imark_start = 0;
+}
+for(j=0; j<NUMBUFMARKS; ++j)
+if(tl->marks[j]) {
+tl->marks[j] -= diff;
+if(tl->marks[j] < tl->start) tl->marks[j] = 0;
 }
 }
 /* copy the new stuff */
@@ -800,7 +812,7 @@ if(acs_debug) {
 }
 
 /* If you're in screen mode, I haven't moved your reading cursor,
- * or imark _start, appropriately.
+ * or imark _start, or the pointers in marks[], appropriately.
  * See the todo file for tracking the cursor in screen mode. */
 
 i += culen*4;

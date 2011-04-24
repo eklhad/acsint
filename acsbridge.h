@@ -176,7 +176,7 @@ Section 3: the reading buffer.
 The reading buffer holds the text that you are going to read.
 In screen mode this is a copy of screen memory, also known as a screen snap.
 In line mode this is a log of recent tty output,
-the last 50 characters or so.
+the last 50,000 characters or so.
 either way it is guaranteed to be current and up to date
 when your keystroke handler is called.
 When you hit F2, I bring the reading buffer
@@ -188,13 +188,13 @@ Characters are stored between start and end.
 If start == end then the buffer is empty.
 This is impossible in screen mode; there are always 25 rows
 and 80 columns of something.  Even blank spaces.
-But in line mode there may be nothing if the tty has not generated any output.
+But in line mode there may be nothing if the tty has not generated any output
+for that console since the device was opened.
 
 The cursor points to the text you are currently reading.
 You should advance this cursor as you read along.
 (Or I will do it for you via index markers.)
-This is the only thing in the buffer that you might change.
-Everything else is treated as readonly.
+The text should probably be treated as readonly.
 
 If lots of tty output pushes your cursor off the back of the buffer,
 it will be left as null.
@@ -203,7 +203,26 @@ So be sure to check for null at the top of your event handler.
 You may, upon this condition,
 stop reading, or sound a buzz, or speak a quick overflow message.
 
-If in screen mode, v_cursor points to the visual cursor on screen.
+marks[] is an array of pointers into the tty buffer.
+You can set and read these as you wish.
+I move these along with the text, just like the cursor.
+Thus you can set locations in your buffer and jump back to them as needed.
+They will remain in sync with the moving text.
+But like the cursor, they can become null if a lot of output
+pushes them off the back end of the buffer.
+So check for that.
+In some cases it is convenient to use the preprocessor:
+#define cutLeftMark rb->marks[0]
+Set this to rb->cursor to mark the left boundary
+of a block of text that you plan to cut&paste.
+This mark remains in sync with the text, even if more output is generated.
+Move your cursor to the right edge of the block and issue the cut command.
+
+In screen mode these marks are transient,
+and go away if you switch consoles, or switch back to line mode.
+They also do not move with scrolling text.
+
+When in screen mode, v_cursor points to the visual cursor on screen.
 The reading cursor is set to the visual cursor when
 you switch to screen mode.
 
@@ -216,7 +235,7 @@ and that's the way it passes them down to user space.
 For now, the getc routines, described in section 10,
 convert these unicodes back into latin-1, so that your adapter
 can deal with them as bytes, which is what traditional C does best.
-Eventually unicode routines will be provided as well,
+Eventually unicode routines will be provided as well
 to move international characters in and out of the bridge layer.
 Meantime you can tap into the buffer yourself if you like.
 
@@ -233,12 +252,15 @@ that read from the tty log.
 Many things work in line mode, but are still under development in screen mode.
 *********************************************************************/
 
+#define NUMBUFMARKS 30
+
 struct readingBuffer {
 unsigned int area[TTYLOGSIZE2];
 unsigned char *attribs;
 unsigned int *start, *end;
 unsigned int *cursor;
 unsigned int *v_cursor;
+unsigned int *marks[NUMBUFMARKS];
 };
 
 /*********************************************************************
