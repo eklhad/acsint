@@ -73,6 +73,14 @@ rb->cursor = imark_start + imark_loc[n];
 if(acs_debug)
 acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
+/* should never be past the end of buffer, but let's check */
+if(rb->cursor >= rb->end) {
+rb->cursor = 0;
+imark_start = 0;
+if(acs_debug) acs_log("cursor ran past the end of buffer\n");
+return;
+}
+
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
 if(acs_debug) acs_log("sentence spoken\n");
@@ -687,7 +695,6 @@ i = 0;
 while(i <= nr-4) {
 switch(iobuf[i]) {
 case ACSINT_KEYSTROKE:
-imark_start = 0;
 if(acs_debug) acs_log("key %d\n", iobuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
@@ -1829,6 +1836,7 @@ write(ss_fd1, &ibyte, 1);
 
 imark_start = 0;
 bnsf = 0;
+if(acs_debug) acs_log("shutup\n");
 } // ss_shutup
 
 void
