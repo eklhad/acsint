@@ -68,6 +68,7 @@ rather than reimplementing the select logic.
 
 extern int acs_fd; // file descriptor
 extern int acs_debug; // set to 1 for acs debugging
+int acs_log(const char *msg, ...);
 
 // Returns the file descriptor, which is also stored in acs_fd.
 // Also opens /dev/vcsa, so you need permission for that.
@@ -1202,25 +1203,22 @@ Ask whether the synthesizer is still talking.
 If not, then it is ready for more speech.
 This is a subtle function, and its implementation may vary with the style.
 
-One thing we can't do is poll ss_fd1,
-and ask whether writing would block.
+One thing we can't do is poll ss_fd1 and ask whether writing would block.
 Most units have an on-board buffer and will happily accept
 the next sentence while it is in the middle of speaking the current sentence.
-And if you're going through a unix pipe, it has an internal buffer
+And if you're going through a unix pipe, it has an internal buffer too,
 before you get to the child process.
 This is not very helpful when it comes to synchronized speech.
 
 The Doubletalk uses RI (ring indicator) to tell us whether it is
 actually speaking, and that is perfect if you have low level
 access to the uart, as we did when the adapter was in the kernel.
-But when working through /dev/ttyS0, you can't get this information.
-It's just not available.
-So that won't work either.
-Besides, that is Doubletalk specific.
+We do, as shown by getModemStatus(),
+and I may take advantage of this some day.
 
 You could time it, and say each word takes so many seconds to speak
 at the current speech rate.
-I've done this before, and it's ugly!
+I've done this before, and it's butt ugly!
 But it's all you have in SS_STYLE_GENERIC.
 
 The last and best solution is index markers.
@@ -1253,7 +1251,7 @@ In contrast, a sentence or phrase or line
 should be sent with index markers,
 and those markers are used to track the reading cursor
 and maintain talking status.
-The unit is "still talking" until the penultimate marker is returned.
+The unit is "still talking" until the last marker is returned.
 And that point it is done talking and the adapter can
 gather up and transmit the next sentence.
 

@@ -70,9 +70,12 @@ n -= imark_first;
 if(!imark_start) return;
 if(n < 0 || n >= imark_end) return;
 rb->cursor = imark_start + imark_loc[n];
+if(acs_debug)
+acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
+if(acs_debug) acs_log("sentence spoken\n");
 imark_start = 0;
 imark_end = 0;
 }
@@ -1493,7 +1496,7 @@ static struct termios tio; // tty io control
 static unsigned int thisbaud = B9600;
 int ess_flowcontrol(int hw)
 {
-tio.c_iflag = IGNBRK | INPCK | ISTRIP;
+tio.c_iflag = IGNBRK | ISTRIP | IGNPAR;
 if(!hw) tio.c_iflag |= IXON | IXOFF;
 tio.c_oflag = 0;
 tio.c_cflag = PARENB | HUPCL | CS8 | CREAD | thisbaud | CLOCAL;
@@ -1803,6 +1806,8 @@ write(ss_fd1, ibuf, strlen(ibuf));
 if(s > t)
 write(ss_fd1, t, s-t);
 ss_cr();
+if(acs_debug)
+acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);
 } // ss_say_string_imarks
 
 void ss_shutup(void)
@@ -2113,16 +2118,9 @@ if(ss_blocking()) return 1;
 if(!imark_start) return 0;
 
 /* If we have reached the last index marker, the sentence is done.
+ * Or nearly done - still speaking the last word.
  * In that case imark_start should be 0, and we shouldn't be here.
- * But if we are on the penultimate index marker,
- * the sentence is nearly done, and that's close enough.
- * Start sending the next sentence, and things won't be so choppy. */
-if(imark_end < 2) return 0;
-if(!rb->cursor) return 0;
-if(rb->cursor - imark_start == imark_loc[imark_end-2])
-return 0;
-
-/* Still waiting for index markers. */
+ * But we are here, so return 1. */
 return 1;
 } /* ss_stillTalking */
 
