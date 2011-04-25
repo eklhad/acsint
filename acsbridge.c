@@ -75,7 +75,8 @@ acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
 /* should never be past the end of buffer, but let's check */
 if(rb->cursor >= rb->end) {
-rb->cursor = 0;
+rb->cursor = rb->end;
+if(rb->end > rb->start) --rb->cursor;
 imark_start = 0;
 if(acs_debug) acs_log("cursor ran past the end of buffer\n");
 return;
@@ -1223,6 +1224,7 @@ if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
+if(o) o[t-dest] = s-rb->cursor;
 *t++ = c;
 ++s;
 if(prop&ACS_GS_STOPLINE) break;
@@ -1395,6 +1397,7 @@ if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
+if(o) o[t-dest] = s-rb->cursor;
 *t++ = c;
 ++s;
 if(prop&ACS_GS_STOPLINE) break;
@@ -1779,9 +1782,10 @@ if(ss_style == SS_STYLE_BNS || ss_style == SS_STYLE_ACE) mark = 0;
 imark_first = mark;
 
 t = s;
-while(*s) {
+while(1) {
 if(*o && mark >= 0 && mark <= 100) { // mark here
 // have to send the prior word
+if(s > t)
 write(ss_fd1, t, s-t);
 t = s;
 // set the index marker
@@ -1807,11 +1811,16 @@ write(ss_fd1, ibuf, strlen(ibuf));
 ++mark;
 }
 }
+if(!*s) break;
 ++s, ++o;
 }
 
+/* End of string should always be an index marker,
+ * so there should be nothing else to send.
+ * But just in case ... */
 if(s > t)
 write(ss_fd1, t, s-t);
+
 ss_cr();
 if(acs_debug)
 acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);
