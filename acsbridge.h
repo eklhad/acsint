@@ -1131,7 +1131,7 @@ extern int ss_fd0, ss_fd1; // file descriptor
 
 // report an index marker
 typedef void (*imark_handler_t)(int mark);
-extern imark_handler_t imark_h;
+extern imark_handler_t ss_imark_h;
 
 // report talking status
 typedef void (*talking_handler_t)(int status);
