@@ -79,15 +79,15 @@ rb->cursor = rb->end;
 if(rb->end > rb->start) --rb->cursor;
 imark_start = 0;
 if(acs_debug) acs_log("cursor ran past the end of buffer\n");
-return;
 }
 
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
 if(acs_debug) acs_log("sentence spoken\n");
 imark_start = 0;
-imark_end = 0;
 }
+
+if(ss_imark_h) (*ss_imark_h)(n+1, imark_end);
 } // indexSet
 
 int acs_debug = 0;
@@ -1659,7 +1659,6 @@ case SS_STYLE_DOUBLE:
 if(c >= 1 && c <= 99) {
 if(acs_debug) acs_log("index %d\n", c);
 indexSet(c);
-if(ss_imark_h) (*ss_imark_h)(c);
 ++i;
 continue;
 }
@@ -1675,7 +1674,6 @@ if(!strncmp(ss_inbuf+i, "\33P0;32;", 7)) {
 if(ss_inbuf[i+7] == 'z') {
 if(acs_debug) acs_log("index %d\n", 0);
 indexSet(0);
-if(ss_imark_h) (*ss_imark_h)(0);
 i += 8;
 continue;
 }
@@ -1684,7 +1682,6 @@ if(ss_inbuf[i+8] == 'z' && isdigit((unsigned char)ss_inbuf[i+7])) {
 c = ss_inbuf[i+7] - '0';
 if(acs_debug) acs_log("index %d\n", c);
 indexSet(c);
-if(ss_imark_h) (*ss_imark_h)(c);
 i += 9;
 continue;
 }
@@ -1694,7 +1691,6 @@ c = ss_inbuf[i+7] - '0';
 c = 10*c + ss_inbuf[i+8] - '0';
 if(acs_debug) acs_log("index %d\n", c);
 indexSet(c);
-if(ss_imark_h) (*ss_imark_h)(c);
 i += 10;
 continue;
 }
@@ -1709,7 +1705,6 @@ case SS_STYLE_ACE:
 if(c == 6) {
 if(acs_debug) acs_log("index f\n", 0);
 indexSet(0);
-if(ss_imark_h) (*ss_imark_h)(0);
 ++i;
 continue;
 }

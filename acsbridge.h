@@ -1129,11 +1129,11 @@ much like the handlers seen above.
 
 extern int ss_fd0, ss_fd1; // file descriptor
 
-// report an index marker
-typedef void (*imark_handler_t)(int mark);
+/* Which index marker has been returned to us, example 2 out of 5 */
+typedef void (*imark_handler_t)(int mark, int lastmark);
 extern imark_handler_t ss_imark_h;
 
-// report talking status
+/* This has not yet been implemented, and may never come. */
 typedef void (*talking_handler_t)(int status);
 extern talking_handler_t talking_h;
 
