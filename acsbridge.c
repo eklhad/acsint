@@ -1329,9 +1329,6 @@ continue;
 if(prop & ACS_GS_ONEWORD) break;
 } // loop over characters in the tty buffer
 
-/* get rid of the last space */
-if(t > dest+1 && t[-1] == ' ')
---t;
 *t = 0;
 if(o) o[t-dest] = s-rb->cursor;
 
@@ -1484,10 +1481,6 @@ if(prop & ACS_GS_ONEWORD) break;
 
 *t = 0;
 if(o) o[t-dest] = s-rb->cursor;
-
-/* get rid of the last space */
-if(t > dest+1 && t[-1] == ' ')
-*--t = 0;
 
 return 0;
 } /* acs_getsentence_uc */
