@@ -725,7 +725,6 @@ i += 4;
 break;
 
 case ACSINT_FGC:
-imark_start = 0;
 if(acs_debug) acs_log("fg %d\n", iobuf[i+1]);
 acs_fgc = iobuf[i+1];
 if(screenmode) {
