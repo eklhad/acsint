@@ -1762,6 +1762,7 @@ int ss_say_string_imarks(const char *s, const ofs_type *o, int mark)
 {
 const char *t;
 char ibuf[12]; // index mark buffer
+const ofs_type *o0 = o;
 
 imark_start = rb->cursor;
 imark_end = 0;
@@ -1781,6 +1782,12 @@ imark_loc[imark_end++] = *o;
 ibuf[0] = 0;
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+/* The following if statement addresses a bug that is, as far as I know,
+ * specific to doubletalk.
+ * We can't send a single letter, and then an index marker
+ * on the next word.  It screws everything up!
+ * But we have to send it if that is the end of the sentence. */
+if(o-o0 > 2 || !*s)
 sprintf(ibuf, "\1%di", mark);
 break;
 case SS_STYLE_BNS:
@@ -1793,10 +1800,9 @@ case SS_STYLE_DECPC: case SS_STYLE_DECEXP:
 sprintf(ibuf, "[:i r %d]", mark);
 break;
 } // switch
-if(ibuf[0]) {
+if(ibuf[0])
 write(ss_fd1, ibuf, strlen(ibuf));
 ++mark;
-}
 }
 if(!*s) break;
 ++s, ++o;
