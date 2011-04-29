@@ -735,13 +735,14 @@ return 1;
 
 static void sig_h (int n)
 {
+int status;
+/* You have to call wait to properly dispose of the defunct child process. */
+wait(&status);
 pss_broken = 1;
-/* reset the signal handler */
-signal(n, sig_h);
 }
 
 /* Spin off the child process with a vector of args */
-/* I wanted to use const char * const, but that's now how execvp works. */
+/* I wanted to use const char * const, but that's not how execvp works. */
 int pss_openv(const char *progname,  char * const  alist[])
 {
 int p0[2]; /* pipe reading ss_fd0 */
@@ -789,7 +790,7 @@ return 0;
 /* This isn't like printfv; I don't have a string with percent directives
  * to tell me how many args you are passing, or the type of each arg.
  * So each arg must be a string, and you must end the list with NULL.
- * Unfortunately I have to repack everything, so arg0 is the program name. */
+ * Unfortunately I have to repack everything to make arg0 the program name. */
 #define MAX_ARGS 16
 int pss_open(const char *progname, ...)
 {
