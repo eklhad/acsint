@@ -1121,34 +1121,45 @@ and different if we are talking to a software synth through a pipe.
 With acs_fd and ss_fd in place, the bridge can perform some functions for you,
 like reading from the two file descriptors simultaneously, and watching for events.
 We've already seen the acsint events, keystrokes, console switch, etc.
-The most common synthesizer events are index markers and speech status.
+The most common synthesizer events are index markers.
 If I am able to capture these events
-they will be passed back to you through handlers,
+they will be passed back to you through the following handler,
 much like the handlers seen above.
 *********************************************************************/
 
-extern int ss_fd0, ss_fd1; // file descriptor
+extern int ss_fd0, ss_fd1; /* file descriptors */
 
 /* Which index marker has been returned to us, example 2 out of 5 */
 typedef void (*imark_handler_t)(int mark, int lastmark);
 extern imark_handler_t ss_imark_h;
+extern unsigned int *imark_start; /* for internal bookkeeping */
 
-/* This has not yet been implemented, and may never come. */
-typedef void (*talking_handler_t)(int status);
-extern talking_handler_t talking_h;
-
-// External serial synthesizer, typically /dev/ttySn
-// baud must be one of the standard baud rates from 1200 to 115200
-// Sets ss_fd, and returns same.
+/* External serial synthesizer, typically /dev/ttySn
+ * baud must be one of the standard baud rates from 1200 to 115200
+ * Sets ss_fd, and returns same. */
 int ess_open(const char *devname, int baud);
 
-// Close the synthesizer connection, no matter what kind.
+/* Close the synthesizer connection, no matter what kind. */
 void ss_close(void);
 
-// The adapter can change the serial flow control on the fly.
-// I've had the cts line fail on my unit, or at least flake out on me.
-// ess_open sets hardware flow control.
+/* The adapter can change the serial flow control on the fly.
+ * I've had the cts line fail on my unit, or at least flake out on me.
+ * ess_open sets hardware flow control. */
 int ess_flowcontrol(int hardware);
+
+/* open a software synth over a pipe.
+ * This calls execvp, so the first arg must be
+ * the name of the program to run.
+ * This will often be the same as progname,
+ * unless you want to specify progname with an absolute path. */
+int pss_openv(const char *progname,  char * const  alist[]);
+
+/* Like the above, but you pass the arguments inline.
+ * This is like execl verses execv.
+ * Unlike printfv, I don't have a string with percent directives
+ * to tell me how many args you are passing, or the type of each arg.
+ * So each arg must be a string, and you must end the list with NULL. */
+int pss_open(const char *progname, ...);
 
 /*********************************************************************
 Wait for communication from either the acsint kernel module or the synthesizer.

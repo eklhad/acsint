@@ -3,12 +3,20 @@ KERNELDIR = /lib/modules/$(shell uname -r)/build
 obj-m += ttyclicks.o
 obj-m += acsint.o
 
-all : acstest
+all : acstest pipetest
 
-acstest : acstest.o acsbridge.o acsbind.o
-	cc -o acstest acstest.o acsbridge.o acsbind.o
+acstest : acstest.o libacs.a
+	cc -o acstest acstest.o libacs.a
 
-acstest.o acsbridge.o acsbind.o : acsint.h acsbridge.h
+pipetest : pipetest.o libacs.a
+	cc -o pipetest pipetest.o libacs.a
+
+#  bridge objects
+BOBJS = acsbridge.o acsbind.o acstalk.o
+$(BOBJS) : acsint.h acsbridge.h
+
+libacs.a : $(BOBJS)
+	ar rs libacs.a $?
 
 modules:
 	make -C $(KERNELDIR) M=$(shell pwd)

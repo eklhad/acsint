@@ -1,5 +1,8 @@
-/* acsbind.c: bind speech commands and macros to keys */
-/* Also manage punctuation pronunciations and word replacements. */
+/*********************************************************************
+File: acsbind.c
+Description: bind speech commands and macros to keys.
+Also manage punctuation pronunciations and word replacements.
+*********************************************************************/
 
 #include <string.h>
 #include <malloc.h>
