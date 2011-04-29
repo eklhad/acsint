@@ -18,11 +18,13 @@ and declared in acsbridge.h.
 #include <unistd.h>
 #include <stdarg.h>
 #include <linux/vt.h>
+#include <signal.h>
 
 #include "acsbridge.h"
 
 #define stringEqual !strcmp
 
+#define MAX_ARGS 16
 #define MAX_ERRMSG_LEN 256 // description of error
 #define MAXNOTES 10 // how many notes to play in one call
 #define IOBUFSIZE (TTYLOGSIZE*4 + 2000) /* size of input buffer */
@@ -33,6 +35,8 @@ and declared in acsbridge.h.
 #define VCREADOFFSET 7000
 #define SSBUFSIZE 64 // synthesizer buffer for events
 
+static int p1[2], p2[2];
+static int pss_pid;
 int acs_fd = -1; // file descriptor for /dev/acsint
 static int vcs_fd; // file descriptor for /dev/vcsa
 static unsigned char vcs_header[4];
@@ -1487,7 +1491,7 @@ return 0;
 
 // Synthesizer descriptor and some routines for a serial connection.
 
-int ss_fd0 = -1, ss_fd1;
+int ss_fd0 = -1, ss_fd1 = -1;
 
 talking_handler_t talking_h;
 imark_handler_t ss_imark_h;
@@ -2133,4 +2137,61 @@ if(!imark_start) return 0;
  * But we are here, so return 1. */
 return 1;
 } /* ss_stillTalking */
+static void sighand (int signal)
+{
+int status;
+wait(&status);
+}
 
+int pss_openv(const char *progname,  char * const  argv[])
+{
+if (pipe(p1) == -1 || pipe(p2) == -1) 
+return -1;
+fflush(NULL); /* Just in case we have any output pending */
+struct sigaction sa;
+memset(&sa, 0, sizeof(sa));
+sa.sa_handler = sighand;
+sigemptyset(&sa.sa_mask);
+sigaction(SIGCHLD, &sa, NULL);
+switch((pss_pid = fork())) {
+case -1:
+perror("fork");
+return -1;
+break;
+case 0: /* child */
+if (dup2(p1[0], STDIN_FILENO) == -1 ||
+dup2(p2[1], STDOUT_FILENO) == -1) {
+perror("dup2");
+exit(1);
+}
+/* close the unneeded fds */
+if (acs_fd)
+close(acs_fd);
+close(p1[1]);
+close(p2[0]);
+if (execv(progname, argv) == -1) {
+perror("execv");
+exit(1);
+}
+break;
+default: /* parent */
+ss_fd0 = p2[0];
+ss_fd1 = p1[1];
+} /* switch */
+return 0;
+}
+
+int pss_open(const char *progname, const char *args, ...)
+{
+va_list ap;
+char * array[MAX_ARGS+1];
+int count = 0;
+va_start(ap, args);
+while (count < MAX_ARGS && args != NULL) {
+array[count++] = args;
+args = va_arg(ap, const char *);
+}
+array[count] = NULL;
+va_end(ap);
+return pss_openv(progname, array);
+}
