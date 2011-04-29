@@ -29,7 +29,7 @@ int ss_fd0 = -1, ss_fd1 = -1;
 /* parent process, if a child is forked to manage the software synth. */
 static int pss_pid;
 /* Set this for broken pipe - need to respawnw the child */
-static int pss_broken;
+int pss_broken;
 
 /* What is the style of synthesizer? */
 int ss_style;
@@ -781,6 +781,7 @@ close(p1[0]);
 
 /* watch for broken pipe, indicating no child process */
 signal(SIGPIPE, sig_h);
+pss_broken = 0;
 
 return 0;
 } /* pss_openv */

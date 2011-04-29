@@ -1161,6 +1161,10 @@ int pss_openv(const char *progname,  char * const  alist[]);
  * So each arg must be a string, and you must end the list with NULL. */
 int pss_open(const char *progname, ...);
 
+/* Check the following variable after anything that might write to or read from the pipe.
+ * A broken pipe implies the child process has died. */
+extern int pss_broken;
+
 /*********************************************************************
 Wait for communication from either the acsint kernel module or the synthesizer.
 If you must monitor other channels as well, then this won't work for you.
