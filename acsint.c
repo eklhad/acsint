@@ -110,7 +110,7 @@ static void cb_append(struct cbuf *cb, unsigned int c)
 	if (cb->head == cb->end)
 		cb->head = cb->start;
 	if (cb->head == cb->tail) {
-/* buffer full, drop the last character */
+		/* buffer full, drop the last character */
 		if (cb->tail == cb->mark)
 			cb->mark = 0;
 		if (cb->tail == cb->output)
@@ -300,7 +300,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 	catchup = false;
 	if ((!cb && !cb_nomem_refresh[fg_console]) || cb->head != cb->mark) {
-/* MORECHARS doesn't force us to catch up, but anything else does. */
+		/* MORECHARS doesn't force us to catch up, but anything else does. */
 		for (t = temp_tail; t < temp_head; t += 4) {
 			if (*t == ACSINT_TTY_MORECHARS) {
 				t += 4;
@@ -332,7 +332,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 		cu_cmd[3] = (culen >> 8);
 
 		if (cb) {
-/* One clump or two. */
+			/* One clump or two. */
 			if (cb->head >= cb->mark) {
 				if (culen)
 					memcpy(cb_staging, cb->mark, culen * 4);
@@ -710,7 +710,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	}
 
 	if ((athead || echo) && rbuf_head <= rbuf_end - 8) {
-/* throw the "more stuff" event */
+		/* throw the "more stuff" event */
 		if (rbuf_head == rbuf_tail)
 			wake = true;
 		rbuf_head[0] = ACSINT_TTY_MORECHARS;
@@ -910,7 +910,7 @@ regular:
 
 event:
 	if (keep) {
-/* If this notifier is not called by an interrupt, then we need the spinlock */
+		/* If this notifier is not called by an interrupt, then we need the spinlock */
 		raw_spin_lock_irqsave(&acslock, irqflags);
 		if (rbuf_head <= rbuf_end - 4) {
 			if (rbuf_head == rbuf_tail)
@@ -927,13 +927,15 @@ event:
 	}
 
 	if (send) {
-/* Remember this key, to check for echo.
- * I should be responding to KBD_UNICODE, and storing the unicode,
- * but my keyboard doesn't generate that event.  Don't know why.
- * And trying to deal with KEYSYM is a nightmare.
- * So that leaves KEYCODE, which I must (roughly) translate.
- * If your keyboard isn't qwerty, we're screwed.
- * Somebody help me with this one. */
+		/*
+		 * Remember this key, to check for echo.
+		 * I should be responding to KBD_UNICODE, and storing the unicode,
+		 * but my keyboard doesn't generate that event.  Don't know why.
+		 * And trying to deal with KEYSYM is a nightmare.
+		 * So that leaves KEYCODE, which I must (roughly) translate.
+		 * If your keyboard isn't qwerty, we're screwed.
+		 * Somebody help me with this one.
+		 */
 		char keychar;
 		static const char lowercode[] =
 		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";

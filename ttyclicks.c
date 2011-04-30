@@ -378,7 +378,7 @@ static void popfifo(unsigned long notUsed)
 	mod_timer(&note_timer, jiffies + jifpause);
 
 	if (freq < 0) {
-/* This is a rest between notes */
+		/* This is a rest between notes */
 #if KDS
 		kd_mksound(0, 0);
 #else
@@ -418,7 +418,7 @@ void ttyclicks_notes(const short *p)
 		if (i == SF_LEN)
 			i = 0;	/* wrap around */
 		if (i == sf_tail) {
-/* fifo is full */
+			/* fifo is full */
 			raw_spin_unlock(&speakerlock);
 			return;
 		}
@@ -548,12 +548,12 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 /* jifpause should always be positive */
 	if (sleep && jifpause > 0) {
 
-/*
- * This magical line of code only works if you edit vt.c
- * and recompile the kernel.
- * A patch for 2.3.37 can be found here.
- * http://www.eklhad.net/linux/click-sleep-2.6.37.patch
- */
+		/*
+		 * This magical line of code only works if you edit vt.c
+		 * and recompile the kernel.
+		 * A patch for 2.3.37 can be found here.
+		 * http://www.eklhad.net/linux/click-sleep-2.6.37.patch
+		 */
 
 		param->c = 0xac97;
 
