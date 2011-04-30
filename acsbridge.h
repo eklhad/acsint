@@ -442,8 +442,6 @@ You are sitting quietly, waiting for something to happen.
 You get the more-chars event.
 Call refresh() to update the buffer, then read away.
 The user automatically hears any new text that is generated.
-I'm one of the few people who doesn't like this autoread feature,
-but most people do, so there it is.
 
 You do not need to call this on keystrokes;
 the buffer is automatically brought up to date.
