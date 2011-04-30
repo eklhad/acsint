@@ -28,7 +28,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
-    ("Accessibility intercepter - pass keystroke and tty events to user space");
+	("Accessibility intercepter - pass keystroke and tty events to user space");
 
 static int major = 0;
 module_param(major, int, 0);
@@ -54,7 +54,7 @@ static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
 
 /* in case we can't malloc a buffer */
 static const char cb_nomem_message[] =
-    "Kernel cannot allocate space for this console";
+	"Kernel cannot allocate space for this console";
 
 /* set to 1 if you have sent the above nomem message down to the user */
 static unsigned char cb_nomem_refresh[MAX_NR_CONSOLES];
@@ -186,7 +186,7 @@ static void tty_pushstring(const char *cp, int len)
 	if (!d)
 		return;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
 	tty = d->vc_tty;
 #else
 	tty = d->port.tty;
@@ -260,7 +260,7 @@ static int device_close(struct inode *inode, struct file *file)
 }
 
 static ssize_t device_read(struct file *file, char *buf, size_t len,
-			   loff_t * offset)
+			   loff_t *offset)
 {
 	int bytes_read = 0;
 	struct cbuf *cb;
@@ -402,7 +402,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 }				/* device_read */
 
 static ssize_t device_write(struct file *file, const char *buf, size_t len,
-			    loff_t * offset)
+			    loff_t *offset)
 {
 	char c;
 	const char *p = buf;
@@ -566,11 +566,11 @@ static unsigned int device_poll(struct file *fp, poll_table * pt)
 
 static struct file_operations fops = {
 owner:	THIS_MODULE,
-open:	device_open,
-release:device_close,
-read:	device_read,
-write:	device_write,
-poll:	device_poll,
+open : device_open,
+release : device_close,
+read : device_read,
+write : device_write,
+poll : device_poll,
 };
 
 static struct miscdevice acsint_dev = {
@@ -754,8 +754,8 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 
 static struct console acsintconsole = {
 name:	"acsint",
-write:	my_printk,
-flags:	CON_ENABLED,
+write : my_printk,
+flags : CON_ENABLED,
 };
 
 /* Notifiers: keyboard events and tty events. */

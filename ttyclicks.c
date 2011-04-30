@@ -8,14 +8,14 @@
  * before the speech synthesizer has uttered a word.
  * It also throttles the output, which would otherwise fly by the screen
  * faster than any blind person could even so much as hit control s.
- * 
+ *
  * Copyright (C) Karl Dahlke, 2011.
  * This software may be freely distributed under the GPL,
  * general public license, as articulated by the Free Software Foundation.
- * 
+ *
  * This module uses notifiers, and will not work with kernels prior to 2.6.26.
  * Type `uname -r` to find your kernel version.
- * 
+ *
  * Compile this as a lkernel module on your system.
  * Then run insmod on the resulting kernel object.
  */
@@ -37,7 +37,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
-    ("Console output generates clicks, resembling a mechanical teletype.");
+	("Console output generates clicks, resembling a mechanical teletype.");
 
 static int enabled = 1;
 module_param(enabled, int, 0);
@@ -115,8 +115,8 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 
 static struct console clickconsole = {
 name:	"pc clicks",
-write:	my_printk,
-flags:	CON_ENABLED,
+write :	my_printk,
+flags : CON_ENABLED,
 /* hope everything else is ok being zero or null */
 };
 
@@ -278,7 +278,7 @@ static struct notifier_block nb_key = {
 
 static DEFINE_RAW_SPINLOCK(speakerlock);
 
-#if ! KDS
+#if !KDS
 /* togle the inbuilt speaker */
 static void spk_toggle(void)
 {
