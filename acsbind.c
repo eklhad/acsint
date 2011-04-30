@@ -72,10 +72,12 @@ int acs_ascii2mkcode(const char *s, char **endptr)
 int ss = 0;
 int key;
 unsigned char c;
+
 	static const unsigned char numpad[] = {
 KEY_KPASTERISK, KEY_KPPLUS, 0, KEY_KPMINUS, KEY_KPDOT, KEY_KPSLASH,
 KEY_KP0, KEY_KP1, KEY_KP2, KEY_KP3, KEY_KP4,
 KEY_KP5, KEY_KP6, KEY_KP7, KEY_KP8, KEY_KP9};
+
 static const unsigned char lettercode[] = {
 KEY_A, KEY_B, KEY_C, KEY_D, KEY_E,
 KEY_F, KEY_G, KEY_H, KEY_I, KEY_J,
@@ -83,6 +85,22 @@ KEY_K, KEY_L, KEY_M, KEY_N, KEY_O,
 KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T,
 KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y,
 KEY_Z};
+
+/* We talk about keywords all the time, but these really are words for keys. */
+static struct keyword {
+const char *name;
+int keycode;
+} keywords[] = {
+{"up", KEY_UP},
+{"left", KEY_LEFT},
+{"right", KEY_RIGHT},
+{"down", KEY_DOWN},
+{"home", KEY_HOME},
+{"scroll", KEY_SCROLLLOCK},
+{"pause", KEY_PAUSE},
+{"sysrq", KEY_SYSRQ},
+{0, 0}};
+struct keyword *kw;
 
 if(s[0] == '+') ss = ACS_SS_SHIFT, ++s;
 else if(s[0] == '^') ss = ACS_SS_CTRL, ++s;
@@ -113,51 +131,11 @@ c = (unsigned char) *++s;
 goto done;
 }
 
-if(lettermatch_ci(s, "up", 2)) {
-key = KEY_UP;
-s += 2;
-goto done;
-}
-
-if(lettermatch_ci(s, "down", 4)) {
-key = KEY_DOWN;
-s += 4;
-goto done;
-}
-
-if(lettermatch_ci(s, "left", 4)) {
-key = KEY_LEFT;
-s += 4;
-goto done;
-}
-
-if(lettermatch_ci(s, "right", 5)) {
-key = KEY_RIGHT;
-s += 5;
-goto done;
-}
-
-if(lettermatch_ci(s, "home", 4)) {
-key = KEY_HOME;
-s += 4;
-goto done;
-}
-
-if(lettermatch_ci(s, "scroll", 6)) {
-key = KEY_SCROLLLOCK;
-s += 6;
-goto done;
-}
-
-if(lettermatch_ci(s, "sysrq", 5)) {
-key = KEY_SYSRQ;
-s += 5;
-goto done;
-}
-
-if(lettermatch_ci(s, "pause", 5)) {
-key = KEY_PAUSE;
-s += 5;
+for(kw=keywords; kw->name; ++kw) {
+int l = strlen(kw->name);
+if(!lettermatch_ci(s, kw->name, l)) continue;
+key = kw->keycode;
+s += l;
 goto done;
 }
 
