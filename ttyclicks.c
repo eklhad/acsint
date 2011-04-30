@@ -61,8 +61,7 @@ MODULE_PARM_DESC(kmsg,
 
 static int sleep = 0;
 module_param(sleep, int, 0);
-MODULE_PARM_DESC(sleep,
-		 "sleep between the clicks of the output characters,\n\
+MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters,\n\
 rather than a CPU busy loop.\n\
 Default is 0 (no).\n\
 This does not work unless you patch vt.c.");
@@ -109,7 +108,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 	char c;
 	while (len--) {
 		c = *msg++;
-		if (c == '\n' && ttyclicks_on&ttyclicks_kmsg)
+		if (c == '\n' && ttyclicks_on & ttyclicks_kmsg)
 			ttyclicks_notes(printk_sound);
 	}
 }				/* my_printk */
@@ -167,7 +166,7 @@ static void dropKeysPending(int mark)
 static int charIsEcho(char c)
 {
 	int rc = 0, j;
-unsigned long flags;
+	unsigned long flags;
 	char d;
 
 /* Do the high runner case first. */
@@ -303,25 +302,28 @@ static void spk_toggle(void)
 /* the sound of a character click */
 void ttyclicks_click(void)
 {
-if(!ttyclicks_on) return;
+	if (!ttyclicks_on)
+		return;
 #if KDS
-kd_mkpulse(TICKS_CLICK);
+	kd_mkpulse(TICKS_CLICK);
 #else
 	spk_toggle();
 	udelay(TICKS_CLICK);
 	spk_toggle();
 #endif
 }				/* ttyclicks_click */
+
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
 {
 	int i;
 
-if(!ttyclicks_on) return;
+	if (!ttyclicks_on)
+		return;
 
 #if KDS
-kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
+	kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
 #else
 	for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
 		spk_toggle();
@@ -329,6 +331,7 @@ kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
 	}
 #endif
 }				/* ttyclicks_cr */
+
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
 /*
@@ -346,7 +349,7 @@ static void popfifo(unsigned long notUsed)
 {
 	unsigned long flags;
 	short i, freq, duration;
-int jifpause;
+	int jifpause;
 
 	raw_spin_lock_irqsave(&speakerlock, flags);
 
@@ -355,7 +358,7 @@ int jifpause;
 	if ((i = sf_tail) == sf_head) {
 		/* turn off singing speaker */
 #if KDS
-kd_mksound(0, 0);
+		kd_mksound(0, 0);
 #else
 		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
 #endif
@@ -371,19 +374,19 @@ kd_mksound(0, 0);
 		i = 0;
 	sf_tail = i;
 
-jifpause = msecs_to_jiffies(duration*10);
+	jifpause = msecs_to_jiffies(duration * 10);
 	mod_timer(&note_timer, jiffies + jifpause);
 
 	if (freq < 0) {
 /* This is a rest between notes */
 #if KDS
-kd_mksound(0, 0);
+		kd_mksound(0, 0);
 #else
 		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
 #endif
 	} else {
 #if KDS
-kd_mksound(freq, jifpause);
+		kd_mksound(freq, jifpause);
 #else
 		duration = 1193182 / freq;
 		outb_p(inb_p(PORT_SPEAKER) | 3, PORT_SPEAKER);
@@ -403,7 +406,8 @@ void ttyclicks_notes(const short *p)
 {
 	short i;
 
-if(!ttyclicks_on) return;
+	if (!ttyclicks_on)
+		return;
 
 	raw_spin_lock(&speakerlock);
 
@@ -448,7 +452,7 @@ static int soundFromChar(char c, int minor)
 	};
 
 /* are sounds disabled? */
-	if (!(ttyclicks_on&ttyclicks_tty))
+	if (!(ttyclicks_on & ttyclicks_tty))
 		return 0;
 
 	if (c == '\07') {
