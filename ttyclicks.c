@@ -49,7 +49,7 @@ module_param(fgtty, int, 0);
 MODULE_PARM_DESC(fgtty,
 		 "foreground tty generates clicks and chirps, default = 1 (yes)");
 
-static int cursormotion = 0;
+static int cursormotion;
 module_param(cursormotion, int, 0);
 MODULE_PARM_DESC(cursormotion,
 		 "generate clicks for output characters that move the cursor or set screen attributes; default is 0 (no)");
@@ -59,7 +59,7 @@ module_param(kmsg, int, 0);
 MODULE_PARM_DESC(kmsg,
 		 "kernel warning/error message generates a sequence of tones to get your attension, default = 1 (yes)");
 
-static int sleep = 0;
+static int sleep;
 module_param(sleep, int, 0);
 MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters,\n\
 rather than a CPU busy loop.\n\
@@ -355,7 +355,8 @@ static void popfifo(unsigned long notUsed)
 
 	del_timer(&note_timer);
 
-	if ((i = sf_tail) == sf_head) {
+	i = sf_tail;
+	if (i == sf_head) {
 		/* turn off singing speaker */
 #if KDS
 		kd_mksound(0, 0);

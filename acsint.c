@@ -30,7 +30,7 @@ MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
 	("Accessibility intercepter - pass keystroke and tty events to user space");
 
-static int major = 0;
+static int major;
 module_param(major, int, 0);
 MODULE_PARM_DESC(major,
 		 "major number for /dev/acsint, default is dynamic allocation through misc_register");
