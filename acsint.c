@@ -494,9 +494,8 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			notes[2 * j] = 0;
 			if (j)
 				ttyclicks_notes(notes);
-			for (; j < nn && len >= 3; ++j, len -= 3) {
+			for (; j < nn && len >= 3; ++j, len -= 3)
 				p += 3;
-			}
 			break;
 
 		case ACSINT_BYPASS:
@@ -715,11 +714,10 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 			wake = true;
 		rbuf_head[0] = ACSINT_TTY_MORECHARS;
 		rbuf_head[1] = echo;
-		if (echo) {
+		if (echo)
 			*(unsigned int *)(rbuf_head + 4) = c;
-		} else {
+		else
 			*(unsigned int *)(rbuf_head + 4) = 0;
-		}
 		rbuf_head += 8;
 	}
 

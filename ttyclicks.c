@@ -477,9 +477,8 @@ static int soundFromChar(char c, int minor)
 
 /* I don't know what to do with nonprintable characters. */
 /* I'll just pause, like they are spaces. */
-	if (c >= 0 && c <= ' ') {
+	if (c >= 0 && c <= ' ')
 		return TICKS_CHARWAIT;
-	}
 
 /* regular printable character */
 	ttyclicks_click();
