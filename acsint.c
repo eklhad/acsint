@@ -186,11 +186,7 @@ static void tty_pushstring(const char *cp, int len)
 	if (!d)
 		return;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
-	tty = d->vc_tty;
-#else
 	tty = d->port.tty;
-#endif
 	if (!tty)
 		return;
 
@@ -563,7 +559,7 @@ static unsigned int device_poll(struct file *fp, poll_table * pt)
 	return mask;
 }
 
-static struct file_operations fops = {
+static const struct file_operations fops = {
 owner:	THIS_MODULE,
 open : device_open,
 release : device_close,
@@ -1033,8 +1029,7 @@ static void __exit acsint_exit(void)
 		unregister_chrdev(major, ACSINT_DEVICE);
 
 	for (j = 0; j < MAX_NR_CONSOLES; ++j)
-		if (cbuf_tty[j])
-			kfree(cbuf_tty[j]);
+		kfree(cbuf_tty[j]);
 }
 
 module_init(acsint_init);
