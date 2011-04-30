@@ -14,7 +14,7 @@ Also manage punctuation pronunciations and word replacements.
 
 /* Turn a key code and a shift state into a modified key number. */
 
-#define MK_BLOCK 60
+#define MK_BLOCK 80
 #define MK_OFFSET 55
 
 extern const char lowercode[], uppercode[];
@@ -730,7 +730,9 @@ acs_clearkeys();
 
 for(i=0; i<numdictwords; ++i) {
 free(dict1[i]);
+dict1[i] = 0;
 free(dict2[i]);
+dict2[i] = 0;
 }
 numdictwords = 0;
 
