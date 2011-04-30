@@ -143,6 +143,24 @@ s += 4;
 goto done;
 }
 
+if(lettermatch_ci(s, "scroll", 6)) {
+key = KEY_SCROLLLOCK;
+s += 6;
+goto done;
+}
+
+if(lettermatch_ci(s, "sysrq", 5)) {
+key = KEY_SYSRQ;
+s += 5;
+goto done;
+}
+
+if(lettermatch_ci(s, "pause", 5)) {
+key = KEY_PAUSE;
+s += 5;
+goto done;
+}
+
 c = (unsigned char) s[0] | 0x20;
 if(c < 'a' || c > 'z') goto error;
 key = lettercode[c-'a'];
