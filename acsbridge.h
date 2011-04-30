@@ -742,6 +742,9 @@ to avoid compooter, red, and lib rary.
 So this is a smarter replacement dictionary.
 It is of course English centered;
 folks from other countries will need to reimplement this for their locale.
+
+Note that we require the root word to be replaced with one or more words,
+not punctuations etc, so that we can meaningfully put the suffix back on.
 *********************************************************************/
 
 char *acs_smartreplace(const char *word1);

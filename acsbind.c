@@ -624,7 +624,7 @@ if(!root) return 0;
 t = acs_replace(rootword);
 if(!t) return 0;
 		for(i=0; t[i]; ++i)
-			if(!isalpha((unsigned char)t[i])) return 0;
+			if(t[i] != ' ' && !isalpha((unsigned char)t[i])) return 0;
 strcpy(rootword, t);
 		reconst(root);
 return rootword;
