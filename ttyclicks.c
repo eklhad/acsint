@@ -114,7 +114,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 }				/* my_printk */
 
 static struct console clickconsole = {
-name:	"pc clicks",
+name:	"tty clicks",
 write :	my_printk,
 flags : CON_ENABLED,
 /* hope everything else is ok being zero or null */
