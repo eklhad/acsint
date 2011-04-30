@@ -312,7 +312,6 @@ void ttyclicks_click(void)
 	spk_toggle();
 #endif
 }				/* ttyclicks_click */
-
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
@@ -331,7 +330,6 @@ void ttyclicks_cr(void)
 	}
 #endif
 }				/* ttyclicks_cr */
-
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
 /*
@@ -432,7 +430,6 @@ void ttyclicks_notes(const short *p)
 	if (!timer_pending(&note_timer))
 		popfifo(0);
 }				/* ttyclicks_notes */
-
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
 void ttyclicks_bell(void)
@@ -442,7 +439,6 @@ void ttyclicks_bell(void)
 	};
 	ttyclicks_notes(notes);
 }				/* ttyclicks_bell */
-
 EXPORT_SYMBOL_GPL(ttyclicks_bell);
 
 static int soundFromChar(char c, int minor)
