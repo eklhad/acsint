@@ -6,10 +6,9 @@ These are in no particular order.
 
 * Follow the linux coding standards and recommendations,
 at least for the two kernel modules.
-We can postpone this for now, but must address it before submission.
-I tend to tweak comments and variables if I am changing a section
-of code for some other reason;
-but I don't generally make patches just for pretty sake - not yet anyways.
+This process has begun, code is indented,
+and other syntax issues have been addressed.
+We will need to keep this in mind as we make more changes.
 I think we should aim for this summer to submit the modules
 for consideration in the staging area.
 It's a goal anyways.
@@ -60,16 +59,48 @@ This is probably not vital, but we might want to look at it some day.
 
 * Should we have a module parameter to vary the speed
 of the clicks in ttyclicks.c?
-It would be course, perhaps one of 5 levels, but better than nothing.
+It would be course, perhaps one of 10 levels, but better than nothing.
+Here are some thoughts on how to do that.
+Speed is a number from 1 to 10.
+Subtract this from 11 to get a delay value, 1 to 10.
+This is the number of milliseconds to wait between clicks.
+As mentioned earlier, this waiting is done by a cpu loop or by sleeping in vt.c.
+I want the latter to be an option, even if we have to patch the kernel to get there.
+So there has to be a way to sleep for n milliseconds.
+The current value of n is 4.
+#define TICKS_CHARWAIT 4000
+If HZ = 250 then we sleep until the next jiffy.
+Accomplished by  unsigned long timeout = msecs_to_jiffies(4);
+If HZ = 1000 then we sleep for 4 jiffies.
+If HZ = 100 then we sleep for 2 or 3 jiffies, not sure if it rounds up or down.
+Thus the timing is not really what we want.
+So if the sleep parameter is set, we should restrict delay to those values
+that are an integer number of jiffies based on HZ.
+If the math doesn't work out, then the module should printk an error message
+and return -1, whence it does not load.
+Or maybe printk an error message that the timing is not quite what you want,
+then return 0 and load anyways.
+So ok, let's say we get past that hurdle.
+The cpu timing is no problem, just usleep for that many microseconds.
+If sleeping then we have to pass the delay value back to vt.c.
+I currently pass back a special number, sleep or not.
+So I would instead pass back a range of ten numbers,
+sleep for that many milliseconds,
+and hope, as I do today, that those magic numbers would
+never come up in normal unicode output.
+Passing special unicodes back is of course very kludgy,
+but I don't think we're ready to hack the notifier system at this time,
+which is the right way to do it.
+we'll probably submit version 1 without any sleep at all,
+since they would prefer we take one step at a time.
 
-* Write methods to provide buffer characters in unicode, ascii, or iso8859
-according to your locale.
+* Write bridge methods to provide buffered characters in unicode,
+ascii, or iso8859 according to your locale.
 Some of this has begun, e.g. getsentence_uc(),
 and macros can handle utf8, as the read side of the tty expects,
-but there is more to do here.
+but there is more work to do here.
 setpunc(), replaceword(), etc.
-These are basically ascii,
-with iso8859-1 shoehorned in if you need it.
+These are basically ascii with iso8859-1 shoehorned in if you need it.
 That covers Spanish French German etc, and will do for now.
 
 * The detection of echo in the acsint driver is clunky.
