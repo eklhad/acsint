@@ -1,0 +1,473 @@
+
+The acsint device driver
+			---------------------
+			Karl Dahlke
+			eklhad@gmail.com
+
+The word acsint is shorthand for accessibility intercepter,
+since we are going to intercept kernel events and make the linux computer
+more accessible to a wide range of disabilities.
+The concept was developed by Saqib Shaikh in 2005, but did not
+become practical until notifiers came on the scene in kernel 2.6.26.
+Before then, many large and complex screen readers,
+such as Speakup, were either built into the kernel,
+or written as kernel modules that run in kernel space.
+This makes it difficult to drive software synthesizers,
+which are large and complicated programs that must run in user space.
+The advantages of pulling screen readers and other adapters
+out of the kernel are simply to numerous to mention.
+You can probably think of 5 off the top of your head.
+The acsint system makes it possible to write an adapter as a user space daemon,
+and still adapt the computer at the lowest level.
+
+Acsint is a linear system, passing keystrokes and tty output
+to user space through a virtual stream.
+In other words, it is well suited to the command line interface.
+This does not form the basis for adapting gnome, kde, X,
+or any other 2 dimensional screen / graphical presentation.
+People are working on adapters for those systems, e.g. Orca for gnome.
+Acsint is for the command line interface,
+which is (not surprisingly) what the author prefers.
+
+Acsint provides low level kernel events which are described here.
+However, managing these events is a bit like reading a block device
+without a filesystem on top of it.
+You can do it, but there is a better way.
+I have developed a user space library,
+which is a layer above this device driver.
+Continuing our earlier analogy, this is the filesystem on top of the block device.
+The bridge layer gathers events from the driver and maintains a running log
+of all tty output.
+It tells the driver which keys to capture (dynamic key binding),
+and then notifies the application, via callback functions,
+when those keys are struck.
+The operation of the acsint bridge layer is beyond the scope of this document.
+I am only describing the device driver and the low level events
+that pass through this driver and down to user space.
+I just wanted you to know that a higher level API exists,
+and if you are building an adapter, you probably want to use that library,
+rather than reading from this driver directly.
+
+This is not just a paper and pencil sketch -
+adapters have been written successfully using this system.
+In other words, it really works.
+I am in such an adapter right now, as I write this file.
+It is a user space program, using the acsint bridge layer
+to gather events from /dev/acsint.
+My adapter lived in the kernel for 10 years,
+but I was more than happy to pull it back down to user space.
+Little was lost, and much was gained.
+For instance, just last week a bug in my software caused a seg fault,
+not a kernel panic.
+What more can I say?
+
+Acsint is written as a loadable kernel module,
+though it could be built into the system.
+As a module, it has one parameter, "major",
+which is the major number of the resulting device.
+
+modprobe acsint major=11
+
+When called this way, you will want to create /dev/acsint
+with major number 11 and minor number 1.
+
+modprobe acsint major=0
+
+If major is set to 0, or left unspecified,
+we use misc_register() to instantiate a device dynamically.
+The device will have major number 10 and minor number to be determined.
+If udev is running on your system, it can create /dev/acsint
+for you having the correct major and minor numbers.
+Thus your user space adapter can open the device and gain access
+to kernel events.
+
+The device offers the functions open, close, read, write, and poll.
+In this regard it is much like any other character device.
+One could imagine other drivers that offer the same functionality
+through these 5 system calls, but that is beyond the scope of this document.
+Here is a rough outline of these 5 system calls.
+
+open()
+
+Only one application can open this device at a time.
+If the device is already opened, -1 is returned,
+with errno set to EBUSY.
+Other than that, the open will succeed.
+An initial event is placed on the read queue,
+to tell the application what console it is running on.
+See the FGC event below.
+Thus, if you read from the device, you will get an event right away.
+
+close()
+
+This closes the device.
+The busy flag is cleared, and the next call to open() will succeed.
+All internal buffers are cleared, and all variables reinitialized.
+There is no memory of accumulated tty output, or key bindings, etc.
+Each open starts a brand new session.
+
+poll()
+
+The application can poll the device to see if it has any events to read.
+This is used by the application, or the bridge layer,
+to monitor two devices at once, the acsint driver and the speech synthesizer.
+(See the select system call.)
+The synthesizer could be attach to a serial or usb port,
+or a socket, or a pipe - but it is probably accessible via a file descriptor,
+which means we want to read from two descriptors simultaneously.
+That is done with select(), and that requires a polling function.
+You probably don't need to invoke poll() directly -
+let select() do the work for you.
+
+write()
+
+This is used by the application to configure the driver.
+Most commands are 1 2 or 3 bytes long.
+The first byte is the actio,
+and the following bytes are parameters for that action.
+
+char acsint_command[4];
+acsint_command[0] = ACSINT_SOME_ACTION;
+acsint_command[1] = some_parameter;
+write(acsint_fd, acsint_command, 2);
+
+The driver swallows the command immediately, and acts upon it.
+There is no reason this write should fail.
+Of course the action, or its parameter, could be invalid for some reason,
+but the write() system call still succeeds, and returns 0.
+
+The configuration commands are defined in linux/acsint.h.
+The application should include this header file,
+and use the symbolic constants therein.
+The write actions are as follows.
+
+ACSINT_CLEAR_KEYS
+
+Clear all key bindings.
+All keystrokes are passed through to the tty.
+None are intercepted for the adapter.
+
+ACSINT_SET_KEY
+
+The parameters are the key code and the shift state.
+thus this is a 3 byte command.
+Key codes can be found in linux/input.h, which is included by acsint.h.
+If you issue this command with KEY_F1 and ACS_SS_CTRL, then control F1
+is intercepted and passed back to your adapter
+via the read() system call described below.
+It does not become input for the foreground tty.
+Note however that other flavors of F1, such as plain F1 or alt F1 etc,
+still pass through to the console.
+You only get the keys you ask for.
+
+If you want to capture plain F1, you must specify the new shift state ACS_SS_PLAIN.
+To capture plain F1 and control F1, use the composite shift state
+ACS_SS_PLAIN | ACS_SS_CTRL.
+Shift F1 and alt F1 will still pass through,
+which is especially important if you want to use alt F1 to switch to console 1.
+
+Note that keystrokes are intercepted only if a single modifier is applied.
+You may specify shift F1 and control F1, and you will get shift F1,
+and control F1, but not shift control F1.
+When multiple modifiers are held down the key passes through to the console.
+
+However, there is a special shift state ACS_SS_ALL,
+which intercepts every flavor of that key.
+The adapter can query the shift state, including chords,
+and act accordingly.
+Note that you cannot change your mind,
+and pass certain instances of this key through to the console.
+Once you have intercepted it, it is yours.
+You must either act upon it or throw it away.
+Most adapters do not use this feature.
+The stand-alone modifiers shift, control, left alt, and right alt,
+when combined with all the keys on the keyboard, provide plenty of realestate
+for speech commands.
+If you want control shift F1 to do something different from shift F1
+or control F1, you're probably just going to confuse and frustrate the user.
+
+ACSINT_UNSET_KEY
+
+The key code is the only parameter.
+This reverses the action of ACSINT_SET_KEY above,
+and allows the key to pass through to the console in all its flavors.
+The key is no longer intercepted.
+
+ACSINT_PUSH_TTY
+
+This function passes a string from user space back to the kernel,
+as though it had been typed at the keyboard.
+an adapter typically generates input for two reasons.
+1. A key can be a macro for a commonly used string,
+something that you don't want to type over and over again.
+2. A key can be bound to a string dynamically to support cut&paste.
+Mark the start and end of a string in the buffer, grab it,
+then inject it into the input stream of this console or another console.
+(I typically cut&paste between two consoles.)
+
+The command consists of the action code and the low and high bytes of an unsigned short.
+Thus ACSINT_PUSH_TTY 2 1 is pushing a string of length 258.
+The next 258 bytes form the string.
+The string can be utf8 to push international text into the console.
+
+ACSINT_BYPASS
+
+The driver will pass the next keystroke through to the console,
+even if it would normally be intercepted.
+If control C is bound to a speech function,
+but you want to pass control C through to the console to interrupt a
+running program, then you need this function.
+
+ACSINT_DIVERT
+
+This takes the parameter 1 or 0, enabled or disabled.
+If enabled, all keystrokes are intercepted.
+Use this to type a short message directly into your adapter.
+For instance, type a search string into the adapter,
+then locate that text within the tty buffer.
+Don't forget to turn DIVERT off once the text has been entered,
+to resume normal operations.
+
+ACSINT_MONITOR
+
+This takes the parameter 1 or 0, enabled or disabled.
+If enabled, keystrokes that are destined for the console
+are also passed back to the adapter.
+Think of this as /usr/bin/tee.
+This could be used to echo keystrokes as they are typed,
+but in practice it is better to echo the characters when they appear on screen.
+Thus passwords are not echoed for the world to hear, etc.
+In fact this function is not used at all, and it may go away in the future.
+
+ACSINT_SOUNDS
+
+Acsint is capable of generating diagnostic clicks and chirps through
+the inbuilt toggle speaker at port 0x61.
+This is particularly helpful if speech is not working for any reason.
+Even if everything is operational, the clicks tell the user when the computer
+is generating output, and the nature of that output, before the synthesizer
+has spoken a word.  Most people find this audio feedback helpful.
+
+This function turns sounds on and off.
+If you are working in the middle of the night in a small dorm room,
+and your roommate is trying to sleep,
+well, you probably want to turn all sounds off.
+The one byte parameter is 1 or 0, for sounds enabled or disabled.
+
+Sounds are produced by the module ttyclicks.c.
+If depmod has been run, modprobe should load ttyclicks before it loads acsint.
+The ttyclicks module has some features that are not accessible
+through the acsint driver.  They are not described here.
+For our purposes we can pretend like acsint is generating the sounds itself.
+
+ACSINT_SOUNDS_TTY
+
+This takes the parameter 1 or 0, enabled or disabled.
+If enabled, then tty output produces clicks for printable characters,
+pauses for spaces, and a special swoop for newline.
+Blank lines, text, C code, columated data - all have distinct audio signatures.
+This does not pass any events back to user space, it simply generates
+clicks as characters pass through the tty and onto the screen.
+
+Note that sounds must be enabled overall, via ACSINT_SOUNDS, for this to work.
+SOUNDS is a master switch that turns all other sounds on or off.
+
+ACSINT_SOUNDS_KMSG
+
+This takes the parameter 1 or 0, enabled or disabled.
+If enabled, then printk messages produce a special,
+some would say irritating, sequence of tones.
+This is like an alarm for a blind person.
+"Hey, the kernel just printed an error message, you might want to read it."
+
+ACSINT_CLICK
+
+The driver clicks the speaker,
+as though a single character had appeared on screen.
+If the adapter accepts a hot key, and performs a function accordingly,
+a soft click can provide helpful audio feedback.
+"Yes I caught your keystroke, and all is well."
+Or you may want to issue several clicks in succession
+to convey some information to the user.
+Perhaps a sound like static, indicating a bad serial connection,
+and thus no speech.
+
+ACSINT_CR
+
+Generate the swoop that is associated with the newline character.
+(This was orriginally tied to cr, not lf,
+so is called acs_cr for historical reasons.)
+You may want to issue this sound when the user hits enter to complete
+a command that is directed towards the adapter rather than standard input.
+Or it can be used to indicate success.
+I use it when reading through text, because I would rather hear
+a quick swoop than the word "new line".
+I have an implicit understanding of where the lines break as I listen to the words.
+
+ACSINT_NOTES
+
+This command plays a series of notes, a song if you will.
+The notes are of course square waves, and not terribly melodic.
+The driver queuees up at most 10 notes to play; subsequent notes are discarded.
+
+The first parameter is a single byte indicating the number of notes.
+
+Each note is defined by three bytes.
+The first two bytes build a short, which is the frequency in hurtz.
+A frequency of -1 is a rest.
+The third byte is the duration, in hundredths of a second.
+The standard control G bell, 1Khz for a tenth of a second, looks like:
+ACSINT_NOTES 1 232 3 10
+
+ACSINT_REFRESH
+
+This is the last write command, and it has no parameters.
+It is a request to bring the tty buffer in user space up to date.
+Let me clarify by describing the internals of the driver.
+
+In an early version of this driver, which was quickly shelved,
+each tty character generated an event.
+Cat a megabyte file, and millions of events passed through
+acsint and down to user space.
+If there was even a modest load on the system, the adapter could not keep up.
+Events were lost, and the adapter did not have an accurate
+representation of the characters on the screen.
+A new approach was eeded.
+
+acsint maintains a circular buffer of size 50K for each virtual console.
+These buffers are allocated as needed.
+After all, 63 consoles are possible, but most systems only use 6.
+Tty output is placed at the head of the buffer, and if the buffer is full,
+the oldest characters drop off the tail.
+Your adapter should maintain a 50K buffer for each active console,
+which will act as a mirror for the buffers in kernel space.
+The refresh command asks the driver to pass down any new output characters
+that have not been  seen before.
+These characters are transferred in one system call,
+and thus your read buffer should be at least 50K.
+(The actual size is a symbolic constant in acsint.h.)
+Once these characters are passed to user space, acsint places a mark
+at the head of the circular buffer, to remember where it left off.
+Issue the refresh command again,
+and you will get any new output characters beyond this mark.
+
+What happens if you cat a megabyte file?
+The flood of output pushes all the old characters,
+and the mark, off the tail of the buffer.
+The buffer now contains the last 50K of output.
+When you refresh, acsint passes this text down to user space,
+and your adapter will push it onto the parallel buffer that
+you are maintaining.
+Old text is pushed away, just as it was in the kernel,
+and you now have the last 50K of output, just like the kernel.
+It works, and nothing is lost.
+After each refresh you have an accurate snapshot of the output of your console.
+
+Output is passed from the kernel to acsint in the form of unicodes.
+This is a natural consequence of the PREWRITE notifier in vt.c.
+With this precedent established, I may as well pass the unicodes
+down to you, whence your adapter can support any language.
+Thus each character is actually 4 bytes wide.
+The buffers are not 50K, they are 200K,
+and your read buffer should be 200K plus a few hundred bytes for extra events.
+As mentioned earlier, the bridge layer handles all this for you,
+and makes the text available to you either as unicodes or as downshifted ascii.
+
+read()
+
+The last system call supported by this device driver is read().
+Unlike the write call, each event is 4 byte aligned.
+An event will never be 2 or 3 bytes.
+Thus, when acsint is ready to pass unicodes down to user space,
+as described above, the reading offset is already 4 byte aligned.
+Here are the events.
+
+ACSINT_FGC
+
+This event indicates a new foreground console.
+The console number is the only parameter.
+This fits in a byte, hence it is a 2 byte event.
+However, every event is 4 byte aligned,
+so you should skip past the next two bytes, and then process the next event.
+
+This command includes an automatic refresh.
+If you are switching to console 6, and that console has
+generated output that you have not seen,
+the next event will bring your adapter up to date.
+In other words, you don't have to issue the refresh command; it is done for you.
+Though there is no harm in issuing it again if you like.
+The new characters are passed down via the following event.
+
+ACSINT_TTY_NEWCHARS
+
+The next byte is the minor number of the current console.
+This is not needed, since ACSINT_FGC keeps you up to date.
+I guess it is here for historical reasons; you can ignore it.
+
+The next two bytes build an unsigned short,
+the number of new characters to be passed down.
+If this number is 1000, then the next 1000 unsigned ints,
+i.e. the next 4,000 bytes, hold the last thousand unicode values
+generated by the tty.
+
+ACSINT_KEYSTROKE
+
+The user has typed a key that acsint has intercepted.
+This is a 4 byte event.
+The parameters are the key code, the shift state, and the led state.
+
+Like FGC, this event includes an automatic refresh.
+However, the refresh, the new characters that you haven't seen,
+come before the keystroke,
+whereas they came after the FGC event.
+This makes sense if you think about it.
+You want to switch consoles, then update the buffer;
+whereas you want your buffer to be up to date before you process a key command.
+
+ACSINT_TTY_MORECHARS
+
+There are more characters that you haven't seen.
+An adapter typically responds to this by refreshing the buffer
+and then reading the new text.
+This is autoread mode, and most adapters run in autoread mode
+most of the time.
+
+This is an 8 byte event.
+The second byte indicates echo mode, and is 0 1 or 2.
+If 0, then the computer has generated output that is not an echo
+of your input.
+This event is thrown only once, until you refresh the buffer.
+Then it will be thrown again when new output is generated, and so on.
+
+If echo = 1 then this character, which is a unicode in the second int,
+is an echo of the user's keystroke.
+This does not necesssarily bring the buffer up to date.
+It tells the adapter to speak that character, if it is
+configured to echo the user's keystrokes.
+
+If echo = 2 then this is an implied echo.
+It is not the same character as the entered keystroke, but is implied by
+that keystroke.  The most common example is spaces for tab, as in stty tab3.
+You may or may not want to speak these characters in echo mode.
+
+ACSINT_REFRESH
+
+Finally, the REFRESH event is passed back to you
+when you issue the refresh command.
+It is the only action code that goes back and forth.
+You can treat it as a no-op.
+This is done so there is something to read, even if there are no new
+characters to pass down.
+The adapter can issue the refresh command, and then block read on the device,
+and something will be returned.
+At that point the adapter's buffer is brought up to date.
+
+That completes the description of the acsint device driver.
+As you can see, it is awkward to use,
+and one could easily lose data if events are not managed in the proper sequence.
+If you are interested in building a user space adapter, I would recommend
+working with the acsint bridge layer, which contains approximately 5,000
+lines of code that you really don't want to reinvent.
+
+Send any questions to the author,
+using the email address at the top of this file.
