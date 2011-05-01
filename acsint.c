@@ -560,12 +560,12 @@ static unsigned int device_poll(struct file *fp, poll_table * pt)
 }
 
 static const struct file_operations fops = {
-owner:	THIS_MODULE,
-open : device_open,
-release : device_close,
-read : device_read,
-write : device_write,
-poll : device_poll,
+	.owner =	THIS_MODULE,
+	.open = device_open,
+	.release = device_close,
+	.read = device_read,
+	.write = device_write,
+	.poll = device_poll,
 };
 
 static struct miscdevice acsint_dev = {
@@ -747,9 +747,9 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 }
 
 static struct console acsintconsole = {
-name:	"acsint",
-write : my_printk,
-flags : CON_ENABLED,
+	.name =	"acsint",
+	.write = my_printk,
+	.flags = CON_ENABLED,
 };
 
 /* Notifiers: keyboard events and tty events. */
