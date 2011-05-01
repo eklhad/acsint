@@ -15,7 +15,7 @@ or written as kernel modules that run in kernel space.
 This makes it difficult to drive software synthesizers,
 which are large and complicated programs that must run in user space.
 The advantages of pulling screen readers and other adapters
-out of the kernel are simply to numerous to mention.
+out of the kernel and back into user space are simply to numerous to mention.
 You can probably think of 5 off the top of your head.
 The acsint system makes it possible to write an adapter as a user space daemon,
 and still adapt the computer at the lowest level.
@@ -27,28 +27,26 @@ This does not form the basis for adapting gnome, kde, X,
 or any other 2 dimensional screen / graphical presentation.
 People are working on adapters for those systems, e.g. Orca for gnome.
 Acsint is for the command line interface,
-which is (not surprisingly) what the author prefers.
+which is (not surprisingly) what I prefer.
 
-Acsint provides low level kernel events which are described here.
+Acsint provides low level kernel events which are described below.
 However, managing these events is a bit like reading a block device
 without a filesystem on top of it.
-You can do it, but there is a better way.
-I have developed a user space library,
+You can do it, but you probably don't want to.
+I have developed a user space library called acsbridge,
 which is a layer above this device driver.
 Continuing our earlier analogy, this is the filesystem on top of the block device.
 The bridge layer gathers events from the driver and maintains a running log
 of all tty output.
 It tells the driver which keys to capture (dynamic key binding),
-and then notifies the application, via callback functions,
+and then notifies the adapter, via callback functions,
 when those keys are struck.
 The operation of the acsint bridge layer is beyond the scope of this document.
-I am only describing the device driver and the low level events
-that pass through this driver and down to user space.
 I just wanted you to know that a higher level API exists,
 and if you are building an adapter, you probably want to use that library,
 rather than reading from this driver directly.
 
-This is not just a paper and pencil sketch -
+This is not just a pencil and paper sketch -
 adapters have been written successfully using this system.
 In other words, it really works.
 I am in such an adapter right now, as I write this file.
@@ -89,12 +87,12 @@ Here is a rough outline of these 5 system calls.
 
 open()
 
-Only one application can open this device at a time.
+Only one program can open this device at a time.
 If the device is already opened, -1 is returned,
 with errno set to EBUSY.
 Other than that, the open will succeed.
 An initial event is placed on the read queue,
-to tell the application what console it is running on.
+to tell the adapter what console it is running on.
 See the FGC event below.
 Thus, if you read from the device, you will get an event right away.
 
@@ -108,8 +106,8 @@ Each open starts a brand new session.
 
 poll()
 
-The application can poll the device to see if it has any events to read.
-This is used by the application, or the bridge layer,
+The adapter can poll the device to see if it has any events to read.
+This is used by the adapter, or the bridge layer,
 to monitor two devices at once, the acsint driver and the speech synthesizer.
 (See the select system call.)
 The synthesizer could be attach to a serial or usb port,
@@ -121,7 +119,7 @@ let select() do the work for you.
 
 write()
 
-This is used by the application to configure the driver.
+This is used by the adapter to configure the driver.
 Most commands are 1 2 or 3 bytes long.
 The first byte is the actio,
 and the following bytes are parameters for that action.
@@ -137,14 +135,14 @@ Of course the action, or its parameter, could be invalid for some reason,
 but the write() system call still succeeds, and returns 0.
 
 The configuration commands are defined in linux/acsint.h.
-The application should include this header file,
+The application should include this header file
 and use the symbolic constants therein.
 The write actions are as follows.
 
 ACSINT_CLEAR_KEYS
 
 Clear all key bindings.
-All keystrokes are passed through to the tty.
+All keystrokes are passed through to the console.
 None are intercepted for the adapter.
 
 ACSINT_SET_KEY
@@ -315,7 +313,7 @@ The first parameter is a single byte indicating the number of notes.
 Each note is defined by three bytes.
 The first two bytes build a short, which is the frequency in hurtz.
 A frequency of -1 is a rest.
-The third byte is the duration, in hundredths of a second.
+The third byte is the duration in hundredths of a second.
 The standard control G bell, 1Khz for a tenth of a second, looks like:
 ACSINT_NOTES 1 232 3 10
 
@@ -332,12 +330,12 @@ acsint and down to user space.
 If there was even a modest load on the system, the adapter could not keep up.
 Events were lost, and the adapter did not have an accurate
 representation of the characters on the screen.
-A new approach was eeded.
+A new approach was needed.
 
 acsint maintains a circular buffer of size 50K for each virtual console.
 These buffers are allocated as needed.
 After all, 63 consoles are possible, but most systems only use 6.
-Tty output is placed at the head of the buffer, and if the buffer is full,
+Tty output is placed at the head of the buffer, and if the buffer is full
 the oldest characters drop off the tail.
 Your adapter should maintain a 50K buffer for each active console,
 which will act as a mirror for the buffers in kernel space.
@@ -386,14 +384,14 @@ ACSINT_FGC
 
 This event indicates a new foreground console.
 The console number is the only parameter.
-This fits in a byte, hence it is a 2 byte event.
+Thus this is a 2 byte event.
 However, every event is 4 byte aligned,
 so you should skip past the next two bytes, and then process the next event.
 
 This command includes an automatic refresh.
 If you are switching to console 6, and that console has
 generated output that you have not seen,
-the next event will bring your adapter up to date.
+your buffers will be brought up to date.
 In other words, you don't have to issue the refresh command; it is done for you.
 Though there is no harm in issuing it again if you like.
 The new characters are passed down via the following event.
