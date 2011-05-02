@@ -31,6 +31,7 @@ Section 10: cursor motion.
 Section 11: get a chunk of text to read.
 Section 12: synthesizer communications.
 Section 13: synthesizer speed, volume, pitch, etc.
+Section 14: messages from other processes.
 *********************************************************************/
 
 #ifndef ACSBRIDGE_H
@@ -1168,11 +1169,10 @@ extern int pss_broken;
 
 /*********************************************************************
 Wait for communication from either the acsint kernel module or the synthesizer.
-If you must monitor other channels as well, then this won't work for you.
-This function only monitors acs_fd and ss_fd0.
-That is enough for most adapters.
 The return is 1 if acs_fd has data,
-2 if ss_fd0 has data, and 3 if they are both ready to read.
+2 if ss_fd0 has data,
+and 4 if the acsint fifo has an incoming message.
+(See section 14 for interprocess messages.)
 *********************************************************************/
 
 int acs_ss_wait(void);
@@ -1211,7 +1211,7 @@ SS_STYLE_ACE,
 
 int ss_events(void);
 
-// look for events from either source
+/* process events from the acsint driver, the synthesizer, or the fifo. */
 int acs_ss_events(void);
 
 /*********************************************************************
@@ -1417,6 +1417,25 @@ Check curvolume curspeed curpitch and curvoice for the resulting values.
 *********************************************************************/
 
 void ss_startvalues(void);
+
+
+/*********************************************************************
+Section 14: messages from other processes.
+Other processes can send messages to your adapter through a fifo.
+Each message must end with newline.
+The message is then passed back to you through a handler.
+the message is allocated; free it when you are done.
+You can use this to send text or configuration commands
+directly to the synthesizer.
+Or you can reconfigure your adapter from another process.
+It's up to you.
+*********************************************************************/
+
+int acs_startfifo(const char *pathname);
+void acs_stopfifo(void);
+
+typedef void (*fifo_handler_t)(char *message);
+extern fifo_handler_t acs_fifo_h;
 
 
 #endif

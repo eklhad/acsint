@@ -32,8 +32,8 @@ and declared in acsbridge.h.
 #define ATTRIBOFFSET 5000
 #define VCREADOFFSET 7000
 
-int acs_fd = -1; // file descriptor for /dev/acsint
-static int vcs_fd; // file descriptor for /dev/vcsa
+int acs_fd = -1; /* file descriptor for /dev/acsint */
+static int vcs_fd; /* file descriptor for /dev/vcsa */
 static unsigned char vcs_header[4];
 #define nrows (int)vcs_header[0]
 #define ncols (int)vcs_header[1]

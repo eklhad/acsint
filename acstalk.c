@@ -26,6 +26,10 @@ static char ss_inbuf[SSBUFSIZE]; /* input buffer for the synthesizer */
 /* These are the same for serial port or socket; different if over a pipe. */
 int ss_fd0 = -1, ss_fd1 = -1;
 
+static int fifo_fd = -1; /* file descriptor for the interprocess fifo */
+static char *ipmsg; /* interprocess message */
+fifo_handler_t acs_fifo_h;
+
 /* parent process, if a child is forked to manage the software synth. */
 static int pss_pid;
 /* Set this for broken pipe - need to respawnw the child */
@@ -244,16 +248,22 @@ int nfds;
 
 memset(&channels, 0, sizeof(channels));
 FD_SET(acs_fd, &channels);
+if(ss_fd0 >= 0)
 FD_SET(ss_fd0, &channels);
+if(fifo_fd >= 0)
+FD_SET(fifo_fd, &channels);
 
-nfds = ss_fd0 > acs_fd ? ss_fd0 : acs_fd;
+nfds = acs_fd;
+if(ss_fd0 > nfds) nfds = ss_fd0;
+if(fifo_fd > nfds) nfds = fifo_fd;
 ++nfds;
 rc = select(nfds, &channels, 0, 0, 0);
 if(rc < 0) return; // should never happen
 
 rc = 0;
 if(FD_ISSET(acs_fd, &channels)) rc |= 1;
-if(FD_ISSET(ss_fd0, &channels)) rc |= 2;
+if(ss_fd0 >= 0 && FD_ISSET(ss_fd0, &channels)) rc |= 2;
+if(fifo_fd >= 0 && FD_ISSET(fifo_fd, &channels)) rc |= 4;
 return rc;
 } // acs_ss_wait
 
@@ -349,9 +359,12 @@ if(leftover) memmove(ss_inbuf, ss_inbuf+i, leftover);
 return 0;
 } // ss_events
 
+static void ip_more(void); /* more data for an interprocess message */
+
 int acs_ss_events(void)
 {
 int source = acs_ss_wait();
+if(source&4) ip_more();
 if(source&2) ss_events();
 if(source&1) acs_events();
 } // acs_ss_events
@@ -808,4 +821,78 @@ alist[count] = 0;
 va_end(ap);
 return pss_openv(progname, alist);
 } /* pss_open */
+
+int acs_startfifo(const char *pathname)
+{
+if(fifo_fd >= 0) {
+errno = EBUSY;
+return -1;
+}
+
+fifo_fd = open(pathname, O_RDWR);
+if(fifo_fd < 0)
+return -1;
+
+return 0;
+} /* acs_startfifo */
+
+void acs_stopfifo(void)
+{
+if(fifo_fd >= 0)
+close(fifo_fd);
+fifo_fd = -1;
+
+if(ipmsg) free(ipmsg);
+ipmsg = 0;
+} /* acs_stopfifo */
+
+static void ip_more(void)
+{
+int i, nr;
+char *s;
+char buf[512];
+
+nr = read(fifo_fd, buf, sizeof(buf));
+/* don't know why nr would ever be <= 0 */
+if(nr <= 0) return;
+
+/* no nulls in the message */
+for(i=0; i<nr; ++i)
+if(buf[i] == 0) buf[i] = ' ';
+
+if(ipmsg) {
+i = strlen(ipmsg);
+ipmsg = realloc(ipmsg, i+nr+1);
+if(!ipmsg) return;
+memcpy(ipmsg+i, buf, nr);
+ipmsg[i+nr] = 0;
+} else {
+ipmsg = malloc(nr+1);
+if(!ipmsg) return;
+memcpy(ipmsg, buf, nr);
+ipmsg[nr] = 0;
+}
+
+while(s = strchr(ipmsg, '\n')) {
+*s = 0;
+if(!s[1]) {
+if(acs_fifo_h) (*acs_fifo_h)(ipmsg);
+else free(ipmsg);
+ipmsg = 0;
+return;
+}
+
+i = s - ipmsg;
+if(acs_fifo_h) {
+char *newmsg = malloc(i+1);
+if(newmsg) {
+strcpy(newmsg, ipmsg);
+(*acs_fifo_h)(newmsg);
+}
+}
+++s;
+nr = strlen(s);
+memmove(ipmsg, s, nr+1);
+}
+} /* ip_more */
 
