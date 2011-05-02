@@ -214,10 +214,10 @@ acs_fd = open(devname, O_RDWR);
 if(acs_fd < 0) {
 close(vcs_fd);
 setError();
-} else {
-clearError();
+return -1;
 }
 
+clearError();
 acs_reset_configure();
 
 return acs_fd;
