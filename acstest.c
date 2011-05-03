@@ -55,6 +55,29 @@ fprintf(stderr, "syntax error in line %d\n", lineno);
 fclose(f);
 } // configure
 
+/*********************************************************************
+There's something that can't be handled by the config file yet.
+If you want to intercept all flavors of a key,
+and take different actions for various chords such as alt control x,
+then you have to do everything yourself.
+The bridge layer cannot bind speech functions to chords.
+It just isn't implemented at this time.
+It can bind something to control x, or alt x, but not alt control x.
+However, the driver has a way for you to capture all combinations
+and manage them yourself if you wish.
+It's a bit like driving with a stick.
+Note that the driver does not intercept a plain or shifted letter.
+You might want to act upon the chord modified flavors of x,
+but you surely don't want to intercept x or X, those should go through.
+Another exception exists for alt f1 through alt f12,
+as these are used to switch consoles.
+Specify an all-flavors key using the following symbol.
+As mentioned above, plain letters will pass through, as will digits,
+punctuation, even the space bar.
+*********************************************************************/
+
+#define ALLFLAVORS KEY_X
+
 static char moreStuff = 0;
 static char doneRead = 0;
 
@@ -113,6 +136,15 @@ char c;
 char sentence[400];
 int gsprop = ACS_GS_STOPLINE | ACS_GS_REPEAT;
 
+/* x is handled as a special case.
+ * The bridge doesn't have anything bound to x, so asking it for
+ * the speech command associated with control x wouldn't help. */
+if(key == KEY_SPACE) {
+printf("all flavors, state %x\n", ss);
+return;
+}
+
+/* Now for the normal keys, bound to commands in the config file. */
 mkcode = acs_build_mkcode(key, ss);
 cmd = acs_getspeechcommand(mkcode);
 
@@ -246,6 +278,10 @@ acs_more_h = setMoreStuff;
 // because it sends "key capture" commands to the acsint driver
 acs_reset_configure();
 load_configure("acstest.cfg");
+
+/* Manage all flavors of x ourselves.
+ * This cannot be done through the config file as of yet. */
+acs_setkey(KEY_SPACE, ACS_SS_ALL);
 
 // This runs forever, you have to hit interrupt to kill it,
 // or kill it from another tty.

@@ -887,7 +887,20 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	    key != KEY_KPMINUS && key != KEY_KPPLUS)
 		goto regular;
 
-	if (action != ACS_SS_ALL) {
+	if (action == ACS_SS_ALL) {
+/* capture all flavors of this key, but not a plain or shifted letter. */
+		static const char isregular[] =
+		    " ............................ ............ ...........   .";
+if(key <= KEY_SPACE &&
+isregular[key] == '.' &&
+(ss == ACS_SS_PLAIN || ss == ACS_SS_SHIFT))
+goto regular;
+/* alt function keys also pass through, as these change consoles. */
+if(((key >= KEY_F1 && key <= KEY_F10) ||
+(key >= KEY_F11 && key <= KEY_F12)) &&
+(ss == ACS_SS_LALT || ss == ACS_SS_RALT))
+goto regular;
+} else {
 		if (!(action & ss))
 			goto regular;
 /* only one of shift, lalt, ralt, or control */
@@ -935,8 +948,8 @@ event:
 		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
 		static const char uppercode[] =
 		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
-		if (key == 96)
-			key = 28;
+		if (key == KEY_KPENTER)
+			key = KEY_ENTER;
 /* pull keycode down to numbers if numlock numpad keys are hit */
 /* not yet implemented */
 		if (key > KEY_SPACE)

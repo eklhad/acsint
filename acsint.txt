@@ -182,6 +182,7 @@ plain or shifted keys on the main keyboard are not intercepted.
 If you want all flavors of x, I will still pass x or X through to the console,
 but you can act upon alt x, control x, shift control x, etc,
 to your heart's content.
+Alt function keys also pass through, as these are used to change consoles.
 Most adapters do not employ this level of complexity very often;
 it would be confusing if every meta chord on every key meant something different.
 
