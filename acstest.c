@@ -139,7 +139,7 @@ int gsprop = ACS_GS_STOPLINE | ACS_GS_REPEAT;
 /* x is handled as a special case.
  * The bridge doesn't have anything bound to x, so asking it for
  * the speech command associated with control x wouldn't help. */
-if(key == KEY_SPACE) {
+if(key == ALLFLAVORS) {
 printf("all flavors, state %x\n", ss);
 return;
 }
@@ -281,7 +281,7 @@ load_configure("acstest.cfg");
 
 /* Manage all flavors of x ourselves.
  * This cannot be done through the config file as of yet. */
-acs_setkey(KEY_SPACE, ACS_SS_ALL);
+acs_setkey(ALLFLAVORS, ACS_SS_ALL);
 
 // This runs forever, you have to hit interrupt to kill it,
 // or kill it from another tty.
