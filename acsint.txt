@@ -121,7 +121,7 @@ write()
 
 This is used by the adapter to configure the driver.
 Most commands are 1 2 or 3 bytes long.
-The first byte is the actio,
+The first byte is the action,
 and the following bytes are parameters for that action.
 
 char acsint_command[4];
@@ -161,7 +161,7 @@ You only get the keys you ask for.
 If you want to capture plain F1, you must specify the new shift state ACS_SS_PLAIN.
 To capture plain F1 and control F1, use the composite shift state
 ACS_SS_PLAIN | ACS_SS_CTRL.
-Shift F1 and alt F1 will still pass through,
+Shift F1 and alt F1 will still pass through to the foreground console,
 which is especially important if you want to use alt F1 to switch to console 1.
 
 Note that keystrokes are intercepted only if a single modifier is applied.
@@ -171,18 +171,19 @@ When multiple modifiers are held down the key passes through to the console.
 
 However, there is a special shift state ACS_SS_ALL,
 which intercepts every flavor of that key.
-The adapter can query the shift state, including chords,
+The adapter can then query the shift state, including chords,
 and act accordingly.
 Note that you cannot change your mind,
-and pass certain instances of this key through to the console.
+and pass certain instances of this key back to the console.
 Once you have intercepted it, it is yours.
 You must either act upon it or throw it away.
-Most adapters do not use this feature.
-The stand-alone modifiers shift, control, left alt, and right alt,
-when combined with all the keys on the keyboard, provide plenty of realestate
-for speech commands.
-If you want control shift F1 to do something different from shift F1
-or control F1, you're probably just going to confuse and frustrate the user.
+With this in mind,
+plain or shifted keys on the main keyboard are not intercepted.
+If you want all flavors of x, I will still pass x or X through to the console,
+but you can act upon alt x, control x, shift control x, etc,
+to your heart's content.
+Most adapters do not employ this level of complexity very often;
+it would be confusing if every meta chord on every key meant something different.
 
 ACSINT_UNSET_KEY
 
@@ -233,7 +234,7 @@ If enabled, keystrokes that are destined for the console
 are also passed back to the adapter.
 Think of this as /usr/bin/tee.
 This could be used to echo keystrokes as they are typed,
-but in practice it is better to echo the characters when they appear on screen.
+but in practice it is better to echo the characters as they appear on screen.
 Thus passwords are not echoed for the world to hear, etc.
 In fact this function is not used at all, and it may go away in the future.
 
@@ -467,5 +468,5 @@ If you are interested in building a user space adapter, I would recommend
 working with the acsint bridge layer, which contains approximately 5,000
 lines of code that you really don't want to reinvent.
 
-Send any questions to the author,
+Send any questions to the author
 using the email address at the top of this file.
