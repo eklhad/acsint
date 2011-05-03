@@ -119,17 +119,6 @@ cmd = acs_getspeechcommand(mkcode);
 
 //There ought to be a speech command, else why were we called?
 // Oh well, let's make sure.
-if(!cmd) {
-// Well you might not get it because the shift state is left or right alt,
-// and the command is generic alt.
-// Let's check for that.
-if(ss&ACS_SS_ALT) {
-mkcode = acs_build_mkcode(key, (ss|ACS_SS_ALT));
-cmd = acs_getspeechcommand(mkcode);
-}
-}
-
-// Now we ought to have it!
 if(!cmd) return;
 
 // Don't switch on key or state.
