@@ -140,17 +140,20 @@ static char *speechcommandlist[MK_RANGE];
 
 void acs_clearmacro(int mkcode)
 {
+if(mkcode < 0) return;
 if(macrolist[mkcode]) free(macrolist[mkcode]);
 macrolist[mkcode] = 0;
 } /* acs_clearmacro */
 
 char *acs_getmacro(int mkcode)
 {
+if(mkcode < 0) return 0;
 return macrolist[mkcode];
 } /* acs_getmacro */
 
 void acs_setmacro(int mkcode, const char *s)
 {
+if(mkcode < 0) return;
 acs_clearmacro(mkcode);
 acs_clearspeechcommand(mkcode);
 if(!s) return;
@@ -160,17 +163,20 @@ strcpy(macrolist[mkcode], s);
 
 void acs_clearspeechcommand(int mkcode)
 {
+if(mkcode < 0) return;
 if(speechcommandlist[mkcode]) free(speechcommandlist[mkcode]);
 speechcommandlist[mkcode] = 0;
 } /* acs_clearspeechcommand */
 
 char *acs_getspeechcommand(int mkcode)
 {
+if(mkcode < 0) return 0;
 return speechcommandlist[mkcode];
 } /* acs_getspeechcommand */
 
 void acs_setspeechcommand(int mkcode, const char *s)
 {
+if(mkcode < 0) return;
 acs_clearmacro(mkcode);
 acs_clearspeechcommand(mkcode);
 if(!s) return;
