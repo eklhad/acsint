@@ -14,43 +14,18 @@ Also manage punctuation pronunciations and word replacements.
 
 /* Turn a key code and a shift state into a modified key number. */
 
-#define MK_BLOCK 80
-#define MK_OFFSET 55
-
-extern const char lowercode[], uppercode[];
+#define MK_RANGE (ACS_NUM_KEYS * 16)
 
 int acs_build_mkcode(int key, int ss)
 {
-if(key >= ACS_NUM_KEYS) return -1;
-ss &= 0xf;
-if(key >= MK_OFFSET) {
-// function or numpad or arrows etc
-key -= MK_OFFSET;
-key += 2*MK_BLOCK;
-if(ss == ACS_SS_SHIFT) key += MK_BLOCK;
-if(ss == ACS_SS_CTRL) key += MK_BLOCK*2;
-if(ss == ACS_SS_ALT) key += MK_BLOCK*3;
-if(ss == ACS_SS_LALT) key += MK_BLOCK*4;
-if(ss == ACS_SS_RALT) key += MK_BLOCK*5;
-return key;
-}
-if(key > KEY_M) return -1;
-key = lowercode[key];
-if(!isalpha(key)) return -1;
-key -= 'a';
-if(ss & ACS_SS_SHIFT) return -1;
-if(!ss) return -1;
-if(ss == ACS_SS_CTRL) return key;
-if(ss & ACS_SS_CTRL) return -1;
-if(ss == ACS_SS_ALT) return key + MK_BLOCK/2;
-if(ss == ACS_SS_LALT) return key + MK_BLOCK;
-if(ss == ACS_SS_RALT) return key + MK_BLOCK + MK_BLOCK/2;
-return -1; // should never get here
+if((unsigned)key >= ACS_NUM_KEYS) return -1;
+if(ss & ~0xf) return -1;
+return ss * ACS_NUM_KEYS + key;
 } /* acs_build_mkcode */
 
 /* Match two strings, n characters, case insensitive. */
 /* This is pure ascii. */
-static int lettermatch_ci(const char *s, const char *t, int n)
+static int wordmatch_ci(const char *s, const char *t, int n)
 {
 char c;
 while(n) {
@@ -62,7 +37,7 @@ if(c) return 0;
 c = s[0] | 0x20;
 if(c >= 'a' && c <= 'z') return 0;
 return 1;
-} /* lettermatch_ci */
+} /* wordmatch_ci */
 
 /* Build a modified key code from an ascii string. */
 /* Remember the encoded key and state; needed by line_configure below. */
@@ -102,11 +77,14 @@ int keycode;
 {0, 0}};
 struct keyword *kw;
 
-if(s[0] == '+') ss = ACS_SS_SHIFT, ++s;
-else if(s[0] == '^') ss = ACS_SS_CTRL, ++s;
-else if(s[0] == '@') ss = ACS_SS_ALT, ++s;
-else if((s[0] == 'l' || s[0] == 'L') && s[1] == '@') ss = ACS_SS_LALT, s += 2;
-else if((s[0] == 'r' || s[0] == 'R') && s[1] == '@') ss = ACS_SS_RALT, s += 2;
+while(1) {
+if(s[0] == '+') { ss |= ACS_SS_SHIFT; ++s; continue; }
+if(s[0] == '^') { ss|= ACS_SS_CTRL; ++s; continue; }
+if(s[0] == '@') { ss|= ACS_SS_ALT; ++s; continue; }
+if((s[0] == 'l' || s[0] == 'L') && s[1] == '@') { ss|= ACS_SS_LALT; s += 2; continue; }
+if((s[0] == 'r' || s[0] == 'R') && s[1] == '@') { ss|= ACS_SS_RALT; s += 2; continue; }
+break;
+}
 
 if((s[0] == 'f' || s[0] == 'F') && isdigit((unsigned char)s[1])) {
 ++s;
@@ -133,7 +111,7 @@ goto done;
 
 for(kw=keywords; kw->name; ++kw) {
 int l = strlen(kw->name);
-if(!lettermatch_ci(s, kw->name, l)) continue;
+if(!wordmatch_ci(s, kw->name, l)) continue;
 key = kw->keycode;
 s += l;
 goto done;
@@ -150,7 +128,6 @@ done:
 if(endptr) *endptr = (char*)s;
 // save these for line_configure
 key1key = key;
-if(!ss) ss = ACS_SS_PLAIN;
 key1ss = ss;
 return acs_build_mkcode(key, ss);
 
@@ -158,8 +135,8 @@ error:
 return -1;
 } /* acs_ascii2mkcode */
 
-static char *macrolist[MK_BLOCK*8];
-static char *speechcommandlist[MK_BLOCK*8];
+static char *macrolist[MK_RANGE];
+static char *speechcommandlist[MK_RANGE];
 
 void acs_clearmacro(int mkcode)
 {
@@ -630,9 +607,6 @@ strcpy(rootword, t);
 return rootword;
 } /* acs_smartreplace */
 
-/* Remember which keys are being intercepted by the driver. */
-static int keycapture[ACS_NUM_KEYS];
-
 static void skipWhite(char **t)
 {
 char *s = *t;
@@ -662,6 +636,12 @@ if(s[1] != ' ' && s[1] != '\t') return 0;
 
 mkcode = acs_ascii2mkcode(s, &s);
 if(mkcode >= 0) { // key assignment
+int code_l, code_r; /* left and right alt */
+code_l = code_r = 0;
+if((key1ss&ACS_SS_ALT) == ACS_SS_ALT) {
+code_l = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_RALT));
+code_r = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_LALT));
+}
 
 skipWhite(&s);
 c = *s;
@@ -669,27 +649,47 @@ c = *s;
 if(!s[1]) goto clear;
 if(c == '<')
 ++s;
+if(code_l) {
+acs_setmacro(code_l, s);
+acs_setmacro(code_r, s);
+acs_setkey(key1key, (key1ss & ~ACS_SS_RALT));
+acs_setkey(key1key, (key1ss & ~ACS_SS_LALT));
+} else {
 acs_setmacro(mkcode, s);
-keycapture[key1key] |= key1ss;
-acs_setkey(key1key, keycapture[key1key]);
+acs_setkey(key1key, key1ss);
+}
 return 0;
 }
 
 	if(!c) {
 clear:
+if(code_l) {
+acs_clearmacro(code_l);
+acs_clearmacro(code_r);
+acs_clearspeechcommand(code_l);
+acs_clearspeechcommand(code_r);
+acs_unsetkey(key1key, (key1ss & ~ACS_SS_RALT));
+acs_unsetkey(key1key, (key1ss & ~ACS_SS_LALT));
+} else {
 acs_clearmacro(mkcode);
 acs_clearspeechcommand(mkcode);
-keycapture[key1key] &= ~key1ss;
-acs_setkey(key1key, keycapture[key1key]);
+acs_unsetkey(key1key, key1ss);
+}
 return 0;
 }
 
 // keystroke command
 // call the syntax checker / converter if provided
 if(syn_h && (rc = (*syn_h)(s))) return rc;
+if(code_l) {
+acs_setspeechcommand(code_l, s);
+acs_setspeechcommand(code_r, s);
+acs_setkey(key1key, (key1ss & ~ACS_SS_RALT));
+acs_setkey(key1key, (key1ss & ~ACS_SS_LALT));
+} else {
 acs_setspeechcommand(mkcode, s);
-keycapture[key1key] |= key1ss;
-acs_setkey(key1key, keycapture[key1key]);
+acs_setkey(key1key, key1ss);
+}
 return 0;
 }
 
@@ -745,7 +745,7 @@ acs_setpunc(u->unicode, u->name);
 ++u;
 }
 
-for(i=0; i<MK_BLOCK*8; ++i) {
+for(i=0; i<MK_RANGE; ++i) {
 acs_clearmacro(i);
 acs_clearspeechcommand(i);
 }

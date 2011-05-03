@@ -125,21 +125,23 @@ static void cb_append(struct cbuf *cb, unsigned int c)
  * shift, alt, numlock, etc.  These are the state changing keys. */
 static bool ismeta[ACS_NUM_KEYS];
 
-/* Indicate which keys should be passed on to userspace.
- * Each element should be set to the appropriate shiftstate(s)
- * as defined in acsint.h.
- * Relay keys in those designated shift states.
- * Otherwise they go on to the console.
- * Set to -1 if the key is discarded entirely.
- */
+/* Indicate which keys should be intercepted.
+ * There is an intersception state, or istate, for each key.
+ * This is an unsigned short, with a bit for each shift alt control combination.
+ * This includes the first bit, which corresponds to a shift state of 0,
+ * or the plain key.  You want that for function keys etc,
+ * but probably not for letters on the main keyboard.
+ * Those should always pass through to the console.
+ * But I don't place any restrictions on what is intercepted,
+ * so do whatever you like. */
 
-static char acsint_keys[ACS_NUM_KEYS];
+static unsigned short istate[ACS_NUM_KEYS];
 
 static void clear_keys(void)
 {
 	int i;
 	for (i = 0; i < ACS_NUM_KEYS; i++)
-		acsint_keys[i] = 0;
+		istate[i] = 0;
 }
 
 /* divert all keys to user space, to grab the next key or build a string. */
@@ -429,17 +431,19 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(shiftstate, p++);
 			len--;
 			if (key < ACS_NUM_KEYS)
-				acsint_keys[key] = shiftstate;
+				istate[key] |= ((unsigned short)1<<shiftstate);
 			break;
 
 		case ACSINT_UNSET_KEY:
-			if (len < 1)
+			if (len < 2)
 				break;
 			get_user(key, p++);
 			key = (unsigned char)key;
 			len--;
+			get_user(shiftstate, p++);
+			len--;
 			if (key < ACS_NUM_KEYS)
-				acsint_keys[key] = 0;
+				istate[key] &= ~ ((unsigned short)1 << shiftstate);
 			break;
 
 		case ACSINT_CLICK:
@@ -814,13 +818,17 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	unsigned int key = param->value;
 	int downflag = param->down;
 	int ss = param->shift;
-	char action;
-	static char ischort[] = {
-		0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0
-	};
+	unsigned short action;
 	bool wake = false, keep = false, send = false;
 	bool divert, monitor, bypass;
 	unsigned long irqflags;
+
+/* these variables are for the echo feature */
+		char keychar;
+		static const char lowercode[] =
+		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
+		static const char uppercode[] =
+		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
 
 	if (!in_use)
 		goto done;
@@ -851,14 +859,10 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 		goto done;
 
 	ss &= 0xf;
-	if (!ss)
-		ss = ACS_SS_PLAIN;
 
 	action = 0;
 	if (key < ACS_NUM_KEYS)
-		action = acsint_keys[key];
-	if (action < 0)
-		goto stop;
+		action = istate[key];
 
 	divert = key_divert;
 	monitor = key_monitor;
@@ -881,34 +885,16 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	}
 
 /* keypad is assumed to be numbers with numlock on,
- * perhaps speech functions otherwise. */
+ * and perhaps speech functions otherwise. */
 	if (param->ledstate & K_NUMLOCK &&
 	    key >= KEY_KP7 && key <= KEY_KPDOT &&
 	    key != KEY_KPMINUS && key != KEY_KPPLUS)
 		goto regular;
 
-	if (action == ACS_SS_ALL) {
-/* capture all flavors of this key, but not a plain or shifted letter. */
-		static const char isregular[] =
-		    " ............................ ............ ...........   .";
-if(key <= KEY_SPACE &&
-isregular[key] == '.' &&
-(ss == ACS_SS_PLAIN || ss == ACS_SS_SHIFT))
-goto regular;
-/* alt function keys also pass through, as these change consoles. */
-if(((key >= KEY_F1 && key <= KEY_F10) ||
-(key >= KEY_F11 && key <= KEY_F12)) &&
-(ss == ACS_SS_LALT || ss == ACS_SS_RALT))
-goto regular;
-} else {
-		if (!(action & ss))
-			goto regular;
-/* only one of shift, lalt, ralt, or control */
-		if (ischort[ss])
-			goto regular;
-	}
+		if (action & (1 << ss)) {
 	keep = true;
 	goto event;
+}
 
 regular:
 /* Just a regular key. */
@@ -933,7 +919,9 @@ event:
 		raw_spin_unlock_irqrestore(&acslock, irqflags);
 	}
 
-	if (send) {
+	if (!send)
+	return NOTIFY_STOP;
+
 		/*
 		 * Remember this key, to check for echo.
 		 * I should be responding to KBD_UNICODE, and storing the unicode,
@@ -943,11 +931,6 @@ event:
 		 * If your keyboard isn't qwerty, we're screwed.
 		 * Somebody help me with this one.
 		 */
-		char keychar;
-		static const char lowercode[] =
-		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
-		static const char uppercode[] =
-		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
 		if (key == KEY_KPENTER)
 			key = KEY_ENTER;
 /* pull keycode down to numbers if numlock numpad keys are hit */
@@ -971,11 +954,6 @@ event:
 		inkeytime[nkeypending] = jiffies;
 		++nkeypending;
 		raw_spin_unlock_irqrestore(&acslock, irqflags);
-		goto done;
-	}
-
-stop:
-	return NOTIFY_STOP;
 
 done:
 	return NOTIFY_DONE;

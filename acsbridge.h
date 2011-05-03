@@ -354,47 +354,32 @@ So if you want to capture control r, to read the screen or whatever, do this.
 
 acs_setkey(KEY_R, ACS_SS_CTRL);
 
-If you are doing something with both control r and alt r:
+If another speech function is bound to alt r,
+then make these two calls, in addition to the one above.
 
-acs_setkey(KEY_R, ACS_SS_CTRL|ACS_SS_ALT);
+acs_setkey(KEY_R, ACS_SS_LALT);
+acs_setkey(KEY_R, ACS_SS_RALT);
 
 This captures control r, and alt r, but not alt control r.
-If exactly one of the modifiers in your bitmask is active,
-you get the keystroke; otherwise it goes on to the console.
+You would use ACS_SS_LALT|ACS_SS_CTRL for that.
 
 ALT is shorthand for left and right alt.
-You can use LALT or RALT if you only want left alt r or right alt r.
+But don't call setkey with ACS_SS_ALT and expect either alt key to work.
+You are really specifying a key chord, and you won't see that key
+unless the user is holding down both alt keys simultaneously.
+For the typical meaning of alt, you have to issue to setkey commands,
+as shown above.
+Of course you can just capture left alt r or right alt r if you wish.
 
-If you don't want to see any variations on r:
+acs_unsetkey reverses the action of acs_setkey.
+That key, with the specified meta keys held down,
+is no longer intercepted, and passes through to the console.
 
-acs_unsetkey(KEY_R);
-
-If you want to capture F2, you must specify plain:
-this didn't come up with r, you wouldn't want to capture plain r.
-
-acs_setkey(KEY_F2, ACS_SS_PLAIN);
-
-To capture F2 or shift F2:
-
-acs_setkey(KEY_F2, ACS_SS_PLAIN|ACS_SS_SHIFT);
-
-To capture any and all variations on F2,
-including control shift F2 and other chords:
-
-acs_setkey(KEY_F2, ACS_SS_ALL);
-
-Well you probably don't want to do this,
-since alt-F2 will be captured and you won't be able to switch to console 2.
-
-When F2 is pressed, your keyboard handler will be called with
-KEY_F2, shiftstate, leds.
+When a key is intercepted, your keyboard handler will be called with
+keycode, shiftstate, leds.
 Leds are the settings for capslock, numlock, scrolllock.
 Example K_NUMLOCK if numlock is on.
 See the handler below.
-
-If you are capturing all variations of a key,
-you have to use it or throw it away.
-You can't give it back to the console.
 
 If you are capturing a key from the numeric keypad,
 you only get it if numlock is off.
@@ -408,10 +393,10 @@ And acs_reset_configure(), also in section 8, calls clearkeys() for you.
 *********************************************************************/
 
 int acs_setkey(int key, int shiftstate);
-int acs_unsetkey(int key);
-int acs_clearkeys(void); // clear all keys
+int acs_unsetkey(int key, int shiftstate);
+int acs_clearkeys(void); /* clear all keys */
 
-// Called when the bridge supplies us with a keystroke.
+/* Called when the bridge supplies us with a keystroke. */
 typedef void (*key_handler_t) (int key, int shiftstate, int leds);
 extern key_handler_t acs_key_h;
 
@@ -613,8 +598,8 @@ When you hit control F2, for instance,
 a certain string is sent to the console via acs_injectstring(),
 as described above.
 
-We first map the key code and shift state into a number from 0 to 480.
-This gives the modified key code or mkcode.
+We first map the key code and shift state into a composite number.
+This is the modified key code, or mkcode.
 alt V is different from control V, etc.
 This code is then used to set, clear,
 or retrieve the macro associated with the key.
@@ -644,19 +629,20 @@ left  left arrow
 right  right arrow
 ^right  control right arrow
 home  home
++pause shift pause
 
 These are, once again, low levvel functions,
 and you probably should use acs_line_configure() instead.
 *********************************************************************/
 
-// Return the modified key code based on key and state.
-// This assumes numlock is off, and/or the led states don't matter.
-// acsint doesn't capture numlock keypad codes in any case.
-// Returns -1 if the conversion cannot be made.
+/* Return the modified key code based on key and state.
+ * This assumes numlock is off, and/or the led states don't matter.
+ * acsint doesn't capture numlock keypad codes in any case.
+ * Returns -1 if the conversion cannot be made. */
 int acs_build_mkcode(int keycode, int state);
 
-// Convert ascii to mkcode.  Pass in a pointer if you want to know
-// where we left off - like strtol().
+/* Convert ascii to mkcode.  Pass in a pointer if you want to know
+ * where we left off - like strtol(). */
 int acs_ascii2mkcode(const char *s, char **endptr);
 
 /* Use the modified key code to set and retrieve a macro string.
@@ -671,11 +657,7 @@ void acs_setmacro(int mkcode, const char *s);
 char *acs_getmacro(int mkcode);
 void acs_clearmacro(int mkcode);
 
-/* If the user types lalt F7, you may want to query lalt F7
- * first, and if there is nothing there, then query alt F7,
- * for either left or right alt.
- * And that is a good strategy for bound speech commands too.
- * Use the modified key code to set and retrieve a speech function.
+/* Use the modified key code to set and retrieve a speech function.
  * The bytes could be anything, as long as they end in null.
  * You know what "read next line" means, and these functions don't care. */
 void acs_setspeechcommand(int mkcode, const char *s);
@@ -788,6 +770,12 @@ read reed
 # set punctuation pronunciation
 }  right brace
 
+A leading at sign, as in @x, means either alt key, not both simultaneously.
+It issues two calls to acs_setspeechcommand internally.
+That is usually what you want.
+Use l@x or r@x if you specifically want one alt key or the other.
+Similarly, +@x means control alt x, using either alt key.
+
 You can provide a callback syntax checker, which is invoked for your
 speech commands.
 If the user types, or places in his config file,
@@ -801,7 +789,7 @@ Replace "read next line" with "12", for instance.
 I pass you the string as char * rather than const char *,
 so you can modify it if you wish.
 But make sure it is still a null terminated string,
-because I will associate that string with that modified key
+because I will associate that string with the modified key
 as its speech command.
 Within your handler,
 call acs_getspeechcommand(KEY_T, ACS_SS_CTRL)

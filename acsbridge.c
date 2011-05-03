@@ -530,11 +530,12 @@ iobuf[2] = ss;
 return acs_write(3);
 } // acs_setkey
 
-int acs_unsetkey(int key)
+int acs_unsetkey(int key, int ss)
 {
 iobuf[0] = ACSINT_UNSET_KEY;
 iobuf[1] = key;
-return acs_write(2);
+iobuf[2] = ss;
+return acs_write(3);
 } // acs_unsetkey
 
 int acs_clearkeys(void)

@@ -52,14 +52,13 @@ ACSINT_PRINTK,
 /* Symbolic constants for the led states are in kd.h */
 
 /* Symbolic constants for the shift states are derived from keyboard.h,
- * but then I add a couple of my own. */
+ * but I turn them into bits for you.
+ * This makes it easier to ddescribe modified key chords such as alt control X.
+ * Just or things together. */
 #define ACS_SS_SHIFT (1<<KG_SHIFT)
 #define ACS_SS_RALT (1<<KG_ALTGR)
 #define ACS_SS_CTRL (1<<KG_CTRL)
 #define ACS_SS_LALT (1<<KG_ALT)
 #define ACS_SS_ALT (ACS_SS_LALT|ACS_SS_RALT)
-/* and these are new */
-#define ACS_SS_PLAIN 0x10
-#define ACS_SS_ALL 0x20
 
 #endif

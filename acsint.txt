@@ -154,44 +154,17 @@ If you issue this command with KEY_F1 and ACS_SS_CTRL, then control F1
 is intercepted and passed back to your adapter
 via the read() system call described below.
 It does not become input for the foreground tty.
-Note however that other flavors of F1, such as plain F1 or alt F1 etc,
-still pass through to the console.
-You only get the keys you ask for.
-
-If you want to capture plain F1, you must specify the new shift state ACS_SS_PLAIN.
-To capture plain F1 and control F1, use the composite shift state
-ACS_SS_PLAIN | ACS_SS_CTRL.
-Shift F1 and alt F1 will still pass through to the foreground console,
-which is especially important if you want to use alt F1 to switch to console 1.
-
-Note that keystrokes are intercepted only if a single modifier is applied.
-You may specify shift F1 and control F1, and you will get shift F1,
-and control F1, but not shift control F1.
-When multiple modifiers are held down the key passes through to the console.
-
-However, there is a special shift state ACS_SS_ALL,
-which intercepts every flavor of that key.
-The adapter can then query the shift state, including chords,
-and act accordingly.
-Note that you cannot change your mind,
-and pass certain instances of this key back to the console.
-Once you have intercepted it, it is yours.
-You must either act upon it or throw it away.
-With this in mind,
-plain or shifted keys on the main keyboard are not intercepted.
-If you want all flavors of x, I will still pass x or X through to the console,
-but you can act upon alt x, control x, shift control x, etc,
-to your heart's content.
-Alt function keys also pass through, as these are used to change consoles.
-Most adapters do not employ this level of complexity very often;
-it would be confusing if every meta chord on every key meant something different.
+You can put states together to capture key chords.
+For instance, ACS_SS_LALT|ACS_SS_CTRL will capture
+the key when modified by the left alt and the control keys simultaneously.
+Any combinations not specifically intercepted will pass through to the console.
 
 ACSINT_UNSET_KEY
 
-The key code is the only parameter.
-This reverses the action of ACSINT_SET_KEY above,
-and allows the key to pass through to the console in all its flavors.
-The key is no longer intercepted.
+The parameters are the key code and the shift state.
+This reverses the action of ACSINT_SET_KEY above.
+The key, with the specified modifiers, is no longer intercepted,
+and will pass through to the console.
 
 ACSINT_PUSH_TTY
 
