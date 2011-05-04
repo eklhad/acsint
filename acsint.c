@@ -708,7 +708,10 @@ post4echo(int key, int ss, int leds)
 
 /* pull keycode down to numbers if numlock numpad keys are hit */
 if(leds&K_NUMLOCK && (ss&ACS_SS_ALT) == 0) {
-static const char padnumbers[] = "789 456 1230";
+static const int padnumbers[] = {
+KEY_7, KEY_8, KEY_9, 0,
+KEY_4, KEY_5, KEY_6, 0,
+KEY_1, KEY_2, KEY_3, KEY_0};
 if(key == KEY_KPASTERISK) key = KEY_8, ss = ACS_SS_SHIFT;
 if(key == KEY_KPSLASH) key = KEY_SLASH, ss = 0;
 if(key == KEY_KPPLUS) key = KEY_EQUAL, ss = ACS_SS_SHIFT;
