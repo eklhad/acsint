@@ -45,8 +45,6 @@ struct cbuf {
 	unsigned int *head, *tail;
 /* mark the place where we last copied data to user space */
 	unsigned int *mark;
-/* new output characters, not yet copied to user space */
-	unsigned int *output;
 };
 
 /* These are allocated, one per console, as needed. */
@@ -76,7 +74,6 @@ static void cb_reset(struct cbuf *cb)
 	cb->head = cb->start;
 	cb->tail = cb->start;
 	cb->mark = cb->start;
-	cb->output = cb->start;
 }
 
 /* check to see if the circular buffer was allocated. */
@@ -113,8 +110,6 @@ static void cb_append(struct cbuf *cb, unsigned int c)
 		/* buffer full, drop the last character */
 		if (cb->tail == cb->mark)
 			cb->mark = 0;
-		if (cb->tail == cb->output)
-			cb->output = 0;
 		++cb->tail;
 		if (cb->tail == cb->end)
 			cb->tail = cb->start;
@@ -298,11 +293,11 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 	catchup = false;
 	if ((!cb && !cb_nomem_refresh[fg_console]) || cb->head != cb->mark) {
-		/* MORECHARS doesn't force us to catch up, but anything else does. */
+		/* MORECHARS echo 0 doesn't force us to catch up, but anything else does. */
 		for (t = temp_tail; t < temp_head; t += 4) {
 			if (*t == ACSINT_TTY_MORECHARS) {
 				t += 4;
-				continue;
+				if(!t[-3]) continue;
 			}
 			catchup = true;
 			break;
@@ -343,7 +338,6 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 					       j2 * 4);
 			}
 			cb->mark = cb->head;
-			cb->output = cb->head;
 		} else {
 			for (j = 0; j < culen; ++j)
 				cb_staging[j] = cb_nomem_message[j];
@@ -754,7 +748,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 {
 	unsigned long irqflags;
 	bool wake = false;
-	bool athead = false;	/* output is at the head */
+	bool at_head = false;	/* output is at the head */
 	int echo = 0;
 	struct cbuf *cb = cbuf_tty[mino];
 
@@ -766,11 +760,11 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	if (mino == fg_console) {
 		if (from_vt)
 			echo = isEcho(c);
-		if (cb->output == cb->head)
-			athead = true;
+		if (cb->mark == cb->head)
+			at_head = true;
 	}
 
-	if ((athead || echo) && rbuf_head <= rbuf_end - 8) {
+	if ((at_head || echo) && rbuf_head <= rbuf_end - 8) {
 		/* throw the "more stuff" event */
 		if (rbuf_head == rbuf_tail)
 			wake = true;
@@ -784,11 +778,6 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	}
 
 	cb_append(cb, c);
-
-/* If you were caught up before, and you receive an echo char,
- * then you're still caught up. */
-	if (athead && echo)
-		cb->output = cb->head;
 
 	if (wake)
 		wake_up_interruptible(&wq);

@@ -414,7 +414,7 @@ Then it will be thrown again when new output is generated, and so on.
 
 If echo = 1 then this character, which is a unicode in the second int,
 is an echo of the user's keystroke.
-This does not necesssarily bring the buffer up to date.
+This brings the buffer up to date.
 It tells the adapter to speak that character, if it is
 configured to echo the user's keystrokes.
 

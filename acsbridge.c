@@ -700,13 +700,13 @@ acs_log("output echo %d", inbuf[i+1]);
 if(inbuf[i+1]) acs_log(" 0x%x", d);
 acs_log("\n");
 }
-// no automatic refresh here; you have to call it if you want it
+/* If echo is nonzero, then the refresh has already been done. */
 if(acs_more_h) acs_more_h(inbuf[i+1], d);
 i += 8;
 break;
 
 case ACSINT_REFRESH:
-acs_log("refresh\n");
+acs_log("ack refresh\n");
 i += 4;
 break;
 
@@ -796,6 +796,7 @@ return 0;
 
 int acs_refresh(void)
 {
+acs_log("get refresh\n");
 outbuf[0] = ACSINT_REFRESH;
 if(acs_write(1)) return -1;
 if(screenmode) screenSnap();
