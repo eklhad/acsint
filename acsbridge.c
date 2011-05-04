@@ -25,7 +25,9 @@ and declared in acsbridge.h.
 
 #define MAX_ERRMSG_LEN 256 // description of error
 #define MAXNOTES 10 // how many notes to play in one call
-#define IOBUFSIZE (TTYLOGSIZE*4 + 2000) /* size of input buffer */
+#define INBUFSIZE (TTYLOGSIZE*4 + 400) /* size of input buffer */
+/* Output buffer could be 40 bytes, except for injectstring() */
+#define OUTBUFSIZE 20000
 /* I assume the screen doesn't have more than 5000 characters,
  * and TTYLOGSIZE is at least 10000.
  * 40 rows by 120 columns is, for instance, 4800 */
@@ -69,7 +71,8 @@ ks_echo_handler_t acs_ks_echo_h;
 static int cerror; /* Indicate communications error. */
 static char errorDesc[MAX_ERRMSG_LEN];
 
-static unsigned char iobuf[IOBUFSIZE]; // input output buffer for acsint
+static unsigned char inbuf[INBUFSIZE]; /* input buffer for acsint */
+static unsigned char outbuf[OUTBUFSIZE]; /* output buffer for acsint */
 
 // set, clear, and report errors
 
@@ -250,7 +253,7 @@ errno = ENXIO;
 setError();
 return -1;
 }
-if(write(acs_fd, iobuf, n) < n) {
+if(write(acs_fd, outbuf, n) < n) {
 setError();
 return -1;
 }
@@ -262,24 +265,24 @@ return 0;
 int
 acs_sounds(int enabled) 
 {
-iobuf[0] = ACSINT_SOUNDS;
-iobuf[1] = enabled;
+outbuf[0] = ACSINT_SOUNDS;
+outbuf[1] = enabled;
 return acs_write(2);
 } // acs_sounds
 
 int
 acs_tty_clicks(int enabled) 
 {
-iobuf[0] = ACSINT_SOUNDS_TTY;
-iobuf[1] = enabled;
+outbuf[0] = ACSINT_SOUNDS_TTY;
+outbuf[1] = enabled;
 return acs_write(2);
 } // acs_tty_clicks
 
 int
 acs_kmsg_tones(int enabled) 
 {
-iobuf[0] = ACSINT_SOUNDS_KMSG;
-iobuf[1] = enabled;
+outbuf[0] = ACSINT_SOUNDS_KMSG;
+outbuf[1] = enabled;
 return acs_write(2);
 } // acs_kmsg_tones
 
@@ -288,14 +291,14 @@ return acs_write(2);
 int
 acs_click(void)
 {
-iobuf[0] = ACSINT_CLICK;
+outbuf[0] = ACSINT_CLICK;
 return acs_write(1);
 } // acs_click
 
 int
 acs_cr(void)
 {
-iobuf[0] = ACSINT_CR;
+outbuf[0] = ACSINT_CR;
 return acs_write(1);
 } // acs_cr
 
@@ -303,14 +306,14 @@ int
 acs_notes(const short *notelist)
 {
 int j;
-iobuf[0] = ACSINT_NOTES;
+outbuf[0] = ACSINT_NOTES;
 for(j=0; j<MAXNOTES; ++j) {
 if(!notelist[2*j]) break;
-iobuf[2+3*j] = notelist[2*j];
-iobuf[2+3*j+1] = notelist[2*j]>>8;
-iobuf[2+3*j+2] = notelist[2*j+1];
+outbuf[2+3*j] = notelist[2*j];
+outbuf[2+3*j+1] = notelist[2*j]>>8;
+outbuf[2+3*j+2] = notelist[2*j+1];
 }
-iobuf[1] = j;
+outbuf[1] = j;
 return acs_write(2+3*j);
 } // acs_notes
 
@@ -357,23 +360,23 @@ return acs_notes(enabled ? onsnd : offsnd);
 int
 acs_divert(int enabled) 
 {
-iobuf[0] = ACSINT_DIVERT;
-iobuf[1] = enabled;
+outbuf[0] = ACSINT_DIVERT;
+outbuf[1] = enabled;
 return acs_write(2);
 } // acs_divert
 
 int
 acs_monitor(int enabled) 
 {
-iobuf[0] = ACSINT_MONITOR;
-iobuf[1] = enabled;
+outbuf[0] = ACSINT_MONITOR;
+outbuf[1] = enabled;
 return acs_write(2);
 } // acs_monitor
 
 int
 acs_bypass(void)
 {
-iobuf[0] = ACSINT_BYPASS;
+outbuf[0] = ACSINT_BYPASS;
 return acs_write(1);
 } // acs_bypass
 
@@ -525,23 +528,23 @@ return 0;
 
 int acs_setkey(int key, int ss)
 {
-iobuf[0] = ACSINT_SET_KEY;
-iobuf[1] = key;
-iobuf[2] = ss;
+outbuf[0] = ACSINT_SET_KEY;
+outbuf[1] = key;
+outbuf[2] = ss;
 return acs_write(3);
 } // acs_setkey
 
 int acs_unsetkey(int key, int ss)
 {
-iobuf[0] = ACSINT_UNSET_KEY;
-iobuf[1] = key;
-iobuf[2] = ss;
+outbuf[0] = ACSINT_UNSET_KEY;
+outbuf[1] = key;
+outbuf[2] = ss;
 return acs_write(3);
 } // acs_unsetkey
 
 int acs_clearkeys(void)
 {
-iobuf[0] = ACSINT_CLEAR_KEYS;
+outbuf[0] = ACSINT_CLEAR_KEYS;
 return acs_write(1);
 } // acs_clearkeys
 
@@ -639,7 +642,7 @@ setError();
 return -1;
 }
 
-nr = read(acs_fd, iobuf, IOBUFSIZE);
+nr = read(acs_fd, inbuf, INBUFSIZE);
 acs_log("acsint read %d bytes\n", nr);
 if(nr < 0) {
 setError();
@@ -648,23 +651,18 @@ return -1;
 
 i = 0;
 while(i <= nr-4) {
-switch(iobuf[i]) {
+switch(inbuf[i]) {
 case ACSINT_KEYSTROKE:
-acs_log("key %d\n", iobuf[i+1]);
+acs_log("key %d\n", inbuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
 if(screenmode && !refreshed) { screenSnap(); refreshed = 1; }
 // check for macro here.
 if(acs_key_h != swallow_key_h && acs_key_h != swallow1_h) {
 // get the modified key code.
-int mkcode = acs_build_mkcode(iobuf[i+1], iobuf[i+2]);
+int mkcode = acs_build_mkcode(inbuf[i+1], inbuf[i+2]);
 // see if this key has a macro
 char *m = acs_getmacro(mkcode);
-if(!m && iobuf[i+2]&ACS_SS_ALT) {
-// couldn't find it on left alt or right alt, try generic alt
-mkcode = acs_build_mkcode(iobuf[i+1], ACS_SS_ALT);
-m = acs_getmacro(mkcode);
-}
 if(m) {
 if(*m == '|')
 system(m+1);
@@ -674,13 +672,13 @@ i += 4;
 break;
 }
 }
-if(acs_key_h) acs_key_h(iobuf[i+1], iobuf[i + 2], iobuf[i+3]);
+if(acs_key_h) acs_key_h(inbuf[i+1], inbuf[i + 2], inbuf[i+3]);
 i += 4;
 break;
 
 case ACSINT_FGC:
-acs_log("fg %d\n", iobuf[i+1]);
-acs_fgc = iobuf[i+1];
+acs_log("fg %d\n", inbuf[i+1]);
+acs_fgc = inbuf[i+1];
 if(screenmode) {
 /* I hope linux has done the console switch by this time. */
 screenSnap();
@@ -696,27 +694,27 @@ break;
 
 case ACSINT_TTY_MORECHARS:
 if(i > nr-8) break;
-d = *(unsigned int *) (iobuf+i+4);
+d = *(unsigned int *) (inbuf+i+4);
 if(acs_debug) {
-acs_log("output echo %d", iobuf[i+1]);
-if(iobuf[i+1]) acs_log(" 0x%x", d);
+acs_log("output echo %d", inbuf[i+1]);
+if(inbuf[i+1]) acs_log(" 0x%x", d);
 acs_log("\n");
 }
 // no automatic refresh here; you have to call it if you want it
-if(acs_more_h) acs_more_h(iobuf[i+1], d);
+if(acs_more_h) acs_more_h(inbuf[i+1], d);
 i += 8;
 break;
 
 case ACSINT_REFRESH:
-acs_log("refresh\n", 0);
+acs_log("refresh\n");
 i += 4;
 break;
 
 case ACSINT_TTY_NEWCHARS:
 /* this is the refresh data in line mode
  * minor is always the foreground console; we could probably discard it. */
-minor = iobuf[i+1];
-culen = iobuf[i+2] | ((unsigned short)iobuf[i+3]<<8);
+minor = inbuf[i+1];
+culen = inbuf[i+2] | ((unsigned short)inbuf[i+3]<<8);
 acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
@@ -737,7 +735,7 @@ if(diff >= tl->end-tl->start) {
  * should never be greater; diff = tl->end - tl->start
  * copy the new stuff */
 custart = tl->start;
-memcpy(custart, iobuf+i, TTYLOGSIZE*4);
+memcpy(custart, inbuf+i, TTYLOGSIZE*4);
 tl->end = tl->start + TTYLOGSIZE;
 tl->end[0] = 0;
 tl->cursor = 0;
@@ -764,7 +762,7 @@ if(tl->marks[j] < tl->start) tl->marks[j] = 0;
 }
 /* copy the new stuff */
 custart = tl->end;
-memcpy(custart, iobuf+i, culen*4);
+memcpy(custart, inbuf+i, culen*4);
 tl->end += culen;
 tl->end[0] = 0;
 }
@@ -788,7 +786,7 @@ default:
 /* Perhaps a phase error.
  * Not sure what to do here.
  * Just give up. */
-acs_log("unknown command %d\n", iobuf[i]);
+acs_log("unknown command %d\n", inbuf[i]);
 i += 4;
 } // switch
 } // looping through events
@@ -798,7 +796,7 @@ return 0;
 
 int acs_refresh(void)
 {
-iobuf[0] = ACSINT_REFRESH;
+outbuf[0] = ACSINT_REFRESH;
 if(acs_write(1)) return -1;
 if(screenmode) screenSnap();
 return acs_events();
@@ -1107,16 +1105,16 @@ if(c == first && stringmatch(string)) return 1;
 int acs_injectstring(const char *s)
 {
 int len = strlen(s);
-if(len > TTYLOGSIZE) {
+if(len+4 >= OUTBUFSIZE) {
 errno = ENOMEM;
 setError();
 return -1;
 }
 
-iobuf[0] = ACSINT_PUSH_TTY;
-iobuf[1] = len;
-iobuf[2] = len>>8;
-strcpy((char*)iobuf+3, s);
+outbuf[0] = ACSINT_PUSH_TTY;
+outbuf[1] = len;
+outbuf[2] = len>>8;
+strcpy((char*)outbuf+3, s);
 return acs_write(len+3);
 } // acs_injectstring
 
