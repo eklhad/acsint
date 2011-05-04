@@ -622,7 +622,16 @@ memset(rb->marks, 0, sizeof(rb->marks));
 }
 } // acs_clearbuf
 
-// events coming back
+/*********************************************************************
+Read events from the acsint device driver.
+Warning!!  This routine is not rentrant.
+Your handlers should not call acs_events(), even indirectly.
+That means they should not call acs_refresh, acs_keystring, etc.
+The best design simply sets variables, and then, once acs_events()
+returns, you can act on those variables, execute the key command,
+start reading, etc.
+*********************************************************************/
+
 int acs_events(void)
 {
 int nr; // number of bytes read
