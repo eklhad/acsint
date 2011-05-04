@@ -686,6 +686,65 @@ static int isEcho(unsigned int c)
 	return 0;
 }				/* isEcho */
 
+/* Post a keystroke on to the pending log, to watch for echo.
+ * This is based on key code and shift state.
+ * I wanted to base it on KBD_UNICODE, but my system doesn't throw those events.
+ * See the sample code in keystroke().
+ * Meantime this will have to do.
+ * But it assumes ascii, and a qwerty keyboard.
+ * Let me know if there's a better way. */
+static void
+post4echo(int key, int ss, int leds)
+{
+		char keychar;
+	unsigned long irqflags;
+		static const char lowercode[] =
+		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
+		static const char uppercode[] =
+		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
+
+		if (key == KEY_KPENTER)
+			key = KEY_ENTER;
+
+/* pull keycode down to numbers if numlock numpad keys are hit */
+if(leds&K_NUMLOCK && (ss&ACS_SS_ALT) == 0) {
+static const char padnumbers[] = "789 456 1230";
+if(key == KEY_KPASTERISK) key = KEY_8, ss = ACS_SS_SHIFT;
+if(key == KEY_KPSLASH) key = KEY_SLASH, ss = 0;
+if(key == KEY_KPPLUS) key = KEY_EQUAL, ss = ACS_SS_SHIFT;
+if(key == KEY_KPMINUS) key = KEY_MINUS, ss = 0;
+if(key == KEY_KPDOT) key = KEY_DOT, ss = 0;
+if(key >= KEY_KP7 && key <= KEY_KP0)
+key = padnumbers[key-KEY_KP7], ss = 0;
+}
+
+		if (key > KEY_SPACE)
+return;
+
+		keychar = (ss & ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
+		if (keychar == ' ' && key != KEY_SPACE)
+return;
+
+		if (keychar == '\r')
+			ss = 0;
+
+/* don't know how to echo alt keys */
+		if (ss & ACS_SS_ALT)
+return;
+
+/* control letters */
+		if (ss & ACS_SS_CTRL && isalpha(keychar))
+			keychar = (keychar | 0x20) - ('a' - 1);
+
+		raw_spin_lock_irqsave(&acslock, irqflags);
+		if (nkeypending == MAXKEYPENDING)
+			dropKeysPending(1);
+		inkeybuffer[nkeypending] = keychar;
+		inkeytime[nkeypending] = jiffies;
+		++nkeypending;
+		raw_spin_unlock_irqrestore(&acslock, irqflags);
+} /* post4echo */
+
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void pushlog(unsigned int c, int mino, bool from_vt)
@@ -823,13 +882,6 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	bool divert, monitor, bypass;
 	unsigned long irqflags;
 
-/* these variables are for the echo feature */
-		char keychar;
-		static const char lowercode[] =
-		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
-		static const char uppercode[] =
-		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
-
 	if (!in_use)
 		goto done;
 
@@ -922,38 +974,7 @@ event:
 	if (!send)
 	return NOTIFY_STOP;
 
-		/*
-		 * Remember this key, to check for echo.
-		 * I should be responding to KBD_UNICODE, and storing the unicode,
-		 * but my keyboard doesn't generate that event.  Don't know why.
-		 * And trying to deal with KEYSYM is a nightmare.
-		 * So that leaves KEYCODE, which I must (roughly) translate.
-		 * If your keyboard isn't qwerty, we're screwed.
-		 * Somebody help me with this one.
-		 */
-		if (key == KEY_KPENTER)
-			key = KEY_ENTER;
-/* pull keycode down to numbers if numlock numpad keys are hit */
-/* not yet implemented */
-		if (key > KEY_SPACE)
-			goto done;
-		keychar = (ss & ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
-		if (keychar == ' ' && key != KEY_SPACE)
-			goto done;
-		if (keychar == '\r')
-			ss = 0;
-/* don't know how to echo alt keys */
-		if (ss & ACS_SS_ALT)
-			goto done;
-		if (ss & ACS_SS_CTRL && isalpha(keychar))
-			keychar = (keychar | 0x20) - ('a' - 1);
-		raw_spin_lock_irqsave(&acslock, irqflags);
-		if (nkeypending == MAXKEYPENDING)
-			dropKeysPending(1);
-		inkeybuffer[nkeypending] = keychar;
-		inkeytime[nkeypending] = jiffies;
-		++nkeypending;
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
+post4echo(key, ss, param->ledstate);
 
 done:
 	return NOTIFY_DONE;
