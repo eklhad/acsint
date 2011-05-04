@@ -51,6 +51,7 @@ int acs_log(const char *msg, ...)
 {
 va_list args;
 FILE *f;
+if(!acs_debug) return;
 va_start(args, msg);
 if ((f = fopen(debuglog, "a")) == NULL)
 return -1;
@@ -639,7 +640,7 @@ return -1;
 }
 
 nr = read(acs_fd, iobuf, IOBUFSIZE);
-if(acs_debug) acs_log("acsint read %d bytes\n", nr);
+acs_log("acsint read %d bytes\n", nr);
 if(nr < 0) {
 setError();
 return -1;
@@ -649,7 +650,7 @@ i = 0;
 while(i <= nr-4) {
 switch(iobuf[i]) {
 case ACSINT_KEYSTROKE:
-if(acs_debug) acs_log("key %d\n", iobuf[i+1]);
+acs_log("key %d\n", iobuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
 if(screenmode && !refreshed) { screenSnap(); refreshed = 1; }
@@ -678,7 +679,7 @@ i += 4;
 break;
 
 case ACSINT_FGC:
-if(acs_debug) acs_log("fg %d\n", iobuf[i+1]);
+acs_log("fg %d\n", iobuf[i+1]);
 acs_fgc = iobuf[i+1];
 if(screenmode) {
 /* I hope linux has done the console switch by this time. */
@@ -707,7 +708,7 @@ i += 8;
 break;
 
 case ACSINT_REFRESH:
-if(acs_debug) acs_log("refresh\n", 0);
+acs_log("refresh\n", 0);
 i += 4;
 break;
 
@@ -716,7 +717,7 @@ case ACSINT_TTY_NEWCHARS:
  * minor is always the foreground console; we could probably discard it. */
 minor = iobuf[i+1];
 culen = iobuf[i+2] | ((unsigned short)iobuf[i+3]<<8);
-if(acs_debug) acs_log("new %d\n", culen);
+acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
 if(nr-i < culen*4) break;
@@ -787,7 +788,7 @@ default:
 /* Perhaps a phase error.
  * Not sure what to do here.
  * Just give up. */
-if(acs_debug) acs_log("unknown command %d\n", iobuf[i]);
+acs_log("unknown command %d\n", iobuf[i]);
 i += 4;
 } // switch
 } // looping through events

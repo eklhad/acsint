@@ -69,6 +69,7 @@ rather than reimplementing the select logic.
 
 extern int acs_fd; // file descriptor
 extern int acs_debug; // set to 1 for acs debugging
+/* This writes a message to the log if debugging is on */
 int acs_log(const char *msg, ...);
 
 // Returns the file descriptor, which is also stored in acs_fd.

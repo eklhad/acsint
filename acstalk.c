@@ -97,7 +97,6 @@ n -= imark_first;
 if(!imark_start) return;
 if(n < 0 || n >= imark_end) return;
 rb->cursor = imark_start + imark_loc[n];
-if(acs_debug)
 acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
 /* should never be past the end of buffer, but let's check */
@@ -105,12 +104,12 @@ if(rb->cursor >= rb->end) {
 rb->cursor = rb->end;
 if(rb->end > rb->start) --rb->cursor;
 imark_start = 0;
-if(acs_debug) acs_log("cursor ran past the end of buffer\n");
+acs_log("cursor ran past the end of buffer\n");
 }
 
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
-if(acs_debug) acs_log("sentence spoken\n");
+acs_log("sentence spoken\n");
 imark_start = 0;
 }
 
@@ -279,7 +278,7 @@ return -1;
 }
 
 nr = read(ss_fd0, ss_inbuf+leftover, SSBUFSIZE-leftover);
-if(acs_debug) acs_log("synth read %d bytes\n", nr);
+acs_log("synth read %d bytes\n", nr);
 if(nr < 0) return -1;
 
 i = 0;
@@ -290,12 +289,12 @@ char c = ss_inbuf[i];
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
 if(c >= 1 && c <= 99) {
-if(acs_debug) acs_log("index %d\n", c);
+acs_log("index %d\n", c);
 indexSet(c);
 ++i;
 continue;
 }
-if(acs_debug) acs_log("unknown byte %d\n", c);
+acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
@@ -305,7 +304,7 @@ if(c == '\33') {
 if(nr-i < 8) break;
 if(!strncmp(ss_inbuf+i, "\33P0;32;", 7)) {
 if(ss_inbuf[i+7] == 'z') {
-if(acs_debug) acs_log("index %d\n", 0);
+acs_log("index %d\n", 0);
 indexSet(0);
 i += 8;
 continue;
@@ -313,7 +312,7 @@ continue;
 if(nr-i < 9) break;
 if(ss_inbuf[i+8] == 'z' && isdigit((unsigned char)ss_inbuf[i+7])) {
 c = ss_inbuf[i+7] - '0';
-if(acs_debug) acs_log("index %d\n", c);
+acs_log("index %d\n", c);
 indexSet(c);
 i += 9;
 continue;
@@ -322,31 +321,31 @@ if(nr-i < 10) break;
 if(ss_inbuf[i+9] == 'z' && isdigit((unsigned char)ss_inbuf[i+7]) && isdigit((unsigned char)ss_inbuf[i+8])) {
 c = ss_inbuf[i+7] - '0';
 c = 10*c + ss_inbuf[i+8] - '0';
-if(acs_debug) acs_log("index %d\n", c);
+acs_log("index %d\n", c);
 indexSet(c);
 i += 10;
 continue;
 }
 }
 }
-if(acs_debug) acs_log("unknown byte %d\n", c);
+acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
 case SS_STYLE_BNS:
 case SS_STYLE_ACE:
 if(c == 6) {
-if(acs_debug) acs_log("index f\n", 0);
+acs_log("index f\n", 0);
 indexSet(0);
 ++i;
 continue;
 }
-if(acs_debug) acs_log("unknown byte %d\n", c);
+acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
 default:
-if(acs_debug) acs_log("no style, synth data discarded\n", 0);
+acs_log("no style, synth data discarded\n", 0);
 leftover = 0;
 return -1;
 } // switch
@@ -444,7 +443,6 @@ if(s > t)
 write(ss_fd1, t, s-t);
 
 ss_cr();
-if(acs_debug)
 acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);
 } // ss_say_string_imarks
 
@@ -467,7 +465,7 @@ write(ss_fd1, &ibyte, 1);
 
 imark_start = 0;
 bnsf = 0;
-if(acs_debug) acs_log("shutup\n");
+acs_log("shutup\n");
 } // ss_shutup
 
 static void
