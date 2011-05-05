@@ -1166,6 +1166,9 @@ while((c = *s) && t < destend) {
 if(c == '\n' && prop&ACS_GS_NLSPACE)
 c = ' ';
 
+if(c == '\r' && !(prop&ACS_GS_ONEWORD))
+c = ' ';
+
 c1 = acs_downshift(c);
 
 if(c == ' ') {
@@ -1334,6 +1337,9 @@ if(o) memset(o, 0, sizeof(ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
 if(c == '\n' && prop&ACS_GS_NLSPACE)
+c = ' ';
+
+if(c == '\r' && !(prop&ACS_GS_ONEWORD))
 c = ' ';
 
 c1 = acs_downshift(c);
