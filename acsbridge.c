@@ -151,7 +151,8 @@ if(rb && rb != &tty_nomem)
 return; /* already allocated */
 
 rb = malloc(sizeof(struct readingBuffer));
-if(!rb) rb = &tty_nomem;
+if(rb) acs_log("allocate %d\n", acs_fgc);
+else rb = &tty_nomem;
 tty_log[acs_fgc-1] = rb;
 rb->start = rb->area + 1;
 rb->area[0] = 0;
@@ -688,14 +689,15 @@ break;
 case ACSINT_FGC:
 acs_log("fg %d\n", inbuf[i+1]);
 acs_fgc = inbuf[i+1];
+checkAlloc();
 if(screenmode) {
+/* Oops, the checkAlloc function changed rb out from under us. */
+rb = &screenBuf;
 /* I hope linux has done the console switch by this time. */
 screenSnap();
 refreshed = 1;
 rb->cursor = rb->v_cursor;
 memset(rb->marks, 0, sizeof(rb->marks));
-} else {
-checkAlloc();
 }
 if(acs_fgc_h) acs_fgc_h();
 i += 4;
