@@ -40,7 +40,7 @@ static DEFINE_RAW_SPINLOCK(acslock);
 
 /* circular buffer of output characters received from the tty */
 struct cbuf {
-	unsigned int area[TTYLOGSIZE1];
+	unsigned int area[TTYLOGSIZE + 1];
 	unsigned int *start, *end;
 	unsigned int *head, *tail;
 /* mark the place where we last copied data to user space */
@@ -70,7 +70,7 @@ static void cb_reset(struct cbuf *cb)
 	if (!cb)
 		return;		/* never allocated */
 	cb->start = cb->area;
-	cb->end = cb->area + TTYLOGSIZE1;
+	cb->end = cb->area + TTYLOGSIZE + 1;
 	cb->head = cb->start;
 	cb->tail = cb->start;
 	cb->mark = cb->start;

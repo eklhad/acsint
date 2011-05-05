@@ -261,7 +261,7 @@ that are not yet implemented, and may never be implemented, in screen mode.
 #define NUMBUFMARKS 30
 
 struct readingBuffer {
-	unsigned int area[TTYLOGSIZE2];
+	unsigned int area[TTYLOGSIZE + 2];
 	unsigned char *attribs;
 	unsigned int *start, *end;
 	unsigned int *cursor;

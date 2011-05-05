@@ -11,8 +11,6 @@
 /* The size of the tty log; store this many characters of tty output.
  * Has to be between 30K and 64K */
 #define TTYLOGSIZE 50000
-#define TTYLOGSIZE1 (TTYLOGSIZE+1)
-#define TTYLOGSIZE2 (TTYLOGSIZE+2)
 
 /* Commands that Acsint sends or receives */
 enum acs_command {
