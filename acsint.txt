@@ -191,6 +191,15 @@ If control C is bound to a speech function,
 but you want to pass control C through to the console to interrupt a
 running program, then you need this function.
 
+In theory there is a race condition here;
+the adapter could be swapped out, and you might type the next key
+before the BYPASS event was registered;
+but in practice this will never happen.
+On today's ghz processors, the time between one keystroke and the next
+is an eternity.  Still, for this reason and for others,
+you may want to lock your adapter in core and give it a high priority.
+Speech commands should respond instantly, even if the system is under load.
+
 ACSINT_DIVERT
 
 This takes the parameter 1 or 0, enabled or disabled.
@@ -210,7 +219,11 @@ Think of this as /usr/bin/tee.
 This could be used to echo keystrokes as they are typed,
 but in practice it is better to echo the characters as they appear on screen.
 Thus passwords are not echoed for the world to hear, etc.
-In fact this function is not used at all, and it may go away in the future.
+Most adapters do not use this function for echo.
+(See the MORECHARS event below.)
+Still, you may want to monitor keystrokes
+for some other reason that I haven't anticipated,
+and this function makes it possible.
 
 ACSINT_SOUNDS
 
