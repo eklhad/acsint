@@ -45,6 +45,8 @@ struct cbuf {
 	unsigned int *head, *tail;
 /* mark the place where we last copied data to user space */
 	unsigned int *mark;
+/* Mark the point where we last saw an echo character */
+unsigned int *echopoint;
 };
 
 /* These are allocated, one per console, as needed. */
@@ -74,6 +76,7 @@ static void cb_reset(struct cbuf *cb)
 	cb->head = cb->start;
 	cb->tail = cb->start;
 	cb->mark = cb->start;
+cb->echopoint = 0;
 }
 
 /* check to see if the circular buffer was allocated. */
@@ -110,6 +113,8 @@ static void cb_append(struct cbuf *cb, unsigned int c)
 		/* buffer full, drop the last character */
 		if (cb->tail == cb->mark)
 			cb->mark = 0;
+		if (cb->tail == cb->echopoint)
+			cb->echopoint = 0;
 		++cb->tail;
 		if (cb->tail == cb->end)
 			cb->tail = cb->start;
@@ -338,6 +343,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 					       j2 * 4);
 			}
 			cb->mark = cb->head;
+cb->echopoint = 0;
 		} else {
 			for (j = 0; j < culen; ++j)
 				cb_staging[j] = cb_nomem_message[j];
@@ -764,20 +770,21 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 			at_head = true;
 	}
 
+	cb_append(cb, c);
+
 	if ((at_head || echo) && rbuf_head <= rbuf_end - 8) {
-		/* throw the "more stuff" event */
+		/* throw the MORECHARS event */
 		if (rbuf_head == rbuf_tail)
 			wake = true;
 		rbuf_head[0] = ACSINT_TTY_MORECHARS;
 		rbuf_head[1] = echo;
-		if (echo)
+		if (echo) {
+cb->echopoint = cb->head;
 			*(unsigned int *)(rbuf_head + 4) = c;
-		else
+		} else
 			*(unsigned int *)(rbuf_head + 4) = 0;
 		rbuf_head += 8;
 	}
-
-	cb_append(cb, c);
 
 	if (wake)
 		wake_up_interruptible(&wq);
