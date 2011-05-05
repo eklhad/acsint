@@ -263,9 +263,11 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	int bytes_read = 0;
 	struct cbuf *cb;
 	bool catchup;
+bool catchup_head, catchup_echo;
 /* catch up length - how many characters to copy down to user space */
 	int culen = 0;
 	char cu_cmd[4];		/* the catch up command */
+unsigned int *cup = 0; /* the catchup poin */
 	char *temp_head, *temp_tail, *t;
 	int j, j2;
 	int retval;
@@ -286,7 +288,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	temp_head = rbuf_head;
 	temp_tail = rbuf_tail;
 
-/* Skip ahead to the last FGC event, if present. */
+/* Skip ahead to the last FGC event if present. */
 	for (t = temp_tail; t < temp_head; t += 4) {
 		if (*t == ACSINT_FGC)
 			temp_tail = t;
@@ -297,27 +299,41 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	raw_spin_lock_irqsave(&acslock, irqflags);
 
 	catchup = false;
+	catchup_head = false;
+	catchup_echo = false;
+
 	if ((!cb && !cb_nomem_refresh[fg_console]) || cb->head != cb->mark) {
-		/* MORECHARS echo 0 doesn't force us to catch up, but anything else does. */
+		/* MORECHARS echo 0 doesn't force us to catch up,
+ * but anything else does.
+ * echo forces a catch up to the echopoint.
+ * Other commands force catch up to the head. */
 		for (t = temp_tail; t < temp_head; t += 4) {
 			if (*t == ACSINT_TTY_MORECHARS) {
 				t += 4;
-				if(!t[-3]) continue;
+				if(t[-3])
+catchup_echo = true;
+continue;
 			}
-			catchup = true;
+			catchup_head = true;
 			break;
 		}
 	}
+
+if(catchup_echo && cb->echopoint)
+catchup = true, cup = cb->echopoint;
+
+if(catchup_head)
+catchup = true, cup = cb->head;
 
 	if (catchup) {
 		if (cb) {
 			if (cb->mark == 0)
 				cb->mark = cb->tail;
-			if (cb->head >= cb->mark)
-				culen = cb->head - cb->mark;
+			if (cup >= cb->mark)
+				culen = cup - cb->mark;
 			else
 				culen =
-				    (cb->end - cb->mark) + (cb->head -
+				    (cb->end - cb->mark) + (cup -
 							    cb->start);
 		} else {
 			culen = sizeof(cb_nomem_message) - 1;
@@ -331,18 +347,18 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 		if (cb) {
 			/* One clump or two. */
-			if (cb->head >= cb->mark) {
+			if (cup >= cb->mark) {
 				if (culen)
 					memcpy(cb_staging, cb->mark, culen * 4);
 			} else {
 				j = cb->end - cb->mark;
 				memcpy(cb_staging, cb->mark, j * 4);
-				j2 = cb->head - cb->start;
+				j2 = cup - cb->start;
 				if (j2)
 					memcpy(cb_staging + j, cb->start,
 					       j2 * 4);
 			}
-			cb->mark = cb->head;
+			cb->mark = cup;
 cb->echopoint = 0;
 		} else {
 			for (j = 0; j < culen; ++j)
@@ -350,7 +366,7 @@ cb->echopoint = 0;
 			cb_nomem_refresh[fg_console] = 1;
 		}
 	}
-	/* catching up */
+
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 
 /* Now pass down the events. */
@@ -766,7 +782,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	if (mino == fg_console) {
 		if (from_vt)
 			echo = isEcho(c);
-		if (cb->mark == cb->head)
+		if (cb->mark == cb->head || cb->echopoint == cb->head)
 			at_head = true;
 	}
 
