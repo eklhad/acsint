@@ -462,6 +462,18 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				istate[key] &= ~ ((unsigned short)1 << shiftstate);
 			break;
 
+		case ACSINT_ISMETA:
+			if (len < 2)
+				break;
+			get_user(key, p++);
+			key = (unsigned char)key;
+			len--;
+			get_user(c, p++);
+			len--;
+			if (key < ACS_NUM_KEYS)
+ismeta[key] = (c != 0);
+			break;
+
 		case ACSINT_CLICK:
 			ttyclicks_click();
 			break;

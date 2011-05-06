@@ -166,6 +166,20 @@ This reverses the action of ACSINT_SET_KEY above.
 The key, with the specified modifiers, is no longer intercepted,
 and will pass through to the console.
 
+ACSINT_ISMETA
+
+This takes the key code,
+and 1 or 0, enabled or disabled.
+If enabled, the key is a meta key, like shift or alt etc.
+It always passes through to the console.
+For example, Speakup uses the insert key to modify other keys.
+To simulate this, use loadkeys to make insert the same as right alt,
+then call this function to tell the driver that insert is a meta key,
+and should always be passed through.
+		acs_ismeta(KEY_INSERT, 1);
+You can then bind various speech functions to right alt keys,
+and use the insert key for right alt.
+
 ACSINT_PUSH_TTY
 
 This function passes a string from user space back to the kernel,

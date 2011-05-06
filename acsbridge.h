@@ -417,6 +417,20 @@ and act on that, in case the user has typed ahead of the adapter.
 int acs_events(void);
 
 /*********************************************************************
+Declare that a key is a meta key.
+For example, Speakup uses the insert key to modify other keys.
+To simulate this, use loadkeys to make insert the same as right alt,
+then call this function to tell the driver that insert is a meta key,
+and should always be passed through.
+	acs_ismeta(KEY_INSERT, 1);
+Your config file should then use
+r@f12 some speech function
+to bind a function to insert f12.
+*********************************************************************/
+
+int acs_ismeta(int key, int enabled);
+
+/*********************************************************************
 The refresh command brings the text buffer up to date.
 You can call it any time, but the usual procedure
 is to call it when you are ready to read the next sentence or line

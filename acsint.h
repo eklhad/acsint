@@ -19,6 +19,7 @@ ACSINT_NULL,
 ACSINT_CLEAR_KEYS,
 ACSINT_SET_KEY,
 ACSINT_UNSET_KEY,
+ACSINT_ISMETA,
 ACSINT_PUSH_TTY,
 /* Configure which sounds are made automatically */
 ACSINT_SOUNDS, /* on or off */

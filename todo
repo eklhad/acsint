@@ -158,20 +158,6 @@ in the bridge, even when those functions control espeak or some other software
 synth that is library based, rather than streaming commands
 over a serial port or pipe or socket.
 
-* Tell the driver which keys are meta keys.
-These are keys like shift, alt, numlock, etc.
-They are state changing keys.
-I'll start out with the default set,
-but if you want to change them via loadkeys,
-I will need to know whether a key code is meta or not.
-For instance, a meta key can never be echoed.
-No need to invoke the echo machinery just because you hit shift.
-And shift should always pass through,
-even if we are capturing keystrokes in a buffer for acs_keystring().
-So if you wanted insert to act like the right alt key,
-you would tell me that insert was meta.
-This capability does not exist today.
-
 * Just before submission, move acsint.h and ttyclicks.h into include/linux,
 and use the include style #include <linux/foo.h>
 

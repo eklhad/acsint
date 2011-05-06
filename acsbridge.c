@@ -543,6 +543,14 @@ outbuf[2] = ss;
 return acs_write(3);
 } // acs_unsetkey
 
+int acs_ismeta(int key, int enabled)
+{
+outbuf[0] = ACSINT_ISMETA;
+outbuf[1] = key;
+outbuf[2] = enabled;
+return acs_write(3);
+} // acs_ismeta
+
 int acs_clearkeys(void)
 {
 outbuf[0] = ACSINT_CLEAR_KEYS;
