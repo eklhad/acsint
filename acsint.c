@@ -607,7 +607,7 @@ static short nkeypending;	/* number of keys pending */
  * 0 nothing special
  * 1 tab or ^i match space, more spaces coming
 * 2 return matches cr, lf coming back
- * 3 control char matches ^, letter coming back
+ * 3 control char matches ^, letter or [ coming back
  * 4 delete or ^h matches ^h, space is next
  * 5 ^h expected, move back to 0
 */
@@ -641,7 +641,8 @@ static int isEcho(unsigned int c)
 		keyechostate = 0;
 		return 2;
 	}
-	if (keyechostate == 3 && c < 256 && isalpha(c)) {
+	if (keyechostate == 3 && c < 256 &&
+(c == '[' || isalpha(c))) {
 		keyechostate = 0;
 		return 2;
 	}
