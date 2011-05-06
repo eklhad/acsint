@@ -80,22 +80,6 @@ int acs_open(const char *devname);
 int acs_close(void);
 
 /*********************************************************************
-Get the errno or error description in case of a communications error.
-This is typically a bad read or write to the device driver.
-Note that most commands return -1 for an error and 0 otherwise, like Unix.
-Then you can use these functions to get the error number and description.
-But really, once the device opens, errors are very unlikely.
-We're not talking to a disk, or some peripheral.
-Just passing data to and from the kernel.
-So whether you do all that error checking is up to you.
-I probably won't bother.
-*********************************************************************/
-
-int acs_errno(void);
-const char *acs_errordesc(void);
-
-
-/*********************************************************************
 Section 2: sounds.
 Acsint can generate various sounds
 using the pc in-built toggle speaker at port 61.

@@ -23,7 +23,6 @@ and declared in acsbridge.h.
 
 #define stringEqual !strcmp
 
-#define MAX_ERRMSG_LEN 256 // description of error
 #define MAXNOTES 10 // how many notes to play in one call
 #define INBUFSIZE (TTYLOGSIZE*4 + 400) /* size of input buffer */
 /* Output buffer could be 40 bytes, except for injectstring() */
@@ -45,21 +44,27 @@ int acs_fgc = 1; // current foreground console
 int acs_lang; /* language that the adapter is running in */
 int acs_postprocess = 0xf; // postprocess the text from the tty
 int acs_debug = 0;
-static const char debuglog[] = "acslog";
+static const char debuglog[] = "/var/log/acslog";
 
 // for debugging: save a message, without sending it to tty,
 // which would just generate more events.
 int acs_log(const char *msg, ...)
 {
 va_list args;
-FILE *f;
-if(!acs_debug) return;
-va_start(args, msg);
-if ((f = fopen(debuglog, "a")) == NULL)
+static FILE *f;
+
+if(!acs_debug) return 0;
+
+if(!f) {
+f = fopen(debuglog, "a");
+if(!f)
 return -1;
+setlinebuf(f);
+}
+
+va_start(args, msg);
 vfprintf(f, msg, args);
 va_end(args);
-fclose(f);
 return 0;
 } // acs_log
 
@@ -68,41 +73,9 @@ more_handler_t acs_more_h;
 fgc_handler_t acs_fgc_h;
 ks_echo_handler_t acs_ks_echo_h;
 
-static int cerror; /* Indicate communications error. */
-static char errorDesc[MAX_ERRMSG_LEN];
 
 static unsigned char inbuf[INBUFSIZE]; /* input buffer for acsint */
 static unsigned char outbuf[OUTBUFSIZE]; /* output buffer for acsint */
-
-// set, clear, and report errors
-
-static void
-setError(void)
-{
-const char *desc = strerror(errno);
-cerror = errno;
-strncpy(errorDesc, desc, MAX_ERRMSG_LEN);
-errorDesc[MAX_ERRMSG_LEN - 1] = 0;
-} // setError
-
-static void
-clearError(void)
-{
-cerror = 0;
-errorDesc[0] = 0;
-} // clearError
-
-int
-acs_errno(void)
-{
-return cerror;
-} // acs_errno
-
-const char *
-acs_errordesc(void)
-{
-return errorDesc;
-} // acs_errordesc
 
 // Maintain the tty log for each virtual console.
 static struct readingBuffer *tty_log[MAX_NR_CONSOLES];
@@ -203,26 +176,22 @@ acs_open(const char *devname)
 if(acs_fd >= 0) {
 // already open
 errno = EEXIST;
-setError();
 return -1;
 }
 
 if(acs_debug) unlink(debuglog);
 
 vcs_fd = open("/dev/vcsa", O_RDONLY);
-if(vcs_fd < 0) {
-setError();
+if(vcs_fd < 0)
 return -1;
-}
 
 acs_fd = open(devname, O_RDWR);
 if(acs_fd < 0) {
 close(vcs_fd);
-setError();
 return -1;
 }
 
-clearError();
+errno = 0;
 acs_reset_configure();
 
 return acs_fd;
@@ -232,13 +201,11 @@ int
 acs_close(void)
 {
 int rc = 0;
-clearError();
+errno = 0;
 if(acs_fd < 0) return 0; // already closed
-if(close(acs_fd) < 0) {
-setError(); // should never happen
+if(close(acs_fd) < 0)
 rc = -1;
-}
-// Close it regardless.
+/* Close it regardless. */
 acs_fd = -1;
 return rc;
 } // acs_close
@@ -248,16 +215,13 @@ return rc;
 static int
 acs_write(int n)
 {
-clearError();
+errno = 0;
 if(acs_fd < 0) {
 errno = ENXIO;
-setError();
 return -1;
 }
-if(write(acs_fd, outbuf, n) < n) {
-setError();
+if(write(acs_fd, outbuf, n) < n)
 return -1;
-}
 return 0;
 } // acs_write
 
@@ -394,7 +358,6 @@ int acs_keystring(char *buf, int buflen, int properties)
 {
 if(buflen <= 0) {
 errno = ENOMEM;
-setError();
 return -1;
 }
 
@@ -653,19 +616,16 @@ int minor;
 char refreshed = 0;
 unsigned int d;
 
-clearError();
+errno = 0;
 if(acs_fd < 0) {
 errno = ENXIO;
-setError();
 return -1;
 }
 
 nr = read(acs_fd, inbuf, INBUFSIZE);
 acs_log("acsint read %d bytes\n", nr);
-if(nr < 0) {
-setError();
+if(nr < 0)
 return -1;
-}
 
 i = 0;
 while(i <= nr-4) {
@@ -1127,7 +1087,6 @@ int acs_injectstring(const char *s)
 int len = strlen(s);
 if(len+4 >= OUTBUFSIZE) {
 errno = ENOMEM;
-setError();
 return -1;
 }
 
@@ -1151,13 +1110,11 @@ char spaces = 1, alnum = 0;
 
 if(!s || !t) {
 errno = EFAULT;
-setError();
 return -1;
 }
 
 if(destlen <= 0) {
 errno = ENOMEM;
-setError();
 return -1;
 }
 
@@ -1324,13 +1281,11 @@ char spaces = 1, alnum = 0;
 
 if(!s || !t) {
 errno = EFAULT;
-setError();
 return -1;
 }
 
 if(destlen <= 0) {
 errno = ENOMEM;
-setError();
 return -1;
 }
 
