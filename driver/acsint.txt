@@ -258,6 +258,7 @@ Sounds are produced by the module ttyclicks.c.
 If depmod has been run, modprobe should load ttyclicks before it loads acsint.
 The ttyclicks module has some features that are not accessible
 through the acsint driver.  They are not described here.
+See ttyclicks.txt for more details.
 For our purposes we can pretend like acsint is generating the sounds itself.
 
 ACSINT_SOUNDS_TTY
