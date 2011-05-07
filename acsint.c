@@ -90,7 +90,7 @@ static void checkAlloc(int mino, bool from_vt)
 	if (cb_nomem_alloc[mino])
 		return;		/* already tried to allocate */
 	cb_nomem_alloc[mino] = 1;
-	cb = kmalloc(sizeof(struct cbuf), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
+	cb = kmalloc(sizeof(*cb), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
 	if (!cb)
 		return;
 	cb_reset(cb);
