@@ -1,8 +1,16 @@
-BRIDGEINCLUDE = ../bridge
+BRIDGEPATH = ../bridge
+DRIVERPATH = ../driver
 
-CFLAGS += -I$(BRIDGEINCLUDE)
+ifneq "$(BRIDGEPATH)" ""
+CFLAGS += -I$(BRIDGEPATH)
+LDFLAGS += -L$(BRIDGEPATH)
+endif
 
-LDLIBS = -L../bridge -lacs
+ifneq "$(DRIVERPATH)" ""
+	CFLAGS += -I$(DRIVERPATH)
+	endif
+
+LDLIBS = -lacs
 
 all : acstest pipetest
 
