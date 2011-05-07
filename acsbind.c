@@ -757,3 +757,40 @@ acs_clearspeechcommand(i);
 }
 } /* acs_reset_configure */
 
+void acs_suspendkeys(const char *except)
+{
+int key, ss, mkcode;
+const char *t;
+
+acs_log("suspend keys\n");
+acs_clearkeys();
+if(!except) return;
+
+for(ss=0; ss<=15; ++ss) {
+for(key=0; key<ACS_NUM_KEYS; ++key) {
+mkcode = acs_build_mkcode(key, ss);
+t = acs_getspeechcommand(mkcode);
+if(!t) continue;
+if(!stringEqual(t, except)) continue;
+/* this is the one we have to keep, to break out of suspend mode */
+acs_log("exception %d, %d\n", key, ss);
+acs_setkey(key, ss);
+}
+}
+} /* acs_suspendkeys */
+
+void acs_resumekeys(void)
+{
+int key, ss, mkcode;
+
+acs_log("resume keys\n");
+
+for(ss=0; ss<=15; ++ss) {
+for(key=0; key<ACS_NUM_KEYS; ++key) {
+mkcode = acs_build_mkcode(key, ss);
+if(acs_getspeechcommand(mkcode) || acs_getmacro(mkcode))
+acs_setkey(key, ss);
+}
+}
+} /* acs_resumekeys */
+

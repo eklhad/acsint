@@ -415,6 +415,16 @@ to bind a function to insert f12.
 int acs_ismeta(int key, int enabled);
 
 /*********************************************************************
+Suspend the interception of all keys, except one,
+which is typically used, by the adapter, to resume normal operations.
+The exception is the actual speech command, as a string.
+Thus these routines are independent of key bindings.
+*********************************************************************/
+
+void acs_suspendkeys(const char *except);
+void acs_resumekeys(void);
+
+/*********************************************************************
 The refresh command brings the text buffer up to date.
 You can call it any time, but the usual procedure
 is to call it when you are ready to read the next sentence or line
