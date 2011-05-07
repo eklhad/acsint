@@ -770,11 +770,17 @@ for(ss=0; ss<=15; ++ss) {
 for(key=0; key<ACS_NUM_KEYS; ++key) {
 mkcode = acs_build_mkcode(key, ss);
 t = acs_getspeechcommand(mkcode);
-if(!t) continue;
-if(!stringEqual(t, except)) continue;
+if(t && stringEqual(t, except)) {
 /* this is the one we have to keep, to break out of suspend mode */
 acs_log("exception %d, %d\n", key, ss);
 acs_setkey(key, ss);
+}
+t = acs_getmacro(mkcode);
+if(t && t[0] == '|') {
+/* retain keys that run system commands */
+acs_log("system %d, %d\n", key, ss);
+acs_setkey(key, ss);
+}
 }
 }
 } /* acs_suspendkeys */
@@ -785,7 +791,7 @@ int key, ss, mkcode;
 
 acs_log("resume keys\n");
 
-/* in case the binding of suspend has changed */
+/* in case the config file has changed, and keys are bound differently. */
 acs_clearkeys();
 
 for(ss=0; ss<=15; ++ss) {

@@ -416,9 +416,11 @@ int acs_ismeta(int key, int enabled);
 
 /*********************************************************************
 Suspend the interception of all keys, except one,
-which is typically used, by the adapter, to resume normal operations.
-The exception is the actual speech command, as a string.
-Thus these routines are independent of key bindings.
+which is typically used by the adapter to resume normal operations.
+The exception is the actual speech command as a string.
+Thus it is independent of key bindings.
+Keys that execute system commands are also retained.
+By analogy, esekeyd would continue to run even if the adapter was suspended.
 *********************************************************************/
 
 void acs_suspendkeys(const char *except);
