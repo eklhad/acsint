@@ -1,11 +1,16 @@
-DRIVERINCLUDE = ../driver
+DRIVERPATH = ../driver
+
+DEPFLAG = -MMD
+CFLAGS += $(DEPFLAG)
+
+ifneq "$(DRIVERPATH)" ""
+CFLAGS += -I$(DRIVERPATH)
+endif
 
 #  bridge objects
 BOBJS = acsbridge.o acsbind.o acstalk.o
 
-CFLAGS += -I$(DRIVERINCLUDE)
-
 libacs.a : $(BOBJS)
 	ar rs libacs.a $?
 
-$(BOBJS) : $(DRIVERINCLUDE)/acsint.h acsbridge.h
+-include $(BOBJS:.o=.d)
