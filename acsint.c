@@ -28,7 +28,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
-	("Accessibility intercepter - pass keystroke and tty events to user space");
+    ("Accessibility intercepter - pass keystroke and tty events to user space");
 
 static int major;
 module_param(major, int, 0);
@@ -46,7 +46,7 @@ struct cbuf {
 /* mark the place where we last copied data to user space */
 	unsigned int *mark;
 /* Mark the point where we last saw an echo character */
-unsigned int *echopoint;
+	unsigned int *echopoint;
 };
 
 /* These are allocated, one per console, as needed. */
@@ -54,7 +54,7 @@ static struct cbuf *cbuf_tty[MAX_NR_CONSOLES];
 
 /* in case we can't malloc a buffer */
 static const char cb_nomem_message[] =
-	"Kernel cannot allocate space for this console";
+    "Kernel cannot allocate space for this console";
 
 /* set to 1 if you have sent the above nomem message down to the user */
 static unsigned char cb_nomem_refresh[MAX_NR_CONSOLES];
@@ -76,7 +76,7 @@ static void cb_reset(struct cbuf *cb)
 	cb->head = cb->start;
 	cb->tail = cb->start;
 	cb->mark = cb->start;
-cb->echopoint = 0;
+	cb->echopoint = 0;
 }
 
 /* check to see if the circular buffer was allocated. */
@@ -258,16 +258,16 @@ static int device_close(struct inode *inode, struct file *file)
 }
 
 static ssize_t device_read(struct file *file, char *buf, size_t len,
-			   loff_t *offset)
+			   loff_t * offset)
 {
 	int bytes_read = 0;
 	struct cbuf *cb;
 	bool catchup;
-bool catchup_head, catchup_echo;
+	bool catchup_head, catchup_echo;
 /* catch up length - how many characters to copy down to user space */
 	int culen = 0;
 	char cu_cmd[4];		/* the catch up command */
-unsigned int *cup = 0; /* the catchup poin */
+	unsigned int *cup = 0;	/* the catchup poin */
 	char *temp_head, *temp_tail, *t;
 	int j, j2;
 	int retval;
@@ -304,26 +304,26 @@ unsigned int *cup = 0; /* the catchup poin */
 
 	if ((!cb && !cb_nomem_refresh[fg_console]) || cb->head != cb->mark) {
 		/* MORECHARS echo 0 doesn't force us to catch up,
- * but anything else does.
- * echo forces a catch up to the echopoint.
- * Other commands force catch up to the head. */
+		 * but anything else does.
+		 * echo forces a catch up to the echopoint.
+		 * Other commands force catch up to the head. */
 		for (t = temp_tail; t < temp_head; t += 4) {
 			if (*t == ACSINT_TTY_MORECHARS) {
 				t += 4;
-				if(t[-3])
-catchup_echo = true;
-continue;
+				if (t[-3])
+					catchup_echo = true;
+				continue;
 			}
 			catchup_head = true;
 			break;
 		}
 	}
 
-if(catchup_echo && cb->echopoint)
-catchup = true, cup = cb->echopoint;
+	if (catchup_echo && cb->echopoint)
+		catchup = true, cup = cb->echopoint;
 
-if(catchup_head)
-catchup = true, cup = cb->head;
+	if (catchup_head)
+		catchup = true, cup = cb->head;
 
 	if (catchup) {
 		if (cb) {
@@ -333,8 +333,7 @@ catchup = true, cup = cb->head;
 				culen = cup - cb->mark;
 			else
 				culen =
-				    (cb->end - cb->mark) + (cup -
-							    cb->start);
+				    (cb->end - cb->mark) + (cup - cb->start);
 		} else {
 			culen = sizeof(cb_nomem_message) - 1;
 		}
@@ -359,7 +358,7 @@ catchup = true, cup = cb->head;
 					       j2 * 4);
 			}
 			cb->mark = cup;
-cb->echopoint = 0;
+			cb->echopoint = 0;
 		} else {
 			for (j = 0; j < culen; ++j)
 				cb_staging[j] = cb_nomem_message[j];
@@ -416,7 +415,7 @@ cb->echopoint = 0;
 }				/* device_read */
 
 static ssize_t device_write(struct file *file, const char *buf, size_t len,
-			    loff_t *offset)
+			    loff_t * offset)
 {
 	char c;
 	const char *p = buf;
@@ -447,7 +446,8 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(shiftstate, p++);
 			len--;
 			if (key < ACS_NUM_KEYS)
-				istate[key] |= ((unsigned short)1<<shiftstate);
+				istate[key] |=
+				    ((unsigned short)1 << shiftstate);
 			break;
 
 		case ACSINT_UNSET_KEY:
@@ -459,7 +459,8 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(shiftstate, p++);
 			len--;
 			if (key < ACS_NUM_KEYS)
-				istate[key] &= ~ ((unsigned short)1 << shiftstate);
+				istate[key] &=
+				    ~((unsigned short)1 << shiftstate);
 			break;
 
 		case ACSINT_ISMETA:
@@ -471,7 +472,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(c, p++);
 			len--;
 			if (key < ACS_NUM_KEYS)
-ismeta[key] = (c != 0);
+				ismeta[key] = (c != 0);
 			break;
 
 		case ACSINT_CLICK:
@@ -592,7 +593,7 @@ static unsigned int device_poll(struct file *fp, poll_table * pt)
 }
 
 static const struct file_operations fops = {
-	.owner =	THIS_MODULE,
+	.owner = THIS_MODULE,
 	.open = device_open,
 	.release = device_close,
 	.read = device_read,
@@ -653,8 +654,7 @@ static int isEcho(unsigned int c)
 		keyechostate = 0;
 		return 2;
 	}
-	if (keyechostate == 3 && c < 256 &&
-(c == '[' || isalpha(c))) {
+	if (keyechostate == 3 && c < 256 && (c == '[' || isalpha(c))) {
 		keyechostate = 0;
 		return 2;
 	}
@@ -722,60 +722,65 @@ static int isEcho(unsigned int c)
  * Meantime this will have to do.
  * But it assumes ascii, and a qwerty keyboard.
  * Let me know if there's a better way. */
-static void
-post4echo(int key, int ss, int leds)
+static void post4echo(int key, int ss, int leds)
 {
-		char keychar;
+	char keychar;
 	unsigned long irqflags;
-		static const char lowercode[] =
-		    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
-		static const char uppercode[] =
-		    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
+	static const char lowercode[] =
+	    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
+	static const char uppercode[] =
+	    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
 
-		if (key == KEY_KPENTER)
-			key = KEY_ENTER;
+	if (key == KEY_KPENTER)
+		key = KEY_ENTER;
 
 /* pull keycode down to numbers if numlock numpad keys are hit */
-if(leds&K_NUMLOCK && (ss&ACS_SS_ALT) == 0) {
-static const int padnumbers[] = {
-KEY_7, KEY_8, KEY_9, 0,
-KEY_4, KEY_5, KEY_6, 0,
-KEY_1, KEY_2, KEY_3, KEY_0};
-if(key == KEY_KPASTERISK) key = KEY_8, ss = ACS_SS_SHIFT;
-if(key == KEY_KPSLASH) key = KEY_SLASH, ss = 0;
-if(key == KEY_KPPLUS) key = KEY_EQUAL, ss = ACS_SS_SHIFT;
-if(key == KEY_KPMINUS) key = KEY_MINUS, ss = 0;
-if(key == KEY_KPDOT) key = KEY_DOT, ss = 0;
-if(key >= KEY_KP7 && key <= KEY_KP0)
-key = padnumbers[key-KEY_KP7], ss = 0;
-}
+	if (leds & K_NUMLOCK && (ss & ACS_SS_ALT) == 0) {
+		static const int padnumbers[] = {
+			KEY_7, KEY_8, KEY_9, 0,
+			KEY_4, KEY_5, KEY_6, 0,
+			KEY_1, KEY_2, KEY_3, KEY_0
+		};
+		if (key == KEY_KPASTERISK)
+			key = KEY_8, ss = ACS_SS_SHIFT;
+		if (key == KEY_KPSLASH)
+			key = KEY_SLASH, ss = 0;
+		if (key == KEY_KPPLUS)
+			key = KEY_EQUAL, ss = ACS_SS_SHIFT;
+		if (key == KEY_KPMINUS)
+			key = KEY_MINUS, ss = 0;
+		if (key == KEY_KPDOT)
+			key = KEY_DOT, ss = 0;
+		if (key >= KEY_KP7 && key <= KEY_KP0)
+			key = padnumbers[key - KEY_KP7], ss = 0;
+	}
 
-		if (key > KEY_SPACE)
-return;
+	if (key > KEY_SPACE)
+		return;
 
-		keychar = (ss & ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
-		if (keychar == ' ' && key != KEY_SPACE)
-return;
+	keychar = (ss & ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
+	if (keychar == ' ' && key != KEY_SPACE)
+		return;
 
-		if (keychar == '\r')
-			ss = 0;
+	if (keychar == '\r')
+		ss = 0;
 
 /* don't know how to echo alt keys */
-		if (ss & ACS_SS_ALT)
-return;
+	if (ss & ACS_SS_ALT)
+		return;
 
 /* control letters */
-		if (ss & ACS_SS_CTRL && isalpha(keychar))
-			keychar = (keychar | 0x20) - ('a' - 1);
+	if (ss & ACS_SS_CTRL && isalpha(keychar))
+		keychar = (keychar | 0x20) - ('a' - 1);
 
-		raw_spin_lock_irqsave(&acslock, irqflags);
-		if (nkeypending == MAXKEYPENDING)
-			dropKeysPending(1);
-		inkeybuffer[nkeypending] = keychar;
-		inkeytime[nkeypending] = jiffies;
-		++nkeypending;
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
-} /* post4echo */
+	raw_spin_lock_irqsave(&acslock, irqflags);
+	if (nkeypending == MAXKEYPENDING)
+		dropKeysPending(1);
+	inkeybuffer[nkeypending] = keychar;
+	inkeytime[nkeypending] = jiffies;
+	++nkeypending;
+	raw_spin_unlock_irqrestore(&acslock, irqflags);
+}				/* post4echo */
 
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
@@ -808,7 +813,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 		rbuf_head[0] = ACSINT_TTY_MORECHARS;
 		rbuf_head[1] = echo;
 		if (echo) {
-cb->echopoint = cb->head;
+			cb->echopoint = cb->head;
 			*(unsigned int *)(rbuf_head + 4) = c;
 		} else
 			*(unsigned int *)(rbuf_head + 4) = 0;
@@ -838,7 +843,7 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 }
 
 static struct console acsintconsole = {
-	.name =	"acsint",
+	.name = "acsint",
 	.write = my_printk,
 	.flags = CON_ENABLED,
 };
@@ -971,10 +976,10 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	    key != KEY_KPMINUS && key != KEY_KPPLUS)
 		goto regular;
 
-		if (action & (1 << ss)) {
-	keep = true;
-	goto event;
-}
+	if (action & (1 << ss)) {
+		keep = true;
+		goto event;
+	}
 
 regular:
 /* Just a regular key. */
@@ -1000,9 +1005,9 @@ event:
 	}
 
 	if (!send)
-	return NOTIFY_STOP;
+		return NOTIFY_STOP;
 
-post4echo(key, ss, param->ledstate);
+	post4echo(key, ss, param->ledstate);
 
 done:
 	return NOTIFY_DONE;
