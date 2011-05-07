@@ -785,6 +785,9 @@ int key, ss, mkcode;
 
 acs_log("resume keys\n");
 
+/* in case the binding of suspend has changed */
+acs_clearkeys();
+
 for(ss=0; ss<=15; ++ss) {
 for(key=0; key<ACS_NUM_KEYS; ++key) {
 mkcode = acs_build_mkcode(key, ss);
