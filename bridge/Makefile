@@ -1,4 +1,4 @@
-DRIVERPATH = ../driver
+DRIVERPATH = ../drivers
 
 DEPFLAG = -MMD
 CFLAGS += $(DEPFLAG)
