@@ -181,11 +181,11 @@ return -1;
 
 if(acs_debug) unlink(debuglog);
 
-vcs_fd = open("/dev/vcsa", O_RDONLY);
+vcs_fd = open("/dev/vcsa", O_RDONLY | O_CLOEXEC);
 if(vcs_fd < 0)
 return -1;
 
-acs_fd = open(devname, O_RDWR);
+acs_fd = open(devname, O_RDWR | O_CLOEXEC);
 if(acs_fd < 0) {
 close(vcs_fd);
 return -1;
