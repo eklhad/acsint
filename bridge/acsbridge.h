@@ -198,7 +198,14 @@ They will remain in sync with the moving text.
 But like the cursor, they can become null if a lot of output
 pushes them off the back end of the buffer.
 So check for that.
-In some cases it is convenient to use the preprocessor:
+
+If a mark is near the end of the buffer, and several backspaces come along,
+the mark could once again be out of range, and set to null.
+As a special exception, a mark that is at the end of buffer is pulled back,
+and will still be at the end of buffer.
+This is useful for continuous reading.
+
+It may be convenient to use a define symbol:
 #define cutLeftMark rb->marks[0]
 Set this to rb->cursor to mark the left boundary
 of a block of text that you plan to cut&paste.

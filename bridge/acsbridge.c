@@ -523,7 +523,8 @@ return acs_write(1);
 static void
 postprocess(unsigned int *s)
 {
-unsigned int *t;
+unsigned int *t, *u;
+int j;
 
 if(!acs_postprocess) return;
 
@@ -541,16 +542,30 @@ acs_postprocess&ACS_PP_CRLF) {
 continue;
 }
 
-// ^H
+/* ^h is backspace.
+ * Check to see if we have backed over the reading cursor or the marks.
+ * Because of the way Jupiter reads, a mark could be at end of buffer.
+ * In that case keep it at end of buffer. */
 if(s[0] == '\b' && acs_postprocess&ACS_PP_CTRL_H) {
-if(t[-1]) --t;
 ++s;
+if(t[-1] == 0) continue; /* buffer was empty */
+--t;
+/* Now check the cursor and the marks */
+if(tl->cursor && tl->cursor >= t)
+tl->cursor = (t > tl->start ? t-1 : t);
+for(j=0; j<NUMBUFMARKS; ++j) {
+u = tl->marks[j];
+if(u == 0) continue;
+if(u < t) continue; /* still in range */
+if(u == t+1) u = t;
+else u = 0;
+tl->marks[j] = u;
+}
 continue;
 }
 
-// ansi escape sequences
+/* ansi escape sequences */
 if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_STRIP_ESCB) {
-int j;
 for(j=2; s[j] && j<20; ++j)
 if(s[j] < 256 && isalpha(s[j])) break;
 if(j < 20 && s[j]) {
@@ -579,10 +594,7 @@ continue;
 
 tl->end = t;
 *t = 0;
-
-if(tl->cursor && tl->cursor >= t)
-tl->cursor = (t > tl->start ? t-1 : t);
-} // postprocess
+} /* postprocess */
 
 void acs_clearbuf(void)
 {
