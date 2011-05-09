@@ -51,6 +51,7 @@ ss_curpitch = 3;
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 ss_curpitch = 4;
 break;
 
@@ -288,6 +289,7 @@ char c = ss_inbuf[i];
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 if(c >= 1 && c <= 99) {
 acs_log("index %d\n", c);
 indexSet(c);
@@ -389,7 +391,7 @@ ss_say_string(s);
 int ss_say_string_imarks(const char *s, const ofs_type *o, int mark)
 {
 const char *t;
-char ibuf[12]; // index mark buffer
+char ibuf[30]; // index mark buffer
 const ofs_type *o0 = o;
 
 imark_start = rb->cursor;
@@ -417,6 +419,9 @@ case SS_STYLE_DOUBLE:
  * But we have to send it if that is the end of the sentence. */
 if(o-o0 > 2 || !*s)
 sprintf(ibuf, "\1%di", mark);
+break;
+case SS_STYLE_ESPEAKUP:
+sprintf(ibuf, "<mark name=\"%d\"/>", mark);
 break;
 case SS_STYLE_BNS:
 case SS_STYLE_ACE:
@@ -452,6 +457,7 @@ char ibyte; // interrupt byte
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 case SS_STYLE_BNS:
 case SS_STYLE_ACE:
 ibyte = 24;
@@ -487,6 +493,7 @@ if(n < 0 || n > 9) return -1;
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 doublestring[1] = '0' + n;
 ss_writeString(doublestring);
 break;
@@ -554,6 +561,7 @@ if(n < 0 || n > 9) return -1;
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 doublestring[1] = doublestring[4] = '0' + n;
 ss_writeString(doublestring);
 break;
@@ -612,6 +620,7 @@ if(n < 0 || n > 9) return -1;
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 n = 9*n + 10;
 doublestring[1] = '0' + n/10;
 ss_writeString(doublestring);
@@ -673,6 +682,7 @@ static char acestring[] = "\33V5";
 
 switch(ss_style) {
 case SS_STYLE_DOUBLE:
+case SS_STYLE_ESPEAKUP:
 if(v < 1 || v > 8) return -1;
 		sprintf(buf, "\1%do", v-1);
 		ss_writeString(buf);

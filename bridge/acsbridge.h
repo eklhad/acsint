@@ -1217,6 +1217,7 @@ SS_STYLE_DECPC,
 SS_STYLE_BNS,
 // Accent
 SS_STYLE_ACE,
+SS_STYLE_ESPEAKUP,
 };
 
 int ss_events(void);
