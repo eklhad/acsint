@@ -820,6 +820,12 @@ va_end(ap);
 return pss_openv(progname, alist);
 } /* pss_open */
 
+int pss_system(char *cmd)
+{
+if (!cmd) return -1;
+return pss_open("/bin/sh", "-c", cmd, 0);
+} /* pss_system */
+
 int acs_startfifo(const char *pathname)
 {
 if(fifo_fd >= 0) {
