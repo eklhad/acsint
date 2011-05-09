@@ -361,7 +361,7 @@ You are really specifying a key chord, and you won't see that key
 unless the user is holding down both alt keys simultaneously.
 For the typical meaning of alt, you have to issue to setkey commands,
 as shown above.
-Of course you can just capture left alt r or right alt r if you wish.
+Of course you can capture either alt key on its own if you wish.
 
 acs_unsetkey reverses the action of acs_setkey.
 That key, with the specified meta keys held down,
@@ -660,7 +660,11 @@ and you probably should use acs_line_configure() instead.
 int acs_build_mkcode(int keycode, int state);
 
 /* Convert ascii to mkcode.  Pass in a pointer if you want to know
- * where we left off - like strtol(). */
+ * where we left off - like strtol().
+ * From the outside there is no way to distinguish between @t and l@r@t.
+ * However, acs_line_configure, one of the most important functions
+ * in this API, knows the difference;
+ * the first is either alt key on its own, and the second is both together. */
 int acs_ascii2mkcode(const char *s, char **endptr);
 
 /* Use the modified key code to set and retrieve a macro string.

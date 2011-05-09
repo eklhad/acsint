@@ -42,6 +42,7 @@ return 1;
 /* Build a modified key code from an ascii string. */
 /* Remember the encoded key and state; needed by line_configure below. */
 static int key1key, key1ss;
+#define ACS_SS_EALT 0x10 /* either alt key on its own */
 int acs_ascii2mkcode(const char *s, char **endptr)
 {
 int ss = 0;
@@ -80,7 +81,7 @@ struct keyword *kw;
 while(1) {
 if(s[0] == '+') { ss |= ACS_SS_SHIFT; ++s; continue; }
 if(s[0] == '^') { ss|= ACS_SS_CTRL; ++s; continue; }
-if(s[0] == '@') { ss|= ACS_SS_ALT; ++s; continue; }
+if(s[0] == '@') { ss|= (ACS_SS_ALT | ACS_SS_EALT); ++s; continue; }
 if((s[0] == 'l' || s[0] == 'L') && s[1] == '@') { ss|= ACS_SS_LALT; s += 2; continue; }
 if((s[0] == 'r' || s[0] == 'R') && s[1] == '@') { ss|= ACS_SS_RALT; s += 2; continue; }
 break;
@@ -129,7 +130,7 @@ if(endptr) *endptr = (char*)s;
 // save these for line_configure
 key1key = key;
 key1ss = ss;
-return acs_build_mkcode(key, ss);
+return acs_build_mkcode(key, (ss & 0xf));
 
 error:
 return -1;
@@ -644,7 +645,8 @@ mkcode = acs_ascii2mkcode(s, &s);
 if(mkcode >= 0) { // key assignment
 int code_l, code_r; /* left and right alt */
 code_l = code_r = 0;
-if((key1ss&ACS_SS_ALT) == ACS_SS_ALT) {
+if(key1ss&ACS_SS_EALT) {
+key1ss &= 0xf;
 code_l = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_RALT));
 code_r = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_LALT));
 }
