@@ -185,7 +185,7 @@ static int charIsEcho(char c)
 
 	for (j = 0; j < nkeypending; ++j) {
 		d = inkeybuffer[j];
-		if (d == c && inkeytime[j] + HZ * ECHOEXPIRE >= jiffies)
+		if (d == c && (long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
 			break;
 	}
 
@@ -349,7 +349,7 @@ static void popfifo(unsigned long notUsed)
 {
 	unsigned long flags;
 	short i, freq, duration;
-	int jifpause;
+	long jifpause;
 
 	raw_spin_lock_irqsave(&speakerlock, flags);
 

@@ -673,7 +673,7 @@ static int isEcho(unsigned int c)
 
 /* drop old keys */
 	for (j = 0; j < nkeypending; ++j)
-		if (inkeytime[j] + HZ * ECHOEXPIRE >= jiffies)
+		if ((long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
 			break;
 	if (j) {
 		dropKeysPending(j);
