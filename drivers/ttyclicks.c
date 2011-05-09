@@ -215,6 +215,8 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (type != KBD_KEYSYM)
 		goto done;
 
+	if (param->vc->vc_mode == KD_GRAPHICS)
+		goto done;
 /* Only the key down events */
 	if (downflag == 0)
 		goto done;
@@ -496,6 +498,8 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (type != VT_PREWRITE)
 		goto done;
 
+	if (param->vc->vc_mode == KD_GRAPHICS)
+		goto done;
 	if (unicode >= 128) {
 		escState = 0;
 		goto done;

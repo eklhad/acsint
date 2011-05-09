@@ -863,6 +863,8 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (!in_use)
 		return NOTIFY_DONE;
 
+	if (param->vc->vc_mode == KD_GRAPHICS && type != VT_UPDATE)
+		return NOTIFY_DONE;
 	switch (type) {
 	case VT_UPDATE:
 		if (fg_console == last_fgc)
