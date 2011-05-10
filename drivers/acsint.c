@@ -66,6 +66,10 @@ static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
 /* This is a snapshot of the circular buffer. */
 static unsigned int cb_staging[TTYLOGSIZE];
 
+/* jiffies value for the last output character. */
+/* This is reset if the last output character is echo. */
+static unsigned long last_oj;
+
 /* Initialize / reset the variables in the circular buffer. */
 static void cb_reset(struct cbuf *cb)
 {
@@ -789,6 +793,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	unsigned long irqflags;
 	bool wake = false;
 	bool at_head = false;	/* output is at the head */
+	bool throw = false;	/* throw the MORECHARS event */
 	int echo = 0;
 	struct cbuf *cb = cbuf_tty[mino];
 
@@ -802,11 +807,20 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 			echo = isEcho(c);
 		if (cb->mark == cb->head || cb->echopoint == cb->head)
 			at_head = true;
+		if (at_head || echo)
+			throw = true;
+		if (!echo) {
+			if (last_oj && (long)jiffies - (long)last_oj < HZ * 2)
+				throw = false;
+			last_oj = jiffies;
+			if (last_oj == 0)
+				last_oj = 1;
+		}
 	}
 
 	cb_append(cb, c);
 
-	if ((at_head || echo) && rbuf_head <= rbuf_end - 8) {
+	if (throw && rbuf_head <= rbuf_end - 8) {
 		/* throw the MORECHARS event */
 		if (rbuf_head == rbuf_tail)
 			wake = true;
@@ -874,6 +888,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 /* retry alloc on console switch */
 		cb_nomem_alloc[fg_console] = 0;
 		checkAlloc(fg_console, true);
+		last_oj = 0;
 		raw_spin_lock_irqsave(&acslock, irqflags);
 		flushInKeyBuffer();
 		if (rbuf_head <= rbuf_end - 4) {
@@ -1010,6 +1025,7 @@ event:
 		return NOTIFY_STOP;
 
 	post4echo(key, ss, param->ledstate);
+	last_oj = 0;
 
 done:
 	return NOTIFY_DONE;

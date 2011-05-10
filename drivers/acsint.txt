@@ -451,6 +451,20 @@ It is not the same character as the entered keystroke, but is implied by
 that keystroke.  The most common example is spaces for tab, as in stty tab3.
 You may or may not want to speak these characters in echo mode.
 
+The first variant, with echo = 0, is not thrown
+if the new output occurs within two seconds of the prior output.
+The driver considers this all the same output,
+as it has probably come from the same command.
+If you are examining words or letters in the output,
+or if you have paused to think about what you are reading, you don't want
+autoread to pull you down the page just because output continues to flow.
+This driver tries to determine whether a batch of output is new or not,
+and the easiest way to do this is by timing.
+Note however that any key passed to the console will be treated
+as a new command, and the next batch of output will be new output,
+and will throw the MORECHARS event.
+In other words, timing considerations fly out the window once you start typing.
+
 ACSINT_REFRESH
 
 Finally, the REFRESH event is passed back to you
