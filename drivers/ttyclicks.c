@@ -66,8 +66,8 @@ rather than a CPU busy loop.\n\
 Default is 0 (no).\n\
 This does not work unless you patch vt.c.");
 
-/* Define KDS if your kernel has the patch with kd_mkpulse and kd_mkswoop. */
-#define KDS 0
+/* Define NO_KDS if your kernel does not yet support kd_mkpulse,
+ * kd_mkswoop, and kd_mknotes. */
 
 /*
  * Here are some symbols that we export to other modules
@@ -274,13 +274,14 @@ static struct notifier_block nb_key = {
 #define TICKS_BOTCR 60
 #define TICKS_INCCR -2
 
+#ifdef NO_KDS
+
 #define PORT_SPEAKER 0x61
 #define PORT_TIMERVAL 0x42
 #define PORT_TIMER2 0x43
 
 static DEFINE_RAW_SPINLOCK(speakerlock);
 
-#if !KDS
 /* togle the inbuilt speaker */
 static void spk_toggle(void)
 {
@@ -306,7 +307,7 @@ void ttyclicks_click(void)
 {
 	if (!ttyclicks_on)
 		return;
-#if KDS
+#ifndef NO_KDS
 	kd_mkpulse(TICKS_CLICK);
 #else
 	spk_toggle();
@@ -318,22 +319,25 @@ EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
 {
-	int i;
-
 	if (!ttyclicks_on)
 		return;
 
-#if KDS
+#ifndef NO_KDS
 	kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
 #else
+
+	{
+	int i;
 	for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
 		spk_toggle();
 		udelay(i);
+	}
 	}
 #endif
 }				/* ttyclicks_cr */
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
+#ifdef NO_KDS
 /*
  * Push notes onto a sound fifo and play them via an asynchronous thread.
  */
@@ -358,11 +362,7 @@ static void popfifo(unsigned long notUsed)
 	i = sf_tail;
 	if (i == sf_head) {
 		/* turn off singing speaker */
-#if KDS
-		kd_mksound(0, 0);
-#else
 		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
-#endif
 		goto done;	/* sound fifo is empty */
 	}
 
@@ -380,35 +380,34 @@ static void popfifo(unsigned long notUsed)
 
 	if (freq < 0) {
 		/* This is a rest between notes */
-#if KDS
-		kd_mksound(0, 0);
-#else
 		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
-#endif
 	} else {
-#if KDS
-		kd_mksound(freq, jifpause);
-#else
 		duration = 1193182 / freq;
 		outb_p(inb_p(PORT_SPEAKER) | 3, PORT_SPEAKER);
 		/* set command for counter 2, 2 byte write */
 		outb_p(0xB6, PORT_TIMER2);
 		outb_p(duration & 0xff, PORT_TIMERVAL);
 		outb((duration >> 8) & 0xff, PORT_TIMERVAL);
-#endif
 	}
 
 done:
 	raw_spin_unlock_irqrestore(&speakerlock, flags);
 }				/* popfifo */
 
+#endif
+
 /* Put a string of notes into the sound fifo. */
 void ttyclicks_notes(const short *p)
 {
-	short i;
-
 	if (!ttyclicks_on)
 		return;
+
+#ifndef NO_KDS
+kd_mknotes(p);
+#else
+
+	{
+	int i;
 
 	raw_spin_lock(&speakerlock);
 
@@ -431,6 +430,9 @@ void ttyclicks_notes(const short *p)
 	/* first sound,  get things started. */
 	if (!timer_pending(&note_timer))
 		popfifo(0);
+}
+
+#endif
 }				/* ttyclicks_notes */
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
@@ -610,9 +612,11 @@ static void __exit click_exit(void)
 	unregister_vt_notifier(&nb_vt);
 
 	ttyclicks_on = 0;
+#ifdef NO_KDS
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
 	popfifo(0);
+#endif
 }				/* click_exit */
 
 module_init(click_init);
