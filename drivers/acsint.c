@@ -307,7 +307,8 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	catchup_head = false;
 	catchup_echo = false;
 
-	if ((!cb && !cb_nomem_refresh[fg_console]) || cb->head != cb->mark) {
+	if ((!cb && !cb_nomem_refresh[fg_console]) ||
+	    (cb && cb->head != cb->mark)) {
 		/* MORECHARS echo 0 doesn't force us to catch up,
 		 * but anything else does.
 		 * echo forces a catch up to the echopoint.
