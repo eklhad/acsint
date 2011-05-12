@@ -230,7 +230,7 @@ return 0;
 int
 acs_sounds(int enabled) 
 {
-outbuf[0] = ACSINT_SOUNDS;
+outbuf[0] = ACS_SOUNDS;
 outbuf[1] = enabled;
 return acs_write(2);
 } // acs_sounds
@@ -238,7 +238,7 @@ return acs_write(2);
 int
 acs_tty_clicks(int enabled) 
 {
-outbuf[0] = ACSINT_SOUNDS_TTY;
+outbuf[0] = ACS_SOUNDS_TTY;
 outbuf[1] = enabled;
 return acs_write(2);
 } // acs_tty_clicks
@@ -246,7 +246,7 @@ return acs_write(2);
 int
 acs_kmsg_tones(int enabled) 
 {
-outbuf[0] = ACSINT_SOUNDS_KMSG;
+outbuf[0] = ACS_SOUNDS_KMSG;
 outbuf[1] = enabled;
 return acs_write(2);
 } // acs_kmsg_tones
@@ -256,14 +256,14 @@ return acs_write(2);
 int
 acs_click(void)
 {
-outbuf[0] = ACSINT_CLICK;
+outbuf[0] = ACS_CLICK;
 return acs_write(1);
 } // acs_click
 
 int
 acs_cr(void)
 {
-outbuf[0] = ACSINT_CR;
+outbuf[0] = ACS_CR;
 return acs_write(1);
 } // acs_cr
 
@@ -271,7 +271,7 @@ int
 acs_notes(const short *notelist)
 {
 int j;
-outbuf[0] = ACSINT_NOTES;
+outbuf[0] = ACS_NOTES;
 for(j=0; j<MAXNOTES; ++j) {
 if(!notelist[2*j]) break;
 outbuf[2+3*j] = notelist[2*j];
@@ -325,14 +325,14 @@ return acs_notes(enabled ? onsnd : offsnd);
 int
 acs_divert(int enabled) 
 {
-outbuf[0] = ACSINT_DIVERT;
+outbuf[0] = ACS_DIVERT;
 outbuf[1] = enabled;
 return acs_write(2);
 } // acs_divert
 
 int acs_monitor(int enabled) 
 {
-outbuf[0] = ACSINT_MONITOR;
+outbuf[0] = ACS_MONITOR;
 outbuf[1] = enabled;
 return acs_write(2);
 } // acs_monitor
@@ -340,13 +340,13 @@ return acs_write(2);
 int
 acs_bypass(void)
 {
-outbuf[0] = ACSINT_BYPASS;
+outbuf[0] = ACS_BYPASS;
 return acs_write(1);
 } // acs_bypass
 
 int acs_obreak(int gap) 
 {
-outbuf[0] = ACSINT_OBREAK;
+outbuf[0] = ACS_OBREAK;
 outbuf[1] = gap;
 return acs_write(2);
 } // acs_obreak
@@ -498,7 +498,7 @@ return 0;
 
 int acs_setkey(int key, int ss)
 {
-outbuf[0] = ACSINT_SET_KEY;
+outbuf[0] = ACS_SET_KEY;
 outbuf[1] = key;
 outbuf[2] = ss;
 return acs_write(3);
@@ -506,7 +506,7 @@ return acs_write(3);
 
 int acs_unsetkey(int key, int ss)
 {
-outbuf[0] = ACSINT_UNSET_KEY;
+outbuf[0] = ACS_UNSET_KEY;
 outbuf[1] = key;
 outbuf[2] = ss;
 return acs_write(3);
@@ -514,7 +514,7 @@ return acs_write(3);
 
 int acs_ismeta(int key, int enabled)
 {
-outbuf[0] = ACSINT_ISMETA;
+outbuf[0] = ACS_ISMETA;
 outbuf[1] = key;
 outbuf[2] = enabled;
 return acs_write(3);
@@ -522,7 +522,7 @@ return acs_write(3);
 
 int acs_clearkeys(void)
 {
-outbuf[0] = ACSINT_CLEAR_KEYS;
+outbuf[0] = ACS_CLEAR_KEYS;
 return acs_write(1);
 } // acs_clearkeys
 
@@ -648,7 +648,7 @@ return -1;
 i = 0;
 while(i <= nr-4) {
 switch(inbuf[i]) {
-case ACSINT_KEYSTROKE:
+case ACS_KEYSTROKE:
 acs_log("key %d\n", inbuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
@@ -672,7 +672,7 @@ if(acs_key_h) acs_key_h(inbuf[i+1], inbuf[i + 2], inbuf[i+3]);
 i += 4;
 break;
 
-case ACSINT_FGC:
+case ACS_FGC:
 acs_log("fg %d\n", inbuf[i+1]);
 acs_fgc = inbuf[i+1];
 checkAlloc();
@@ -689,7 +689,7 @@ if(acs_fgc_h) acs_fgc_h();
 i += 4;
 break;
 
-case ACSINT_TTY_MORECHARS:
+case ACS_TTY_MORECHARS:
 if(i > nr-8) break;
 d = *(unsigned int *) (inbuf+i+4);
 if(acs_debug) {
@@ -702,12 +702,12 @@ if(acs_more_h) acs_more_h(inbuf[i+1], d);
 i += 8;
 break;
 
-case ACSINT_REFRESH:
+case ACS_REFRESH:
 acs_log("ack refresh\n");
 i += 4;
 break;
 
-case ACSINT_TTY_NEWCHARS:
+case ACS_TTY_NEWCHARS:
 /* this is the refresh data in line mode
  * minor is always the foreground console; we could probably discard it. */
 minor = inbuf[i+1];
@@ -794,7 +794,7 @@ return 0;
 int acs_refresh(void)
 {
 acs_log("get refresh\n");
-outbuf[0] = ACSINT_REFRESH;
+outbuf[0] = ACS_REFRESH;
 if(acs_write(1)) return -1;
 if(screenmode) screenSnap();
 return acs_events();
@@ -1108,7 +1108,7 @@ errno = ENOMEM;
 return -1;
 }
 
-outbuf[0] = ACSINT_PUSH_TTY;
+outbuf[0] = ACS_PUSH_TTY;
 outbuf[1] = len;
 outbuf[2] = len>>8;
 strcpy((char*)outbuf+3, s);

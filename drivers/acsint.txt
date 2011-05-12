@@ -125,7 +125,7 @@ The first byte is the action,
 and the following bytes are parameters for that action.
 
 char acsint_command[4];
-acsint_command[0] = ACSINT_SOME_ACTION;
+acsint_command[0] = ACS_SOME_ACTION;
 acsint_command[1] = some_parameter;
 write(acsint_fd, acsint_command, 2);
 
@@ -139,13 +139,13 @@ The application should include this header file
 and use the symbolic constants therein.
 The write actions are as follows.
 
-ACSINT_CLEAR_KEYS
+ACS_CLEAR_KEYS
 
 Clear all key bindings.
 All keystrokes are passed through to the console.
 None are intercepted for the adapter.
 
-ACSINT_SET_KEY
+ACS_SET_KEY
 
 The parameters are the key code and the shift state.
 thus this is a 3 byte command.
@@ -159,14 +159,14 @@ For instance, ACS_SS_LALT|ACS_SS_CTRL will capture
 the key when modified by the left alt and the control keys simultaneously.
 Any combinations not specifically intercepted will pass through to the console.
 
-ACSINT_UNSET_KEY
+ACS_UNSET_KEY
 
 The parameters are the key code and the shift state.
-This reverses the action of ACSINT_SET_KEY above.
+This reverses the action of ACS_SET_KEY above.
 The key, with the specified modifiers, is no longer intercepted,
 and will pass through to the console.
 
-ACSINT_ISMETA
+ACS_ISMETA
 
 This takes the key code,
 and 1 or 0, enabled or disabled.
@@ -180,7 +180,7 @@ and should always be passed through.
 You can then bind various speech functions to right alt keys,
 and use the insert key for right alt.
 
-ACSINT_PUSH_TTY
+ACS_PUSH_TTY
 
 This function passes a string from user space back to the kernel,
 as though it had been typed at the keyboard.
@@ -193,11 +193,11 @@ then inject it into the input stream of this console or another console.
 (I typically cut&paste between two consoles.)
 
 The command consists of the action code and the low and high bytes of an unsigned short.
-Thus ACSINT_PUSH_TTY 2 1 is pushing a string of length 258.
+Thus ACS_PUSH_TTY 2 1 is pushing a string of length 258.
 The next 258 bytes form the string.
 The string can be utf8 to push international text into the console.
 
-ACSINT_BYPASS
+ACS_BYPASS
 
 The driver will pass the next keystroke through to the console,
 even if it would normally be intercepted.
@@ -214,7 +214,7 @@ is an eternity.  Still, for this reason and for others,
 you may want to lock your adapter in core and give it a high priority.
 Speech commands should respond instantly, even if the system is under load.
 
-ACSINT_DIVERT
+ACS_DIVERT
 
 This takes the parameter 1 or 0, enabled or disabled.
 If enabled, all keystrokes are intercepted.
@@ -224,7 +224,7 @@ then locate that text within the tty buffer.
 Don't forget to turn DIVERT off once the text has been entered,
 to resume normal operations.
 
-ACSINT_MONITOR
+ACS_MONITOR
 
 This takes the parameter 1 or 0, enabled or disabled.
 If enabled, keystrokes that are destined for the console
@@ -239,7 +239,7 @@ Still, you may want to monitor keystrokes
 for some other reason that I haven't anticipated,
 and this function makes it possible.
 
-ACSINT_SOUNDS
+ACS_SOUNDS
 
 Acsint is capable of generating diagnostic clicks and chirps through
 the inbuilt toggle speaker at port 0x61.
@@ -261,7 +261,7 @@ through the acsint driver.  They are not described here.
 See ttyclicks.txt for more details.
 For our purposes we can pretend like acsint is generating the sounds itself.
 
-ACSINT_SOUNDS_TTY
+ACS_SOUNDS_TTY
 
 This takes the parameter 1 or 0, enabled or disabled.
 If enabled, then tty output produces clicks for printable characters,
@@ -270,10 +270,10 @@ Blank lines, text, C code, columated data - all have distinct audio signatures.
 This does not pass any events back to user space, it simply generates
 clicks as characters pass through the tty and onto the screen.
 
-Note that sounds must be enabled overall, via ACSINT_SOUNDS, for this to work.
+Note that sounds must be enabled overall, via ACS_SOUNDS, for this to work.
 SOUNDS is a master switch that turns all other sounds on or off.
 
-ACSINT_SOUNDS_KMSG
+ACS_SOUNDS_KMSG
 
 This takes the parameter 1 or 0, enabled or disabled.
 If enabled, then printk messages produce a special,
@@ -281,7 +281,7 @@ some would say irritating, sequence of tones.
 This is like an alarm for a blind person.
 "Hey, the kernel just printed an error message, you might want to read it."
 
-ACSINT_CLICK
+ACS_CLICK
 
 The driver clicks the speaker,
 as though a single character had appeared on screen.
@@ -293,7 +293,7 @@ to convey some information to the user.
 Perhaps a sound like static, indicating a bad serial connection,
 and thus no speech.
 
-ACSINT_CR
+ACS_CR
 
 Generate the swoop that is associated with the newline character.
 (This was orriginally tied to cr, not lf,
@@ -305,7 +305,7 @@ I use it when reading through text, because I would rather hear
 a quick swoop than the word "new line".
 I have an implicit understanding of where the lines break as I listen to the words.
 
-ACSINT_SWOOP
+ACS_SWOOP
 
 Issue a frequency sweep from one level to another,
 either ascending or descending.
@@ -320,10 +320,10 @@ for(period=start; period </> end; period += step) {
 	toggle the speaker;
 }
 
-The ACSINT_CR function is shorthand for
-ACSINT_SWOOP 26 6 -2
+The ACS_CR function is shorthand for
+ACS_SWOOP 26 6 -2
 
-ACSINT_NOTES
+ACS_NOTES
 
 This command plays a series of notes, a song if you will.
 The notes are of course square waves, and not terribly melodic.
@@ -336,9 +336,9 @@ The first two bytes build a short, which is the frequency in hurtz.
 A frequency of -1 is a rest.
 The third byte is the duration in hundredths of a second.
 The standard control G bell, 1Khz for a tenth of a second, looks like:
-ACSINT_NOTES 1 232 3 10
+ACS_NOTES 1 232 3 10
 
-ACSINT_REFRESH
+ACS_REFRESH
 
 This is the last write command, and it has no parameters.
 It is a request to bring the tty buffer in user space up to date.
@@ -392,7 +392,7 @@ and your read buffer should be 200K plus a few hundred bytes for extra events.
 As mentioned earlier, the bridge layer handles all this for you,
 and makes the text available to you either as unicodes or as downshifted ascii.
 
-ACSINT_OBREAK
+ACS_OBREAK
 
 Specify a gap of time, in tenths of a second,
 that is sufficient to indicate a new burst of output.
@@ -407,7 +407,7 @@ Thus, when acsint is ready to pass unicodes down to user space,
 as described above, the reading offset is already 4 byte aligned.
 Here are the events.
 
-ACSINT_FGC
+ACS_FGC
 
 This event indicates a new foreground console.
 The console number is the only parameter.
@@ -423,10 +423,10 @@ In other words, you don't have to issue the refresh command; it is done for you.
 Though there is no harm in issuing it again if you like.
 The new characters are passed down via the following event.
 
-ACSINT_TTY_NEWCHARS
+ACS_TTY_NEWCHARS
 
 The next byte is the minor number of the current console.
-This is not needed, since ACSINT_FGC keeps you up to date.
+This is not needed, since ACS_FGC keeps you up to date.
 I guess it is here for historical reasons; you can ignore it.
 
 The next two bytes build an unsigned short,
@@ -435,7 +435,7 @@ If this number is 1000, then the next 1000 unsigned ints,
 i.e. the next 4,000 bytes, hold the last thousand unicode values
 generated by the tty.
 
-ACSINT_KEYSTROKE
+ACS_KEYSTROKE
 
 The user has typed a key that acsint has intercepted.
 This is a 4 byte event.
@@ -449,7 +449,7 @@ This makes sense if you think about it.
 You want to switch consoles, then update the buffer;
 whereas you want your buffer to be up to date before you process a key command.
 
-ACSINT_TTY_MORECHARS
+ACS_TTY_MORECHARS
 
 There are more characters that you haven't seen.
 An adapter typically responds to this by refreshing the buffer
@@ -489,11 +489,11 @@ Note however that any key passed to the console will be treated
 as a new command, and the next batch of output will be new output,
 and will throw the MORECHARS event.
 In other words, timing considerations fly out the window once you start typing.
-You can set this gap via ACSINT_OBREAK.
+You can set this gap via ACS_OBREAK.
 The default is 5, or half a second.
 A gap of 0 turns the timing feature off entirely.
 
-ACSINT_REFRESH
+ACS_REFRESH
 
 Finally, the REFRESH event is passed back to you
 when you issue the refresh command.

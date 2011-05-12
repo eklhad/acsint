@@ -344,7 +344,7 @@ Note however that any key passed to the console will be treated
 as a new command, and the next batch of output will be new output,
 and will throw the "new stuff" event.
 In other words, timing considerations fly out the window once you start typing.
-You can set this gap via ACSINT_OBREAK.
+You can set this gap via acs_obreak().
 The default is 5, or half a second.
 A gap of 0 turns the timing feature off entirely.
 *********************************************************************/

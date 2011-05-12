@@ -23,7 +23,7 @@
 #include "ttyclicks.h"
 #include "acsint.h"
 
-#define ACSINT_DEVICE "/dev/acsint"
+#define ACS_DEVICE "/dev/acsint"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
@@ -245,7 +245,7 @@ static int device_open(struct inode *inode, struct file *file)
 
 /* At startup we tell the process which virtual console it is on.
  * Place this directive in rbuf to be read. */
-	rbuf[0] = ACSINT_FGC;
+	rbuf[0] = ACS_FGC;
 	rbuf[1] = fg_console + 1;	/* minor number */
 	rbuf_tail = rbuf;
 	rbuf_head = rbuf + 4;
@@ -295,9 +295,9 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 /* Skip ahead to the last FGC event if present. */
 	for (t = temp_tail; t < temp_head; t += 4) {
-		if (*t == ACSINT_FGC)
+		if (*t == ACS_FGC)
 			temp_tail = t;
-		if (*t == ACSINT_TTY_MORECHARS)
+		if (*t == ACS_TTY_MORECHARS)
 			t += 4;
 	}
 
@@ -314,7 +314,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 		 * echo forces a catch up to the echopoint.
 		 * Other commands force catch up to the head. */
 		for (t = temp_tail; t < temp_head; t += 4) {
-			if (*t == ACSINT_TTY_MORECHARS) {
+			if (*t == ACS_TTY_MORECHARS) {
 				t += 4;
 				if (t[-3])
 					catchup_echo = true;
@@ -370,7 +370,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 /* Now pass down the events. */
 /* First fgc, then catch up, then the rest. */
-	if (*temp_tail == ACSINT_FGC && len >= 4) {
+	if (*temp_tail == ACS_FGC && len >= 4) {
 		if (copy_to_user(buf, temp_tail, 4))
 			return -EFAULT;
 		temp_tail += 4;
@@ -390,7 +390,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 	if (catchup && len >= (culen + 1) * 4) {
 		char cu_cmd[4];	/* the catch up command */
-		cu_cmd[0] = ACSINT_TTY_NEWCHARS;
+		cu_cmd[0] = ACS_TTY_NEWCHARS;
 /* Put in the minor number here, though I don't think we need it. */
 		cu_cmd[1] = fg_console + 1;
 		cu_cmd[2] = culen;
@@ -449,11 +449,11 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 		len--;
 
 		switch (c) {
-		case ACSINT_CLEAR_KEYS:
+		case ACS_CLEAR_KEYS:
 			clear_keys();
 			break;
 
-		case ACSINT_SET_KEY:
+		case ACS_SET_KEY:
 			if (len < 2)
 				break;
 			get_user(key, p++);
@@ -466,7 +466,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				    ((unsigned short)1 << shiftstate);
 			break;
 
-		case ACSINT_UNSET_KEY:
+		case ACS_UNSET_KEY:
 			if (len < 2)
 				break;
 			get_user(key, p++);
@@ -479,7 +479,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				    ~((unsigned short)1 << shiftstate);
 			break;
 
-		case ACSINT_ISMETA:
+		case ACS_ISMETA:
 			if (len < 2)
 				break;
 			get_user(key, p++);
@@ -491,15 +491,15 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				ismeta[key] = (c != 0);
 			break;
 
-		case ACSINT_CLICK:
+		case ACS_CLICK:
 			ttyclicks_click();
 			break;
 
-		case ACSINT_CR:
+		case ACS_CR:
 			ttyclicks_cr();
 			break;
 
-		case ACSINT_SOUNDS:
+		case ACS_SOUNDS:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -507,7 +507,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			ttyclicks_on = c;
 			break;
 
-		case ACSINT_SOUNDS_TTY:
+		case ACS_SOUNDS_TTY:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -515,7 +515,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			ttyclicks_tty = c;
 			break;
 
-		case ACSINT_SOUNDS_KMSG:
+		case ACS_SOUNDS_KMSG:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -523,7 +523,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			ttyclicks_kmsg = c;
 			break;
 
-		case ACSINT_NOTES:
+		case ACS_NOTES:
 			if (len < 1)
 				break;
 			get_user(nn, p++);
@@ -543,11 +543,11 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				p += 3;
 			break;
 
-		case ACSINT_BYPASS:
+		case ACS_BYPASS:
 			key_bypass = true;
 			break;
 
-		case ACSINT_DIVERT:
+		case ACS_DIVERT:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -555,7 +555,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			key_divert = (c != 0);
 			break;
 
-		case ACSINT_MONITOR:
+		case ACS_MONITOR:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -563,7 +563,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			key_monitor = (c != 0);
 			break;
 
-		case ACSINT_OBREAK:
+		case ACS_OBREAK:
 			if (len < 1)
 				break;
 			get_user(c, p++);
@@ -571,17 +571,17 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			outputbreak = (unsigned char)c;
 			break;
 
-		case ACSINT_SWOOP:
+		case ACS_SWOOP:
 			if (len < 3)
 				break;
 			/* not yet implemented */
 			len -= 3;
 			break;
 
-		case ACSINT_REFRESH:
+		case ACS_REFRESH:
 			raw_spin_lock_irqsave(&acslock, irqflags);
 			if (rbuf_head <= rbuf_end - 4) {
-				*rbuf_head = ACSINT_REFRESH;
+				*rbuf_head = ACS_REFRESH;
 				if (rbuf_head == rbuf_tail)
 					wake_up_interruptible(&wq);
 				rbuf_head += 4;
@@ -589,7 +589,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			raw_spin_unlock_irqrestore(&acslock, irqflags);
 			break;
 
-		case ACSINT_PUSH_TTY:
+		case ACS_PUSH_TTY:
 			if (len < 2)
 				break;
 			get_user(c, p++);
@@ -853,7 +853,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 		/* throw the MORECHARS event */
 		if (rbuf_head == rbuf_tail)
 			wake = true;
-		rbuf_head[0] = ACSINT_TTY_MORECHARS;
+		rbuf_head[0] = ACS_TTY_MORECHARS;
 		rbuf_head[1] = echo;
 		if (echo) {
 			cb->echopoint = cb->head;
@@ -923,7 +923,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		if (rbuf_head <= rbuf_end - 4) {
 			if (rbuf_head == rbuf_tail)
 				wake = true;
-			rbuf_head[0] = ACSINT_FGC;
+			rbuf_head[0] = ACS_FGC;
 			rbuf_head[1] = fg_console + 1;
 			rbuf_head += 4;
 			if (wake)
@@ -1039,7 +1039,7 @@ event:
 		if (rbuf_head <= rbuf_end - 4) {
 			if (rbuf_head == rbuf_tail)
 				wake = true;
-			rbuf_head[0] = ACSINT_KEYSTROKE;
+			rbuf_head[0] = ACS_KEYSTROKE;
 			rbuf_head[1] = key;
 			rbuf_head[2] = ss;
 			rbuf_head[3] = param->ledstate;
@@ -1077,7 +1077,7 @@ static int __init acsint_init(void)
 	if (major == 0)
 		rc = misc_register(&acsint_dev);
 	else
-		rc = register_chrdev(major, ACSINT_DEVICE, &fops);
+		rc = register_chrdev(major, ACS_DEVICE, &fops);
 	if (rc)
 		return rc;
 	if (major == 0)
@@ -1089,7 +1089,7 @@ static int __init acsint_init(void)
 		if (major == 0)
 			misc_deregister(&acsint_dev);
 		else
-			unregister_chrdev(major, ACSINT_DEVICE);
+			unregister_chrdev(major, ACS_DEVICE);
 		return rc;
 	}
 
@@ -1099,7 +1099,7 @@ static int __init acsint_init(void)
 		if (major == 0)
 			misc_deregister(&acsint_dev);
 		else
-			unregister_chrdev(major, ACSINT_DEVICE);
+			unregister_chrdev(major, ACS_DEVICE);
 		return rc;
 	}
 
@@ -1118,7 +1118,7 @@ static void __exit acsint_exit(void)
 	if (major == 0)
 		misc_deregister(&acsint_dev);
 	else
-		unregister_chrdev(major, ACSINT_DEVICE);
+		unregister_chrdev(major, ACS_DEVICE);
 
 	for (j = 0; j < MAX_NR_CONSOLES; ++j)
 		kfree(cbuf_tty[j]);
