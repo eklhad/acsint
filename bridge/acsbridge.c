@@ -306,7 +306,7 @@ return acs_notes(capsnd);
 int acs_highbeeps(void)
 {
 static const short boundsnd[] = {
-        3172,3,3775,3,0,0       };
+        2800,4,3300,3,0,0       };
 return acs_notes(boundsnd);
 } // acs_highbeeps
 
