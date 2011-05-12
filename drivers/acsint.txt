@@ -305,6 +305,24 @@ I use it when reading through text, because I would rather hear
 a quick swoop than the word "new line".
 I have an implicit understanding of where the lines break as I listen to the words.
 
+ACSINT_SWOOP
+
+Issue a frequency sweep from one level to another,
+either ascending or descending.
+The first byte is an unsigned char, and is multiplied by 10 to give
+the starting period.
+The second byte is multiplied by ten for the ending period.
+The third byte is a signed char, and represents the step.
+The function does this:
+
+for(period=start; period </> end; period += step) {
+	udelay(period);
+	toggle the speaker;
+}
+
+The ACSINT_CR function is shorthand for
+ACSINT_SWOOP 26 6 -2
+
 ACSINT_NOTES
 
 This command plays a series of notes, a song if you will.
@@ -373,6 +391,12 @@ The buffers are not 50K, they are 200K,
 and your read buffer should be 200K plus a few hundred bytes for extra events.
 As mentioned earlier, the bridge layer handles all this for you,
 and makes the text available to you either as unicodes or as downshifted ascii.
+
+ACSINT_OBREAK
+
+Specify a gap of time, in tenths of a second,
+that is sufficient to indicate a new burst of output.
+See the MORECHARS event below for more details.
 
 read()
 
@@ -452,7 +476,8 @@ that keystroke.  The most common example is spaces for tab, as in stty tab3.
 You may or may not want to speak these characters in echo mode.
 
 The first variant, with echo = 0, is not thrown
-if the new output occurs within two seconds of the prior output.
+if the new output occurs within a specified gap of time
+relative to the prior output.
 The driver considers this all the same output,
 as it has probably come from the same command.
 If you are examining words or letters in the output,
@@ -464,6 +489,9 @@ Note however that any key passed to the console will be treated
 as a new command, and the next batch of output will be new output,
 and will throw the MORECHARS event.
 In other words, timing considerations fly out the window once you start typing.
+You can set this gap via ACSINT_OBREAK.
+The default is 5, or half a second.
+A gap of 0 turns the timing feature off entirely.
 
 ACSINT_REFRESH
 

@@ -40,7 +40,7 @@ static DEFINE_RAW_SPINLOCK(acslock);
 
 /* circular buffer of output characters received from the tty */
 struct cbuf {
-	unsigned int area[TTYLOGSIZE + 1];
+	unsigned int area[65536];
 	unsigned int *start, *end;
 	unsigned int *head, *tail;
 /* mark the place where we last copied data to user space */
@@ -64,11 +64,13 @@ static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
 
 /* Staging area to copy tty data down to user space */
 /* This is a snapshot of the circular buffer. */
-static unsigned int cb_staging[TTYLOGSIZE];
+static unsigned int cb_staging[65536];
 
 /* jiffies value for the last output character. */
 /* This is reset if the last output character is echo. */
 static unsigned long last_oj;
+/* How many tenths of a second separate one stream of output from the next? */
+static int outputbreak = 5;
 
 /* Initialize / reset the variables in the circular buffer. */
 static void cb_reset(struct cbuf *cb)
@@ -76,7 +78,7 @@ static void cb_reset(struct cbuf *cb)
 	if (!cb)
 		return;		/* never allocated */
 	cb->start = cb->area;
-	cb->end = cb->area + TTYLOGSIZE + 1;
+	cb->end = cb->area + 65536;
 	cb->head = cb->start;
 	cb->tail = cb->start;
 	cb->mark = cb->start;
@@ -270,7 +272,6 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	bool catchup_head, catchup_echo;
 /* catch up length - how many characters to copy down to user space */
 	int culen = 0;
-	char cu_cmd[4];		/* the catch up command */
 	unsigned int *cup = 0;	/* the catchup poin */
 	char *temp_head, *temp_tail, *t;
 	int j, j2;
@@ -342,14 +343,8 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 			culen = sizeof(cb_nomem_message) - 1;
 		}
 
-		cu_cmd[0] = ACSINT_TTY_NEWCHARS;
-/* Put in the minor number here, though I don't think we need it. */
-		cu_cmd[1] = fg_console + 1;
-		cu_cmd[2] = culen;
-		cu_cmd[3] = (culen >> 8);
-
 		if (cb) {
-			/* One clump or two. */
+			/* One chunk or two. */
 			if (cup >= cb->mark) {
 				if (culen)
 					memcpy(cb_staging, cb->mark, culen * 4);
@@ -383,10 +378,26 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 		len -= 4;
 	}
 
+	if (catchup) {
+		cup = cb_staging;
+/* ratchet culen down to the size of the userland buffer */
+		if (culen > TTYLOGSIZE) {
+			j = culen - TTYLOGSIZE;
+			cup += j, culen -= j;
+		}
+	}
+
 	if (catchup && len >= (culen + 1) * 4) {
+		char cu_cmd[4];	/* the catch up command */
+		cu_cmd[0] = ACSINT_TTY_NEWCHARS;
+/* Put in the minor number here, though I don't think we need it. */
+		cu_cmd[1] = fg_console + 1;
+		cu_cmd[2] = culen;
+		cu_cmd[3] = (culen >> 8);
 		if (copy_to_user(buf, cu_cmd, 4))
 			return -EFAULT;
-		if (culen && copy_to_user(buf + 4, cb_staging, culen * 4))
+
+		if (culen && copy_to_user(buf + 4, cup, culen * 4))
 			return -EFAULT;
 		bytes_read += (culen + 1) * 4;
 		buf += (culen + 1) * 4;
@@ -549,6 +560,21 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(c, p++);
 			len--;
 			key_monitor = (c != 0);
+			break;
+
+		case ACSINT_OBREAK:
+			if (len < 1)
+				break;
+			get_user(c, p++);
+			len--;
+			outputbreak = (unsigned char)c;
+			break;
+
+		case ACSINT_SWOOP:
+			if (len < 3)
+				break;
+			/* not yet implemented */
+			len -= 3;
 			break;
 
 		case ACSINT_REFRESH:
@@ -810,7 +836,9 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 		if (at_head || echo)
 			throw = true;
 		if (!echo) {
-			if (last_oj && (long)jiffies - (long)last_oj < HZ * 2)
+			if (last_oj && outputbreak &&
+			    (long)jiffies - (long)last_oj <
+			    HZ * outputbreak / 10)
 				throw = false;
 			last_oj = jiffies;
 			if (last_oj == 0)

@@ -329,10 +329,30 @@ This is a callback function, or handler, that you provide.
 Leave it null if you don't need this information.
 echo is 0 for output characters, 1 for an echo of a key that you typed,
 and 2 for an indirect echo, such as spaces for tab.
+
+The first variant, with echo = 0, is not thrown
+if the new output occurs within a specified gap of time
+relative to the prior output.
+The driver considers this all the same output,
+as it has probably come from the same command.
+If you are examining words or letters in the output,
+or if you have paused to think about what you are reading, you don't want
+autoread to pull you down the page just because output continues to flow.
+This driver tries to determine whether a batch of output is new or not,
+and the easiest way to do this is by timing.
+Note however that any key passed to the console will be treated
+as a new command, and the next batch of output will be new output,
+and will throw the "new stuff" event.
+In other words, timing considerations fly out the window once you start typing.
+You can set this gap via ACSINT_OBREAK.
+The default is 5, or half a second.
+A gap of 0 turns the timing feature off entirely.
 *********************************************************************/
 
 typedef void (*more_handler_t)(int echo, unsigned int c);
 extern more_handler_t acs_more_h;
+
+int acs_obreak(int gap);
 
 
 /*********************************************************************

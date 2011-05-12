@@ -28,6 +28,7 @@ ACSINT_SOUNDS_KMSG,
 /* ask the driver to make specific sounds for you */
 ACSINT_CLICK,
 ACSINT_CR,
+ACSINT_SWOOP,
 ACSINT_NOTES, /* series of notes */
 /* Request to bring the tty log up to date */
 ACSINT_REFRESH,
@@ -35,6 +36,8 @@ ACSINT_REFRESH,
 ACSINT_BYPASS, /* send next char through */
 ACSINT_MONITOR, /* to monitor keystrokes as you type */
 ACSINT_DIVERT, /* adapter grabs a string of text */
+/* Timing break between successive sections of output */
+ACSINT_OBREAK,
 /* events coming back */
 ACSINT_KEYSTROKE,
 ACSINT_TTY_NEWCHARS, /* the ones you haven't seen yet */

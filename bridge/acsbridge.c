@@ -292,7 +292,7 @@ return acs_notes(bellsnd);
 int acs_buzz(void)
 {
 static const short buzzsnd[] = {
-        120,50,0,0     };
+        120,20,0,0     };
 return acs_notes(buzzsnd);
 } // acs_buzz
 
@@ -330,8 +330,7 @@ outbuf[1] = enabled;
 return acs_write(2);
 } // acs_divert
 
-int
-acs_monitor(int enabled) 
+int acs_monitor(int enabled) 
 {
 outbuf[0] = ACSINT_MONITOR;
 outbuf[1] = enabled;
@@ -344,6 +343,13 @@ acs_bypass(void)
 outbuf[0] = ACSINT_BYPASS;
 return acs_write(1);
 } // acs_bypass
+
+int acs_obreak(int gap) 
+{
+outbuf[0] = ACSINT_OBREAK;
+outbuf[1] = gap;
+return acs_write(2);
+} // acs_obreak
 
 /* Use divert to swallow a string.
  * This is not unicode at present. */
