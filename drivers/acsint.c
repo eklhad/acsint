@@ -66,6 +66,9 @@ static unsigned char cb_nomem_alloc[MAX_NR_CONSOLES];
 /* This is a snapshot of the circular buffer. */
 static unsigned int cb_staging[65536];
 
+/* size of userland buffer; characters will copy from staging to this buffer */
+static int user_bufsize = 256;
+
 /* jiffies value for the last output character. */
 /* This is reset if the last output character is echo. */
 static unsigned long last_oj;
@@ -382,8 +385,8 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	if (catchup) {
 		cup = cb_staging;
 /* ratchet culen down to the size of the userland buffer */
-		if (culen > TTYLOGSIZE) {
-			j = culen - TTYLOGSIZE;
+		if (culen > user_bufsize) {
+			j = culen - user_bufsize;
 			cup += j, culen -= j;
 		}
 	}
@@ -595,12 +598,27 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(c, p++);
 			isize = (unsigned char)c;
 			get_user(c, p++);
-			isize |= ((unsigned short)c << 8);
+			isize |= ((int)(unsigned char)c << 8);
 			len -= 2;
 			if (len < isize)
 				break;
 			tty_pushstring(p, isize);
 			p += isize, len -= isize;
+			break;
+
+		case ACS_BUFSIZE:
+			if (len < 2)
+				break;
+			get_user(c, p++);
+			isize = (unsigned char)c;
+			get_user(c, p++);
+			isize |= ((int)(unsigned char)c << 8);
+			len -= 2;
+			if (isize < 256)
+				isize = 256;
+			if (isize >= 65536)
+				isize = 65535;
+			user_bufsize = isize;
 			break;
 
 		}		/* switch */

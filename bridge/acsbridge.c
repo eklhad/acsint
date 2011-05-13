@@ -170,6 +170,8 @@ checkAlloc();
 
 // Open and close the device.
 
+static int acs_bufsize(int n);
+
 int
 acs_open(const char *devname)
 {
@@ -193,6 +195,7 @@ return -1;
 
 errno = 0;
 acs_reset_configure();
+acs_bufsize(TTYLOGSIZE);
 
 return acs_fd;
 } // acs_open
@@ -225,7 +228,16 @@ return -1;
 return 0;
 } // acs_write
 
-// Which sounds are generated automatically?
+/* Pass the size of our tty buffer to the driver */
+static int acs_bufsize(int n)
+{
+outbuf[0] = ACS_BUFSIZE;
+outbuf[1] = n;
+outbuf[2] = n >> 8;
+return acs_write(3);
+}
+
+/* Which sounds are generated automatically? */
 
 int
 acs_sounds(int enabled) 

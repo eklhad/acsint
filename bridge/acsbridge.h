@@ -251,6 +251,10 @@ that are not yet implemented, and may never be implemented, in screen mode.
 
 #define NUMBUFMARKS 30
 
+/* The size of the tty log; store this many characters of tty output.
+ * Has to be between 30K and 64K */
+#define TTYLOGSIZE 50000
+
 struct readingBuffer {
 	unsigned int area[TTYLOGSIZE + 2];
 	unsigned char *attribs;
