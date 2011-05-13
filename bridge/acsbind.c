@@ -48,6 +48,7 @@ int acs_ascii2mkcode(const char *s, char **endptr)
 int ss = 0;
 int key;
 unsigned char c;
+const char *u;
 
 	static const unsigned char numpad[] = {
 KEY_KPASTERISK, KEY_KPPLUS, 0, KEY_KPMINUS, KEY_KPDOT, KEY_KPSLASH,
@@ -61,6 +62,14 @@ KEY_K, KEY_L, KEY_M, KEY_N, KEY_O,
 KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T,
 KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y,
 KEY_Z};
+
+static const unsigned char digitcode[] = {
+KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9};
+
+static const char otherchars[] = "`-=[];',./";
+static const unsigned char othercode[] = {
+KEY_GRAVE, KEY_MINUS, KEY_EQUAL, KEY_LEFTBRACE, KEY_RIGHTBRACE,
+KEY_APOSTROPHE, KEY_SEMICOLON, KEY_COMMA, KEY_DOT, KEY_SLASH};
 
 /* We talk about keywords all the time, but these really are words for keys. */
 static struct keyword {
@@ -118,12 +127,30 @@ s += l;
 goto done;
 }
 
-c = (unsigned char) s[0] | 0x20;
-if(c < 'a' || c > 'z') goto error;
-key = lettercode[c-'a'];
+/* This is a key on the lower 48.  We shouldn't be capturing it
+ * unless it is adjusted by control or alt. */
+if(!(ss & (ACS_SS_ALT|ACS_SS_CTRL)))
+goto error;
+
+/* next character should be empty, or space, or < */
+if(s[1] && !strchr(" \t<|", s[1])) goto error;
+c = (unsigned char) s[0];
 ++s;
-c = (unsigned char) s[0] | 0x20;
-if(c >= 'a' && c <= 'z') goto error;
+
+if(isalpha(c)) {
+c = tolower(c);
+key = lettercode[c-'a'];
+goto done;
+}
+
+if(isdigit(c)) {
+key = digitcode[c-'0'];
+goto done;
+}
+
+u = strchr(otherchars, c);
+if(!u) goto error;
+key = othercode[u - otherchars];
 
 done:
 if(endptr) *endptr = (char*)s;
