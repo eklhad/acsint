@@ -139,6 +139,16 @@ The application should include this header file
 and use the symbolic constants therein.
 The write actions are as follows.
 
+ACS_BUFSIZE
+
+Set the size of the tty log buffer in user space.
+The driver passes this many characters down to user space in one system call.
+(See read below.)
+Two bytes build an unsigned short, which is the size of the buffer.
+Thus this is a 3 byte command.
+The default size is 256, which is pretty small,
+so you probably want to issue this command as soon as you open the device.
+
 ACS_CLEAR_KEYS
 
 Clear all key bindings.
