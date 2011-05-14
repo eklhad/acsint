@@ -1197,7 +1197,10 @@ int acs_pipe_openv(const char *progname,  char * const  alist[]);
  * So each arg must be a string, and you must end the list with NULL. */
 int acs_pipe_open(const char *progname, ...);
 
-/* Check the following variable after anything that might write to or read from the pipe.
+/* This opens the pipe and passes cmd to sh -c */
+int acs_pipe_system(const char *cmd);
+
+/* Check the following variable after acs_all_events().
  * A broken pipe implies the child process has died. */
 extern int acs_pipe_broken;
 

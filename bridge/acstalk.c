@@ -830,7 +830,7 @@ va_end(ap);
 return acs_pipe_openv(progname, alist);
 } /* acs_pipe_open */
 
-int acs_pipe_system(char *cmd)
+int acs_pipe_system(const char *cmd)
 {
 if (!cmd) return -1;
 return acs_pipe_open("/bin/sh", "-c", cmd, 0);
