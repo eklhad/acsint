@@ -62,7 +62,7 @@ Any time you have to read from more than one device simultaneously
 you need to use the select(2) call,
 and that requires the file descriptors for the various devices.
 So let's put it in a global variable for easy access.
-However, if you are able to use the acs_ss_wait() and acs_ss_events()
+However, if you are able to use the acs_wait() and acs_all_events()
 functions described in section 12 then you should do so,
 rather than reimplementing the select logic.
 *********************************************************************/
@@ -206,8 +206,8 @@ and will still be at the end of buffer.
 This is useful for continuous reading.
 
 It may be convenient to use a define symbol:
-#define cutLeftMark rb->marks[0]
-Set this to rb->cursor to mark the left boundary
+#define cutLeftMark acs_rb->marks[0]
+Set this to acs_rb->cursor to mark the left boundary
 of a block of text that you plan to cut&paste.
 This mark remains in sync with the text, even if more output is generated.
 Move your cursor to the right edge of the block and issue the cut command.
@@ -269,15 +269,15 @@ Point to the current reading buffer.
 This is a global variable you can use anywhere.
 I keep it up to date, even if you switch consoles
 or toggle between screen and line mode.
-I would declare it const, but you have to be able to update rb->cursor.
+I would declare it const, but you have to be able to update acs_rb->cursor.
 *********************************************************************/
 
-extern struct readingBuffer *rb;
+extern struct readingBuffer *acs_rb;
 
 /*********************************************************************
 Within screen mode, attribs is an array holding the attributes of each character on screen.
 Underline, inverse, blinking, etc.
-The attribute of the character pointed to by s is rb->attribs[s-rb->start];
+The attribute of the character pointed to by s is acs_rb->attribs[s-acs_rb->start];
 No, I don't know what any of the bits mean; guess we'll have to look them up in linux documentation.
 A normal character is 7.
 *********************************************************************/
@@ -1055,7 +1055,7 @@ this is for the aforementioned story, where newlines mean nothing.
 This is incompatible with ACS_GS_ONEWORD or ACS_GS_STOPLINE.
 
 Don't use this function to read a single character.
-Just grab rb->cursor[0], or call acs_getc(), and go.
+Just grab acs_rb->cursor[0], or call acs_getc(), and go.
 This routine has too much overhead for just one character,
 and it does some translations that you may or may not want.
 
@@ -1150,11 +1150,11 @@ ofs_type *offsets, int properties);
 Section 12: synthesizer communications.
 Most synthesizers communicate with us over a file descriptor,
 be it a serial port, socket, or pipe.
-If that is the case you can use ss_fd for this descriptor.
-Actually we use ss_fd0 for input and ss_fd1 for output.
+If that is the case you can use acs_sy_fd for this descriptor.
+Actually we use acs_sy_fd0 for input and acs_sy_fd1 for output.
 These will be the same for a serial port or socket,
 and different if we are talking to a software synth through a pipe.
-With acs_fd and ss_fd in place, the bridge can perform some functions for you,
+With acs_fd and acs_sy_fd in place, the bridge can perform some functions for you,
 like reading from the two file descriptors simultaneously, and watching for events.
 We've already seen the acsint events, keystrokes, console switch, etc.
 The most common synthesizer events are index markers.
@@ -1163,53 +1163,53 @@ they will be passed back to you through the following handler,
 much like the handlers seen above.
 *********************************************************************/
 
-extern int ss_fd0, ss_fd1; /* file descriptors */
+extern int acs_sy_fd0, acs_sy_fd1; /* file descriptors */
 
 /* Which index marker has been returned to us, example 2 out of 5 */
 typedef void (*imark_handler_t)(int mark, int lastmark);
-extern imark_handler_t ss_imark_h;
-extern unsigned int *imark_start; /* for internal bookkeeping */
+extern imark_handler_t acs_imark_h;
+extern unsigned int *acs_imark_start; /* for internal bookkeeping */
 
 /* External serial synthesizer, typically /dev/ttySn
  * baud must be one of the standard baud rates from 1200 to 115200
- * Sets ss_fd, and returns same. */
-int ess_open(const char *devname, int baud);
+ * Sets acs_sy_fd, and returns same. */
+int acs_serial_open(const char *devname, int baud);
 
 /* Close the synthesizer connection, no matter what kind. */
-void ss_close(void);
+void acs_sy_close(void);
 
 /* The adapter can change the serial flow control on the fly.
  * I've had the cts line fail on my unit, or at least flake out on me.
- * ess_open sets hardware flow control. */
-int ess_flowcontrol(int hardware);
+ * acs_serial_open sets hardware flow control. */
+int acs_serial_flow(int hardware);
 
 /* open a software synth over a pipe.
  * This calls execvp, so the first arg must be
  * the name of the program to run.
  * This will often be the same as progname,
  * unless you want to specify progname with an absolute path. */
-int pss_openv(const char *progname,  char * const  alist[]);
+int acs_pipe_openv(const char *progname,  char * const  alist[]);
 
 /* Like the above, but you pass the arguments inline.
  * This is like execl verses execv.
  * Unlike printfv, I don't have a string with percent directives
  * to tell me how many args you are passing, or the type of each arg.
  * So each arg must be a string, and you must end the list with NULL. */
-int pss_open(const char *progname, ...);
+int acs_pipe_open(const char *progname, ...);
 
 /* Check the following variable after anything that might write to or read from the pipe.
  * A broken pipe implies the child process has died. */
-extern int pss_broken;
+extern int acs_pipe_broken;
 
 /*********************************************************************
 Wait for communication from either the acsint kernel module or the synthesizer.
 The return is 1 if acs_fd has data,
-2 if ss_fd0 has data,
+2 if acs_sy_fd0 has data,
 and 4 if the acsint fifo has an incoming message.
 (See section 14 for interprocess messages.)
 *********************************************************************/
 
-int acs_ss_wait(void);
+int acs_wait(void);
 
 /*********************************************************************
 Read synthesizer events and call the appropriate handlers.
@@ -1226,35 +1226,35 @@ whereupon I can turn them into standard events and hide
 some of these differences from the running adapter.
 *********************************************************************/
 
-extern int ss_style;
+extern int acs_style;
 
-enum SS_STYLE {
+enum SY_STYLE {
 // generic, no index markers etc.
 // This one should be first, with a value of 0, hence the default.
-SS_STYLE_GENERIC,
+SY_STYLE_GENERIC,
 // doubletalk, double light, tripletalk, etc
-SS_STYLE_DOUBLE,
+SY_STYLE_DOUBLE,
 // Dectalk, pc and express
-SS_STYLE_DECEXP,
-SS_STYLE_DECPC,
+SY_STYLE_DECEXP,
+SY_STYLE_DECPC,
 // braille n speak
-SS_STYLE_BNS,
+SY_STYLE_BNS,
 // Accent
-SS_STYLE_ACE,
-SS_STYLE_ESPEAKUP,
+SY_STYLE_ACE,
+SY_STYLE_ESPEAKUP,
 };
 
-int ss_events(void);
+int acs_sy_events(void);
 
 /* process events from the acsint driver, the synthesizer, or the fifo. */
-int acs_ss_events(void);
+int acs_all_events(void);
 
 /*********************************************************************
 Ask whether the synthesizer is still talking.
 If not, then it is ready for more speech.
 This is a subtle function, and its implementation may vary with the style.
 
-One thing we can't do is poll ss_fd1 and ask whether writing would block.
+One thing we can't do is poll acs_sy_fd1 and ask whether writing would block.
 Most units have an on-board buffer and will happily accept
 the next sentence while it is in the middle of speaking the current sentence.
 And if you're going through a unix pipe, it has an internal buffer too,
@@ -1270,7 +1270,7 @@ and I may take advantage of this some day.
 You could time it, and say each word takes so many seconds to speak
 at the current speech rate.
 I've done this before, and it's butt ugly!
-But it's all you have in SS_STYLE_GENERIC.
+But it's all you have in SY_STYLE_GENERIC.
 
 The last and best solution is index markers.
 Attach a marker to each word, and the unit passes that marker back to you
@@ -1294,7 +1294,7 @@ These could collect in the synthesizer's on-board buffer
 and it could have 30 seconds of speech,
 and we don't even know it.
 it could be "still talking",
-and yet ss_stillTalking() returns 0.
+and yet acs_stillTalking() returns 0.
 I'll try to think of a way around this, but meantime
 let's just say that small bits of text, without index markers,
 are spoken right away.
@@ -1325,7 +1325,7 @@ and see if there is something to do.
 That's my goal.
 *********************************************************************/
 
-int ss_stillTalking(void);
+int acs_stillTalking(void);
 
 /*********************************************************************
 Send a character or a string to the synthesizer to be spoken right away.
@@ -1349,8 +1349,8 @@ So let's say you are doing that, and you believe it is ready to speak
 the next item - you can send it out here.
 *********************************************************************/
 
-int ss_say_char(char c);
-int ss_say_string(const char *s);
+int acs_say_char(char c);
+int acs_say_string(const char *s);
 
 /*********************************************************************
 Send a string to the synth, but include an index marker for each
@@ -1385,16 +1385,16 @@ Style must be set properly
 so that I know how to send and watch for index markers.
 *********************************************************************/
 
-int ss_say_string_imarks(const char *s, const ofs_type *offsets, int firstmark);
+int acs_say_indexed(const char *s, const ofs_type *offsets, int firstmark);
 
 /*********************************************************************
 Stop speech immediately.
-Writes an interrupt byte, which depends on the synth style, to ss_fd1.
+Writes an interrupt byte, which depends on the synth style, to acs_sy_fd1.
 Clear away any internal index markers; we're not watching for them any more,
 because they aren't coming back to us.
 *********************************************************************/
 
-void ss_shutup(void);
+void acs_shutup(void);
 
 
 /*********************************************************************
@@ -1406,9 +1406,9 @@ and the user can follow that up with a digit, and there you are.
 
 Increment and decrement functions are also provided.
 So +f1 could be "softer" while +f2 is "louder".
-The new value is stored in ss_curvolume;
+The new value is stored in acs_curvolume;
 So if volume was 6 and you call incvolume(),
-ss_curvolume will be 7.
+acs_curvolume will be 7.
 These routines return 0 for success,
 -1 if you are moving out of range,
 or -2 if the synthesizer does not support changes in volume, pitch, etc.
@@ -1421,23 +1421,23 @@ This layer hides the differences between speech synthesizers.
 They all have their magic codes for changing volume, pitch, etc.
 *********************************************************************/
 
-extern int ss_curvolume;
-int ss_setvolume(int level);
-int ss_incvolume(void);
-int ss_decvolume(void);
+extern int acs_curvolume;
+int acs_setvolume(int level);
+int acs_incvolume(void);
+int acs_decvolume(void);
 
-extern int ss_curpitch;
-int ss_setpitch(int level);
-int ss_incpitch(void);
-int ss_decpitch(void);
+extern int acs_curpitch;
+int acs_setpitch(int level);
+int acs_incpitch(void);
+int acs_decpitch(void);
 
-extern int ss_curspeed;
-int ss_setspeed(int level);
-int ss_incspeed(void);
-int ss_decspeed(void);
+extern int acs_curspeed;
+int acs_setspeed(int level);
+int acs_incspeed(void);
+int acs_decspeed(void);
 
-extern int ss_curvoice;
-int ss_setvoice(int voice);
+extern int acs_curvoice;
+int acs_setvoice(int voice);
 
 /*********************************************************************
 When you first open a synthesizer it has certain default values
@@ -1451,7 +1451,7 @@ and then call this function.
 Check curvolume curspeed curpitch and curvoice for the resulting values.
 *********************************************************************/
 
-void ss_startvalues(void);
+void acs_style_defaults(void);
 
 
 /*********************************************************************

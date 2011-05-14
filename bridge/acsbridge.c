@@ -84,7 +84,7 @@ static const char nomem_message[] = "Acsint bridge cannot allocate space for thi
 static struct readingBuffer *tl; // current tty log
 static struct readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
-struct readingBuffer *rb; /* current reading buffer for the application */
+struct readingBuffer *acs_rb; /* current reading buffer for the application */
 
 static void screenSnap(void)
 {
@@ -119,36 +119,36 @@ screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
 static void
 checkAlloc(void)
 {
-rb = tty_log[acs_fgc - 1];
-if(rb && rb != &tty_nomem)
+acs_rb = tty_log[acs_fgc - 1];
+if(acs_rb && acs_rb != &tty_nomem)
 return; /* already allocated */
 
-rb = malloc(sizeof(struct readingBuffer));
-if(rb) acs_log("allocate %d\n", acs_fgc);
-else rb = &tty_nomem;
-tty_log[acs_fgc-1] = rb;
-rb->start = rb->area + 1;
-rb->area[0] = 0;
-if(rb == &tty_nomem) {
+acs_rb = malloc(sizeof(struct readingBuffer));
+if(acs_rb) acs_log("allocate %d\n", acs_fgc);
+else acs_rb = &tty_nomem;
+tty_log[acs_fgc-1] = acs_rb;
+acs_rb->start = acs_rb->area + 1;
+acs_rb->area[0] = 0;
+if(acs_rb == &tty_nomem) {
 int j;
 for(j=0; nomem_message[j]; ++j)
-rb->start[j] = nomem_message[j];
-rb->start[j] = 0;
-rb->end = rb->start + j;
+acs_rb->start[j] = nomem_message[j];
+acs_rb->start[j] = 0;
+acs_rb->end = acs_rb->start + j;
 } else {
-rb->end = rb->start;
-rb->area[1] = 0;
+acs_rb->end = acs_rb->start;
+acs_rb->area[1] = 0;
 }
 
-rb->cursor = rb->start;
-rb->v_cursor = 0;
-rb->attribs = 0;
+acs_rb->cursor = acs_rb->start;
+acs_rb->v_cursor = 0;
+acs_rb->attribs = 0;
 } /* checkAlloc */
 
 void
 acs_screenmode(int enabled)
 {
-imark_start = 0;
+acs_imark_start = 0;
 /* If you issued this command at the call of a keystroke,
  * and that is what I am expecting / assuming,
  * then yes the buffer will be caught up.
@@ -158,9 +158,9 @@ imark_start = 0;
 if(enabled) {
 screenmode = 1;
 screenSnap();
-rb = &screenBuf;
-rb->cursor = rb->v_cursor;
-memset(rb->marks, 0, sizeof(rb->marks));
+acs_rb = &screenBuf;
+acs_rb->cursor = acs_rb->v_cursor;
+memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
 } else {
 screenmode = 0;
 checkAlloc();
@@ -617,10 +617,10 @@ tl->end = t;
 void acs_clearbuf(void)
 {
 if(screenmode) return;
-imark_start = 0;
-if(rb && rb != &tty_nomem) {
-rb->end = rb->cursor = rb->start;
-memset(rb->marks, 0, sizeof(rb->marks));
+acs_imark_start = 0;
+if(acs_rb && acs_rb != &tty_nomem) {
+acs_rb->end = acs_rb->cursor = acs_rb->start;
+memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
 }
 } // acs_clearbuf
 
@@ -689,13 +689,13 @@ acs_log("fg %d\n", inbuf[i+1]);
 acs_fgc = inbuf[i+1];
 checkAlloc();
 if(screenmode) {
-/* Oops, the checkAlloc function changed rb out from under us. */
-rb = &screenBuf;
+/* Oops, the checkAlloc function changed acs_rb out from under us. */
+acs_rb = &screenBuf;
 /* I hope linux has done the console switch by this time. */
 screenSnap();
 refreshed = 1;
-rb->cursor = rb->v_cursor;
-memset(rb->marks, 0, sizeof(rb->marks));
+acs_rb->cursor = acs_rb->v_cursor;
+memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
 }
 if(acs_fgc_h) acs_fgc_h();
 i += 4;
@@ -749,7 +749,7 @@ tl->end = tl->start + TTYLOGSIZE;
 tl->end[0] = 0;
 tl->cursor = 0;
 memset(tl->marks, 0, sizeof(tl->marks));
-if(!screenmode) imark_start = 0;
+if(!screenmode) acs_imark_start = 0;
 } else {
 if(diff > 0) {
 // partial replacement
@@ -759,9 +759,9 @@ if(tl->cursor) {
 tl->cursor -= diff;
 if(tl->cursor < tl->start) tl->cursor = 0;
 }
-if(imark_start && !screenmode) {
-imark_start -= diff;
-if(imark_start < tl->start) imark_start = 0;
+if(acs_imark_start && !screenmode) {
+acs_imark_start -= diff;
+if(acs_imark_start < tl->start) acs_imark_start = 0;
 }
 for(j=0; j<NUMBUFMARKS; ++j)
 if(tl->marks[j]) {
@@ -818,12 +818,12 @@ static unsigned int *tc; // temp cursor
 
 void acs_cursorset(void)
 {
-tc = rb->cursor;
+tc = acs_rb->cursor;
 } // acs_cursorset
 
 void acs_cursorsync(void)
 {
-rb->cursor = tc;
+acs_rb->cursor = tc;
 } // acs_cursorsync
 
 /* This routine lowers a unicode down to an ascii symbol that is essentially equivalent.
@@ -867,24 +867,24 @@ return (tc ? *tc : 0);
 
 int acs_forward(void)
 {
-if(rb->end == rb->start) return 0;
+if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
-if(++tc == rb->end) return 0;
+if(++tc == acs_rb->end) return 0;
 return 1;
 } // acs_forward
 
 int acs_back(void)
 {
-if(rb->end == rb->start) return 0;
+if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
-if(tc-- == rb->start) return 0;
+if(tc-- == acs_rb->start) return 0;
 return 1;
 } // acs_back
 
 int acs_startline(void)
 {
 int colno = 0;
-if(rb->end == rb->start) return 0;
+if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
 do ++colno;
 while(acs_back() && acs_getc() != '\n');
@@ -894,7 +894,7 @@ return colno;
 
 int acs_endline(void)
 {
-if(rb->end == rb->start) return 0;
+if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
 while(acs_getc() != '\n') {
 if(acs_forward()) continue;
@@ -999,19 +999,19 @@ return 1;
 
 void acs_startbuf(void)
 {
-tc = rb->start;
+tc = acs_rb->start;
 } // acs_startbuf
 
 void acs_endbuf(void)
 {
-tc = rb->end;
-if(tc != rb->start) --tc;
+tc = acs_rb->end;
+if(tc != acs_rb->start) --tc;
 } // acs_endbuf
 
 // skip past left spaces
 void acs_lspc(void)
 {
-if(rb->end == rb->start) return;
+if(acs_rb->end == acs_rb->start) return;
 if(!tc) return;
 	if(!acs_back()) goto done;
 	while(acs_getc() == ' ')
@@ -1023,7 +1023,7 @@ done:
 // skip past right spaces
 void acs_rspc(void)
 {
-if(rb->end == rb->start) return;
+if(acs_rb->end == acs_rb->start) return;
 if(!tc) return;
 	if(!acs_forward()) goto done;
 	while(acs_getc() == ' ')
@@ -1088,7 +1088,7 @@ int acs_bufsearch(const char *string, int back, int newline)
 	int ok;
 	unsigned char c, first;
 
-if(rb->end == rb->start) return 0;
+if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
 
 	if(newline) {
@@ -1131,7 +1131,7 @@ int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int prop)
 {
 const char *destend = dest + destlen - 1; /* end of destination array */
 char *t = dest;
-const unsigned int *s = rb->cursor;
+const unsigned int *s = acs_rb->cursor;
 ofs_type *o = offsets;
 int j, l;
 unsigned int c;
@@ -1185,7 +1185,7 @@ if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 *t++ = c;
 ++s;
 if(prop&ACS_GS_STOPLINE) break;
@@ -1198,7 +1198,7 @@ spaces = 0;
 if(isalnum(c1)) {
 if(!alnum) {
 // new word
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 }
 // building our word
 *t++ = c1;
@@ -1233,7 +1233,7 @@ continue;
 punc:
 alnum = 0;
 if(t > dest && prop&ACS_GS_ONEWORD) break;
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 
 // check for repeat
 if(prop&ACS_GS_REPEAT &&
@@ -1292,7 +1292,7 @@ if(prop & ACS_GS_ONEWORD) break;
 } // loop over characters in the tty buffer
 
 *t = 0;
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 
 return 0;
 } /* acs_getsentence */
@@ -1302,7 +1302,7 @@ int acs_getsentence_uc(unsigned int *dest, int destlen, ofs_type *offsets, int p
 {
 const unsigned int *destend = dest + destlen - 1; /* end of destination array */
 unsigned int *t = dest;
-const unsigned int *s = rb->cursor;
+const unsigned int *s = acs_rb->cursor;
 ofs_type *o = offsets;
 int j, l;
 unsigned int c;
@@ -1356,7 +1356,7 @@ if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 *t++ = c;
 ++s;
 if(prop&ACS_GS_STOPLINE) break;
@@ -1369,7 +1369,7 @@ spaces = 0;
 if(isalnum(c1)) {
 if(!alnum) {
 // new word
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 }
 // building our word
 *t++ = c1;
@@ -1403,7 +1403,7 @@ continue;
 punc:
 alnum = 0;
 if(t > dest && prop&ACS_GS_ONEWORD) break;
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 
 // check for repeat
 if(prop&ACS_GS_REPEAT &&
@@ -1443,7 +1443,7 @@ if(prop & ACS_GS_ONEWORD) break;
 } // loop over characters in the tty buffer
 
 *t = 0;
-if(o) o[t-dest] = s-rb->cursor;
+if(o) o[t-dest] = s-acs_rb->cursor;
 
 return 0;
 } /* acs_getsentence_uc */

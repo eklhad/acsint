@@ -24,7 +24,7 @@ static char ss_inbuf[SSBUFSIZE]; /* input buffer for the synthesizer */
 
 /* The file descriptors to and from the synth. */
 /* These are the same for serial port or socket; different if over a pipe. */
-int ss_fd0 = -1, ss_fd1 = -1;
+int acs_sy_fd0 = -1, acs_sy_fd1 = -1;
 
 static int fifo_fd = -1; /* file descriptor for the interprocess fifo */
 static char *ipmsg; /* interprocess message */
@@ -33,53 +33,53 @@ fifo_handler_t acs_fifo_h;
 /* parent process, if a child is forked to manage the software synth. */
 static int pss_pid;
 /* Set this for broken pipe - need to respawnw the child */
-int pss_broken;
+int acs_pipe_broken;
 
 /* What is the style of synthesizer? */
-int ss_style;
+int acs_style;
 
 /* current synth parameters */
-int ss_curvolume, ss_curpitch, ss_curspeed, ss_curvoice;
+int acs_curvolume, acs_curpitch, acs_curspeed, acs_curvoice;
 
 /* What are the speech parameters when the unit is first turned on? */
 void
-ss_startvalues(void)
+acs_style_defaults(void)
 {
-ss_curvoice = 0;
-ss_curvolume = ss_curspeed = 5;
-ss_curpitch = 3;
+acs_curvoice = 0;
+acs_curvolume = acs_curspeed = 5;
+acs_curpitch = 3;
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
-ss_curpitch = 4;
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
+acs_curpitch = 4;
 break;
 
-case SS_STYLE_BNS:
-case SS_STYLE_ACE:
-ss_curvolume = 7;
+case SY_STYLE_BNS:
+case SY_STYLE_ACE:
+acs_curvolume = 7;
 break;
 
 } // switch
-} /* ss_startvalues */
+} /* acs_style_defaults */
 
 /* Handler - as index markers are returned to us */
-imark_handler_t ss_imark_h;
+imark_handler_t acs_imark_h;
 
 /* send return to the synth - start speaking */
 static const char kbyte = '\13';
 static const char crbyte = '\r';
 static void ss_cr(void)
 {
-if(ss_style == SS_STYLE_DECEXP || ss_style == SS_STYLE_DECPC)
-write(ss_fd1, &kbyte, 1);
-write(ss_fd1, &crbyte, 1);
+if(acs_style == SY_STYLE_DECEXP || acs_style == SY_STYLE_DECPC)
+write(acs_sy_fd1, &kbyte, 1);
+write(acs_sy_fd1, &crbyte, 1);
 }
 
 /* The start of the sentence that is sent with index markers. */
-unsigned int *imark_start;
+unsigned int *acs_imark_start;
 
-/* location of each index marker relative to imark_start */
+/* location of each index marker relative to acs_imark_start */
 static ofs_type imark_loc[100];
 static int imark_first, imark_end;
 static int bnsf; // counting control f's from bns
@@ -87,7 +87,7 @@ static int bnsf; // counting control f's from bns
 /* move the cursor to the returned index marker. */
 static void indexSet(int n)
 {
-if(ss_style == SS_STYLE_BNS || ss_style == SS_STYLE_ACE) {
+if(acs_style == SY_STYLE_BNS || acs_style == SY_STYLE_ACE) {
 /* don't return until you have done this bookkeeping. */
 ++bnsf;
 n = imark_end + bnsf;
@@ -95,33 +95,33 @@ n = imark_end + bnsf;
 n -= imark_first;
 }
 
-if(!imark_start) return;
+if(!acs_imark_start) return;
 if(n < 0 || n >= imark_end) return;
-rb->cursor = imark_start + imark_loc[n];
+acs_rb->cursor = acs_imark_start + imark_loc[n];
 acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
 /* should never be past the end of buffer, but let's check */
-if(rb->cursor >= rb->end) {
-rb->cursor = rb->end;
-if(rb->end > rb->start) --rb->cursor;
-imark_start = 0;
+if(acs_rb->cursor >= acs_rb->end) {
+acs_rb->cursor = acs_rb->end;
+if(acs_rb->end > acs_rb->start) --acs_rb->cursor;
+acs_imark_start = 0;
 acs_log("cursor ran past the end of buffer\n");
 }
 
 if(n == imark_end - 1) {
 /* last index marker, sentence is finished */
 acs_log("sentence spoken\n");
-imark_start = 0;
+acs_imark_start = 0;
 }
 
-if(ss_imark_h) (*ss_imark_h)(n+1, imark_end);
+if(acs_imark_h) (*acs_imark_h)(n+1, imark_end);
 } // indexSet
 
 static struct termios tio; // tty io control
 
 /* Set up tty with either hardware or software flow control */
 static unsigned int thisbaud = B9600;
-int ess_flowcontrol(int hw)
+int acs_serial_flow(int hw)
 {
 tio.c_iflag = IGNBRK | ISTRIP | IGNPAR;
 if(!hw) tio.c_iflag |= IXON | IXOFF;
@@ -134,8 +134,8 @@ tio.c_cc[VSTART] = 19;
     tio.c_cc[VMIN] = 1;
     tio.c_cc[VTIME] = 0;
 
-return tcsetattr(ss_fd0, TCSANOW, &tio);
-} // ess_flowcontrol
+return tcsetattr(acs_sy_fd0, TCSANOW, &tio);
+} // acs_serial_flow
 
 /* Get status lines from the serial device.
  * Active status lines are indicated with the following bit definitions:
@@ -149,7 +149,7 @@ static int
 getModemStatus(void)
 {
 int sigs, rc;
-rc = ioctl(ss_fd0, TIOCMGET, &sigs);
+rc = ioctl(acs_sy_fd0, TIOCMGET, &sigs);
 if(rc) sigs = 0;
 return sigs;
 /* We should never need to do this one.
@@ -171,7 +171,7 @@ if(sigs&TIOCM_CTS) printf(" cts");
 puts("");
 } /* printModemStatus */
 
-int ess_open(const char *devname, int baud)
+int acs_serial_open(const char *devname, int baud)
 {
 static const int baudvalues[] = {
 1200,
@@ -193,68 +193,68 @@ B115200,
 0};
 int j;
 
-if(ss_fd0 >= 0) {
+if(acs_sy_fd0 >= 0) {
 // already open
 errno = EEXIST;
 return -1;
 }
 
-ss_fd0 = open(devname, O_RDWR|O_NONBLOCK);
-if(ss_fd0 < 0) return 0;
-ss_fd1 = ss_fd0;
+acs_sy_fd0 = open(devname, O_RDWR|O_NONBLOCK);
+if(acs_sy_fd0 < 0) return 0;
+acs_sy_fd1 = acs_sy_fd0;
 
 // Set up the tty characteristics.
 // Especially important to have no echo and no cooked mode and clocal.
 for(j=0; baudvalues[j]; ++j)
 if(baud == baudvalues[j]) thisbaud = baudbits[j];
 // Hardware flow by default, but you can change that.
-if(ess_flowcontrol(1)) {
+if(acs_serial_flow(1)) {
 // ioctl failure ; don't understand.
 // Hope errno helps.
-close(ss_fd0);
-ss_fd0 = ss_fd1 = -1;
+close(acs_sy_fd0);
+acs_sy_fd0 = acs_sy_fd1 = -1;
 return -1;
 }
 
 /* Now that clocal is set, go back to blocking mode
  * In other words, clear the nonblock bit.
  * The other bits can all be zero, they don't mean anything on a serial port. */
-fcntl(ss_fd0, F_SETFL, 0);
+fcntl(acs_sy_fd0, F_SETFL, 0);
 
 	// Send an initial CR.
 		// Some units like to see this to establish baud rate.
 usleep(5000);
-write(ss_fd1, &crbyte, 1);
+write(acs_sy_fd1, &crbyte, 1);
 usleep(2000);
 
 return 0;
-} // ess_open
+} // acs_serial_open
 
-void ss_close(void)
+void acs_sy_close(void)
 {
-if(ss_fd0 < 0) return; // already closed
-close(ss_fd0);
-if(ss_fd1 != ss_fd0)
-close(ss_fd1);
-ss_fd0 = ss_fd1 = -1;
-} // ss_close
+if(acs_sy_fd0 < 0) return; // already closed
+close(acs_sy_fd0);
+if(acs_sy_fd1 != acs_sy_fd0)
+close(acs_sy_fd1);
+acs_sy_fd0 = acs_sy_fd1 = -1;
+} // acs_sy_close
 
 static fd_set channels;
 
-int acs_ss_wait(void)
+int acs_wait(void)
 {
 int rc;
 int nfds;
 
 memset(&channels, 0, sizeof(channels));
 FD_SET(acs_fd, &channels);
-if(ss_fd0 >= 0)
-FD_SET(ss_fd0, &channels);
+if(acs_sy_fd0 >= 0)
+FD_SET(acs_sy_fd0, &channels);
 if(fifo_fd >= 0)
 FD_SET(fifo_fd, &channels);
 
 nfds = acs_fd;
-if(ss_fd0 > nfds) nfds = ss_fd0;
+if(acs_sy_fd0 > nfds) nfds = acs_sy_fd0;
 if(fifo_fd > nfds) nfds = fifo_fd;
 ++nfds;
 rc = select(nfds, &channels, 0, 0, 0);
@@ -262,23 +262,23 @@ if(rc < 0) return; // should never happen
 
 rc = 0;
 if(FD_ISSET(acs_fd, &channels)) rc |= 1;
-if(ss_fd0 >= 0 && FD_ISSET(ss_fd0, &channels)) rc |= 2;
+if(acs_sy_fd0 >= 0 && FD_ISSET(acs_sy_fd0, &channels)) rc |= 2;
 if(fifo_fd >= 0 && FD_ISSET(fifo_fd, &channels)) rc |= 4;
 return rc;
-} // acs_ss_wait
+} // acs_wait
 
-int ss_events(void)
+int acs_sy_events(void)
 {
 int nr; // number of bytes read
 int i;
 static int leftover = 0;
 
-if(ss_fd0 < 0) {
+if(acs_sy_fd0 < 0) {
 errno = ENXIO;
 return -1;
 }
 
-nr = read(ss_fd0, ss_inbuf+leftover, SSBUFSIZE-leftover);
+nr = read(acs_sy_fd0, ss_inbuf+leftover, SSBUFSIZE-leftover);
 acs_log("synth read %d bytes\n", nr);
 if(nr < 0) return -1;
 
@@ -287,9 +287,9 @@ nr += leftover;
 while(i < nr) {
 char c = ss_inbuf[i];
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
 if(c >= 1 && c <= 99) {
 acs_log("index %d\n", c);
 indexSet(c);
@@ -300,7 +300,7 @@ acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
-case SS_STYLE_DECPC: case SS_STYLE_DECEXP:
+case SY_STYLE_DECPC: case SY_STYLE_DECEXP:
 // This is butt ugly compared to the Doubletalk!
 if(c == '\33') {
 if(nr-i < 8) break;
@@ -334,8 +334,8 @@ acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
-case SS_STYLE_BNS:
-case SS_STYLE_ACE:
+case SY_STYLE_BNS:
+case SY_STYLE_ACE:
 if(c == 6) {
 acs_log("index f\n", 0);
 indexSet(0);
@@ -358,25 +358,25 @@ leftover = nr - i;
 if(leftover) memmove(ss_inbuf, ss_inbuf+i, leftover);
 
 return 0;
-} // ss_events
+} // acs_sy_events
 
 static void ip_more(void); /* more data for an interprocess message */
 
-int acs_ss_events(void)
+int acs_all_events(void)
 {
-int source = acs_ss_wait();
+int source = acs_wait();
 if(source&4) ip_more();
-if(source&2) ss_events();
+if(source&2) acs_sy_events();
 if(source&1) acs_events();
-} // acs_ss_events
+} // acs_all_events
 
-int ss_say_string(const char *s)
+int acs_say_string(const char *s)
 {
-write(ss_fd1, s, strlen(s));
+write(acs_sy_fd1, s, strlen(s));
 ss_cr();
-} // ss_say_string
+} // acs_say_string
 
-int ss_say_char(char c)
+int acs_say_char(char c)
 {
 char c2[2];
 char *s = acs_getpunc(c);
@@ -385,18 +385,18 @@ c2[0] = c;
 c2[1] = 0;
 s = c2;
 }
-ss_say_string(s);
-} // ss_say_char
+acs_say_string(s);
+} // acs_say_char
 
-int ss_say_string_imarks(const char *s, const ofs_type *o, int mark)
+int acs_say_indexed(const char *s, const ofs_type *o, int mark)
 {
 const char *t;
 char ibuf[30]; // index mark buffer
 const ofs_type *o0 = o;
 
-imark_start = rb->cursor;
+acs_imark_start = acs_rb->cursor;
 imark_end = 0;
-if(ss_style == SS_STYLE_BNS || ss_style == SS_STYLE_ACE) mark = 0;
+if(acs_style == SY_STYLE_BNS || acs_style == SY_STYLE_ACE) mark = 0;
 imark_first = mark;
 
 t = s;
@@ -404,14 +404,14 @@ while(1) {
 if(*o && mark >= 0 && mark <= 100) { // mark here
 // have to send the prior word
 if(s > t)
-write(ss_fd1, t, s-t);
+write(acs_sy_fd1, t, s-t);
 t = s;
 // set the index marker
 imark_loc[imark_end++] = *o;
 // send the index marker
 ibuf[0] = 0;
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
 /* The following if statement addresses a bug that is, as far as I know,
  * specific to doubletalk.
  * We can't send a single letter, and then an index marker
@@ -420,21 +420,21 @@ case SS_STYLE_DOUBLE:
 if(o-o0 > 2 || !*s)
 sprintf(ibuf, "\1%di", mark);
 break;
-case SS_STYLE_ESPEAKUP:
+case SY_STYLE_ESPEAKUP:
 sprintf(ibuf, "<mark name=\"%d\"/>", mark);
 break;
-case SS_STYLE_BNS:
-case SS_STYLE_ACE:
+case SY_STYLE_BNS:
+case SY_STYLE_ACE:
 strcpy(ibuf, "\06");
 -- bnsf; // you owe me another control f
 break;
-case SS_STYLE_DECPC: case SS_STYLE_DECEXP:
+case SY_STYLE_DECPC: case SY_STYLE_DECEXP:
 /* Send this the most compact way we can - 9600 baud can be kinda slow. */
 sprintf(ibuf, "[:i r %d]", mark);
 break;
 } // switch
 if(ibuf[0])
-write(ss_fd1, ibuf, strlen(ibuf));
+write(acs_sy_fd1, ibuf, strlen(ibuf));
 ++mark;
 }
 if(!*s) break;
@@ -445,21 +445,21 @@ if(!*s) break;
  * so there should be nothing else to send.
  * But just in case ... */
 if(s > t)
-write(ss_fd1, t, s-t);
+write(acs_sy_fd1, t, s-t);
 
 ss_cr();
 acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);
-} // ss_say_string_imarks
+} // acs_say_indexed
 
-void ss_shutup(void)
+void acs_shutup(void)
 {
 char ibyte; // interrupt byte
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
-case SS_STYLE_BNS:
-case SS_STYLE_ACE:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
+case SY_STYLE_BNS:
+case SY_STYLE_ACE:
 ibyte = 24;
 break;
 default:
@@ -467,20 +467,20 @@ ibyte = 3;
 break;
 } // switch
 
-write(ss_fd1, &ibyte, 1);
+write(acs_sy_fd1, &ibyte, 1);
 
-imark_start = 0;
+acs_imark_start = 0;
 bnsf = 0;
 acs_log("shutup\n");
-} // ss_shutup
+} // acs_shutup
 
 static void
 ss_writeString(const char *s)
 {
-write(ss_fd1, s, strlen(s));
+write(acs_sy_fd1, s, strlen(s));
 } /* ss_writeString */
 
-int ss_setvolume(int n)
+int acs_setvolume(int n)
 {
 static char doublestring[] = "\01xv";
 static char dtpcstring[] = "[:vo set dd]";
@@ -491,21 +491,21 @@ int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
 doublestring[1] = '0' + n;
 ss_writeString(doublestring);
 break;
 
-case SS_STYLE_DECPC:
+case SY_STYLE_DECPC:
 n = 10 + 8*n;
 dtpcstring[9] = '0' + n/10;
 dtpcstring[10] = '0' + n%10;
 ss_writeString(dtpcstring);
 break;
 
-case SS_STYLE_DECEXP:
+case SY_STYLE_DECEXP:
 /* The Dec Express takes volume levels from 60 to 86. */
 /* This code gives a range from 60 to 85. */
 n = 60 + n*72/25;
@@ -514,12 +514,12 @@ extstring[9] = '0' + n % 10;
 ss_writeString(extstring);
 break;
 
-case SS_STYLE_BNS:
+case SY_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dV", (n+1) * 16 / 10);
 ss_writeString(bnsstring);
 break;
 
-case SS_STYLE_ACE:
+case SY_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
 break;
@@ -528,27 +528,27 @@ default:
 return -2;
 } // switch
 
-ss_curvolume = n0;
+acs_curvolume = n0;
 return 0;
-} /* ss_setvolume */
+} /* acs_setvolume */
 
-int ss_incvolume(void)
+int acs_incvolume(void)
 {
-if(ss_curvolume == 9) return -1;
-if(ss_setvolume(ss_curvolume+1))
+if(acs_curvolume == 9) return -1;
+if(acs_setvolume(acs_curvolume+1))
 return -2;
 return 0;
 }
 
-int ss_decvolume(void)
+int acs_decvolume(void)
 {
-if(ss_curvolume == 0) return -1;
-if(ss_setvolume(ss_curvolume-1))
+if(acs_curvolume == 0) return -1;
+if(acs_setvolume(acs_curvolume-1))
 return -2;
 return 0;
 }
 
-int ss_setspeed(int n)
+int acs_setspeed(int n)
 {
 static char doublestring[] = "\1xs\1xa";
 static char decstring[] = "[:ra ddd]";
@@ -559,25 +559,25 @@ int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
 doublestring[1] = doublestring[4] = '0' + n;
 ss_writeString(doublestring);
 break;
 
-case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
+case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
 n = 50*n + 120;
 sprintf(decstring+5, "%03d]", n);
 ss_writeString(decstring);
 break;
 
-case SS_STYLE_BNS:
+case SY_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dE", (n+1) * 14 / 10);
 ss_writeString(bnsstring);
 break;
 
-case SS_STYLE_ACE:
+case SY_STYLE_ACE:
 acestring[2] = acerate[n];
 ss_writeString(acestring);
 break;
@@ -586,27 +586,27 @@ default:
 return -2;
 } // switch
 
-ss_curspeed = n0;
+acs_curspeed = n0;
 return 0;
-} /* ss_setspeed */
+} /* acs_setspeed */
 
-int ss_incspeed(void)
+int acs_incspeed(void)
 {
-if(ss_curspeed == 9) return -1;
-if(ss_setspeed(ss_curspeed+1))
+if(acs_curspeed == 9) return -1;
+if(acs_setspeed(acs_curspeed+1))
 return -2;
 return 0;
 }
 
-int ss_decspeed(void)
+int acs_decspeed(void)
 {
-if(ss_curspeed == 0) return -1;
-if(ss_setspeed(ss_curspeed-1))
+if(acs_curspeed == 0) return -1;
+if(acs_setspeed(acs_curspeed-1))
 return -2;
 return 0;
 }
 
-int ss_setpitch(int n)
+int acs_setpitch(int n)
 {
 static char doublestring[] = "\01xxp";
 static const short tohurtz[] = {
@@ -618,28 +618,28 @@ int n0 = n;
 
 if(n < 0 || n > 9) return -1;
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
 n = 9*n + 10;
 doublestring[1] = '0' + n/10;
 ss_writeString(doublestring);
 break;
 
-case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
+case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
 n = tohurtz[n];
 sprintf(decstring+8, "%d]", n);
 ss_writeString(decstring);
 break;
 
-case SS_STYLE_BNS:
+case SY_STYLE_BNS:
 /* BNS pitch is 01 through 63.  An increment of 6, giving levels from 6 .. 60
 should work well. */
 sprintf(bnsstring, "\x05%02dP", (n+1) * 6);
 ss_writeString(bnsstring);
 break;
 
-case SS_STYLE_ACE:
+case SY_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
 break;
@@ -648,29 +648,29 @@ default:
 return -2;
 } // switch
 
-ss_curpitch = n0;
+acs_curpitch = n0;
 return 0;
-} /* ss_setpitch */
+} /* acs_setpitch */
 
-int ss_incpitch(void)
+int acs_incpitch(void)
 {
-if(ss_curpitch == 9) return -1;
-if(ss_setpitch(ss_curpitch+1))
+if(acs_curpitch == 9) return -1;
+if(acs_setpitch(acs_curpitch+1))
 return -2;
 return 0;
 }
 
-int ss_decpitch(void)
+int acs_decpitch(void)
 {
-if(ss_curpitch == 0) return -1;
-if(ss_setpitch(ss_curpitch-1))
+if(acs_curpitch == 0) return -1;
+if(acs_setpitch(acs_curpitch-1))
 return -2;
 return 0;
 }
 
 /* Changing voice could reset the pitch */
 // Return -1 if the synthesizer cannot support that voice.
-int ss_setvoice(int v)
+int acs_setvoice(int v)
 {
 	char buf[8];
 static const short doublepitch[] = {
@@ -680,25 +680,25 @@ static const short decpitch[] = {
 -1,3,1,4,3,6,7,6,2,8};
 static char acestring[] = "\33V5";
 
-switch(ss_style) {
-case SS_STYLE_DOUBLE:
-case SS_STYLE_ESPEAKUP:
+switch(acs_style) {
+case SY_STYLE_DOUBLE:
+case SY_STYLE_ESPEAKUP:
 if(v < 1 || v > 8) return -1;
 		sprintf(buf, "\1%do", v-1);
 		ss_writeString(buf);
 ss_cr();
-ss_curpitch = doublepitch[v];
+acs_curpitch = doublepitch[v];
 break;
 
-case SS_STYLE_DECEXP: case SS_STYLE_DECPC:
+case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
 if(v < 1 || v > 8) return -1;
 		sprintf(buf, "[:n%c]", decChars[v]);
 		ss_writeString(buf);
 ss_cr();
-ss_curpitch = decpitch[v];
+acs_curpitch = decpitch[v];
 break;
 
-case SS_STYLE_ACE:
+case SY_STYLE_ACE:
 acestring[2] = '0' + v;
 ss_writeString(acestring);
 break;
@@ -708,7 +708,7 @@ return -2; /* no voice function for this synth */
 } // switch
 
 return 0;
-} /* ss_setvoice */
+} /* acs_setvoice */
 
 /* Would the synth block if we sent it more text? */
 int ss_blocking(void)
@@ -718,19 +718,19 @@ int nfds;
 struct timeval now;
 
 memset(&channels, 0, sizeof(channels));
-FD_SET(ss_fd1, &channels);
+FD_SET(acs_sy_fd1, &channels);
 now.tv_sec = 0;
 now.tv_usec = 0;
-nfds = ss_fd1 + 1;
+nfds = acs_sy_fd1 + 1;
 rc = select(nfds, 0, &channels, 0, &now);
 if(rc < 0) return 0; // should never happen
 rc = 0;
-if(FD_ISSET(ss_fd1, &channels)) rc = 1;
+if(FD_ISSET(acs_sy_fd1, &channels)) rc = 1;
 return rc ^ 1;
 } /* ss_blocking */
 
 /* Is the synth still talking? */
-int ss_stillTalking(void)
+int acs_stillTalking(void)
 {
 /* If we're blocked then we're definitely still talking. */
 if(ss_blocking()) return 1;
@@ -742,14 +742,14 @@ if(ss_blocking()) return 1;
 /* If there is no index marker, then we're not speaking a sentence.
  * Just a word or letter or command confirmation phrase.
  * We don't need to interrupt that, and it's ok to send the next thing. */
-if(!imark_start) return 0;
+if(!acs_imark_start) return 0;
 
 /* If we have reached the last index marker, the sentence is done.
  * Or nearly done - still speaking the last word.
- * In that case imark_start should be 0, and we shouldn't be here.
+ * In that case acs_imark_start should be 0, and we shouldn't be here.
  * But we are here, so return 1. */
 return 1;
-} /* ss_stillTalking */
+} /* acs_stillTalking */
 
 /* Signal handler, to watch for broken pipe, or death of child,
  * which ever is more convenient. */
@@ -759,15 +759,15 @@ static void sig_h (int n)
 int status;
 /* You have to call wait to properly dispose of the defunct child process. */
 wait(&status);
-pss_broken = 1;
+acs_pipe_broken = 1;
 }
 
 /* Spin off the child process with a vector of args */
 /* I wanted to use const char * const, but that's not how execvp works. */
-int pss_openv(const char *progname,  char * const  alist[])
+int acs_pipe_openv(const char *progname,  char * const  alist[])
 {
-int p0[2]; /* pipe reading ss_fd0 */
-int p1[2]; /* pipe writing ss_fd1 */
+int p0[2]; /* pipe reading acs_sy_fd0 */
+int p1[2]; /* pipe writing acs_sy_fd1 */
 
 if (pipe(p0) == -1 || pipe(p1) == -1)
 return -1;
@@ -795,25 +795,25 @@ perror("execv");
 exit(1);
 
 default: /* parent */
-ss_fd0 = p0[0];
-ss_fd1 = p1[1];
+acs_sy_fd0 = p0[0];
+acs_sy_fd1 = p1[1];
 close(p0[1]);
 close(p1[0]);
 } /* switch */
 
 /* watch for broken pipe, indicating no child process */
 signal(SIGPIPE, sig_h);
-pss_broken = 0;
+acs_pipe_broken = 0;
 
 return 0;
-} /* pss_openv */
+} /* acs_pipe_openv */
 
 /* This isn't like printfv; I don't have a string with percent directives
  * to tell me how many args you are passing, or the type of each arg.
  * So each arg must be a string, and you must end the list with NULL.
  * Unfortunately I have to repack everything to make arg0 the program name. */
 #define MAX_ARGS 16
-int pss_open(const char *progname, ...)
+int acs_pipe_open(const char *progname, ...)
 {
 char * alist[MAX_ARGS+2];
 int count = 0;
@@ -827,14 +827,14 @@ if(!alist[count]) break;
 }
 alist[count] = 0;
 va_end(ap);
-return pss_openv(progname, alist);
-} /* pss_open */
+return acs_pipe_openv(progname, alist);
+} /* acs_pipe_open */
 
-int pss_system(char *cmd)
+int acs_pipe_system(char *cmd)
 {
 if (!cmd) return -1;
-return pss_open("/bin/sh", "-c", cmd, 0);
-} /* pss_system */
+return acs_pipe_open("/bin/sh", "-c", cmd, 0);
+} /* acs_pipe_system */
 
 int acs_startfifo(const char *pathname)
 {
