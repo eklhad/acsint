@@ -754,7 +754,7 @@ If the second word in setword() is null then the first word
 is removed from the dictionary.
 *********************************************************************/
 
-#define WORDLEN 18
+#define WORDLEN 24
 #define NUMDICTWORDS 1000
 
 int acs_setword(const char *word1, const char *word2);
