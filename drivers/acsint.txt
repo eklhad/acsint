@@ -217,12 +217,11 @@ running program, then you need this function.
 
 In theory there is a race condition here;
 the adapter could be swapped out, and you might type the next key
-before the BYPASS event was registered;
-but in practice this will never happen.
-On today's ghz processors, the time between one keystroke and the next
-is an eternity.  Still, for this reason and for others,
-you may want to lock your adapter in core and give it a high priority.
-Speech commands should respond instantly, even if the system is under load.
+before the BYPASS event was registered.
+In that event the next key will be intercepted as usual,
+and perhaps the key after that will pass through.
+The kernel isn't going to crash or anything,
+you'll just be a bit confused.
 
 ACS_DIVERT
 
