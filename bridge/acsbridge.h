@@ -287,19 +287,21 @@ Postprocess the text in the buffer, before you try to read it.
 This is line mode only.
 It is controled by a global variable acs_postprocess
 Set the bits for the processing that you want.
-Usually you will want them all, and that is the default.
+Usually you will want most or all of these.
 
-Control H erases the previous character
-Turn cr lf into lf
-Remove control characters other than bell, cr, lf
-Remove the ansi escape codes that move the cursor, set attributes, etc.
+Control H - erases the previous character.
+Contrl G - strips bells.
+CRLF - Turn cr lf into lf.
+Other - removes other control characters.
+ESCB - Remove the ansi escape codes that move the cursor, set attributes, etc.
 These are not text, and can be confusing if mixed into the tty log.
 *********************************************************************/
 
 #define ACS_PP_CTRL_H 0x1
-#define ACS_PP_CRLF 0x2
-#define ACS_PP_STRIP_CTRL 0x4
-#define ACS_PP_STRIP_ESCB 0x8
+#define ACS_PP_CTRL_G 0x2
+#define ACS_PP_CRLF 0x4
+#define ACS_PP_CTRL_OTHER 0x8
+#define ACS_PP_ESCB 0x10
 
 extern int acs_postprocess;
 

@@ -42,7 +42,9 @@ static unsigned char vcs_header[4];
 #define csc (int)vcs_header[2] // cursor column
 int acs_fgc = 1; // current foreground console
 int acs_lang; /* language that the adapter is running in */
-int acs_postprocess = 0xf; // postprocess the text from the tty
+/* postprocess the text from the tty */
+int acs_postprocess = ACS_PP_CTRL_H | ACS_PP_CRLF |
+ACS_PP_CTRL_OTHER | ACS_PP_ESCB;
 int acs_debug = 0;
 static const char debuglog[] = "/var/log/acslog";
 
@@ -560,6 +562,11 @@ acs_postprocess&ACS_PP_CRLF) {
 continue;
 }
 
+if(s[0] == '\7' && acs_postprocess&ACS_PP_CTRL_G) {
+++s;
+continue;
+}
+
 /* ^h is backspace.
  * Check to see if we have backed over the reading cursor or the marks.
  * Because of the way Jupiter reads, a mark could be at end of buffer.
@@ -583,7 +590,7 @@ continue;
 }
 
 /* ansi escape sequences */
-if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_STRIP_ESCB) {
+if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_ESCB) {
 for(j=2; s[j] && j<20; ++j)
 if(s[j] < 256 && isalpha(s[j])) break;
 if(j < 20 && s[j]) {
@@ -601,8 +608,8 @@ continue;
 }
 
 // control chars
-if(*s < ' ' && *s != '\7' && *s != '\r' && *s != '\n' && *s != '\t' &&
-acs_postprocess&ACS_PP_STRIP_CTRL) {
+if(*s < ' ' && !strchr("\t\b\r\n\7", *s) &&
+acs_postprocess&ACS_PP_CTRL_OTHER) {
 ++s;
 continue;
 }
