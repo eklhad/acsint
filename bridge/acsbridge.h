@@ -255,7 +255,7 @@ that are not yet implemented, and may never be implemented, in screen mode.
  * Has to be between 30K and 64K */
 #define TTYLOGSIZE 50000
 
-struct readingBuffer {
+struct acs_readingBuffer {
 	unsigned int area[TTYLOGSIZE + 2];
 	unsigned char *attribs;
 	unsigned int *start, *end;
@@ -272,7 +272,7 @@ or toggle between screen and line mode.
 I would declare it const, but you have to be able to update acs_rb->cursor.
 *********************************************************************/
 
-extern struct readingBuffer *acs_rb;
+extern struct acs_readingBuffer *acs_rb;
 
 /*********************************************************************
 Within screen mode, attribs is an array holding the attributes of each character on screen.
@@ -355,8 +355,8 @@ The default is 5, or half a second.
 A gap of 0 turns the timing feature off entirely.
 *********************************************************************/
 
-typedef void (*more_handler_t)(int echo, unsigned int c);
-extern more_handler_t acs_more_h;
+typedef void (*acs_more_handler_t)(int echo, unsigned int c);
+extern acs_more_handler_t acs_more_h;
 
 int acs_obreak(int gap);
 
@@ -857,9 +857,9 @@ Build a line that looks like
 and pass this to line_configure().
 *********************************************************************/
 
-typedef int (*syntax_handler_t)(char *s);
+typedef int (*acs_syntax_handler_t)(char *s);
 
-int acs_line_configure(char *s, syntax_handler_t syn_fn);
+int acs_line_configure(char *s, acs_syntax_handler_t syn_fn);
 
 /*********************************************************************
 When you first open the acsint device,
@@ -884,9 +884,9 @@ If it is not set, reset_configure assumes English.
 so this is mostly planning for the future.)
 *********************************************************************/
 
-enum ACS_LANG {
-LANG_NONE,
-LANG_ENGLISH,
+enum acs_lang {
+ACS_LANG_NONE,
+ACS_LANG_ENGLISH,
 };
 
 extern int acs_lang;
@@ -907,8 +907,8 @@ and is brought up to date.
 extern int acs_fgc;
 
 // Called when the user switches to a new foreground console.
-typedef void (*fgc_handler_t)(void);
-extern fgc_handler_t acs_fgc_h;
+typedef void (*acs_fgc_handler_t)(void);
+extern acs_fgc_handler_t acs_fgc_h;
 
 
 /*********************************************************************
@@ -1134,13 +1134,14 @@ to a single token, and so the word after those dashes has index 1043.
 I'm going with unsigned short just to be safe.
 *********************************************************************/
 
-typedef unsigned short ofs_type;
+typedef unsigned short acs_ofs_type;
 
-int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int properties);
+int acs_getsentence(char *dest, int destlen,
+		acs_ofs_type *offsets, int properties);
 
 /* If you want to manage the unicodes yourself */
 int acs_getsentence_uc(unsigned int *dest, int destlen,
-ofs_type *offsets, int properties);
+acs_ofs_type *offsets, int properties);
 
 #define ACS_GS_ONEWORD 0x1
 #define ACS_GS_STOPLINE 0x2
@@ -1168,8 +1169,8 @@ much like the handlers seen above.
 extern int acs_sy_fd0, acs_sy_fd1; /* file descriptors */
 
 /* Which index marker has been returned to us, example 2 out of 5 */
-typedef void (*imark_handler_t)(int mark, int lastmark);
-extern imark_handler_t acs_imark_h;
+typedef void (*acs_imark_handler_t)(int mark, int lastmark);
+extern acs_imark_handler_t acs_imark_h;
 extern unsigned int *acs_imark_start; /* for internal bookkeeping */
 
 /* External serial synthesizer, typically /dev/ttySn
@@ -1233,20 +1234,20 @@ some of these differences from the running adapter.
 
 extern int acs_style;
 
-enum SY_STYLE {
+enum acs_sy_style {
 // generic, no index markers etc.
 // This one should be first, with a value of 0, hence the default.
-SY_STYLE_GENERIC,
+ACS_SY_STYLE_GENERIC,
 // doubletalk, double light, tripletalk, etc
-SY_STYLE_DOUBLE,
+ACS_SY_STYLE_DOUBLE,
 // Dectalk, pc and express
-SY_STYLE_DECEXP,
-SY_STYLE_DECPC,
+ACS_SY_STYLE_DECEXP,
+ACS_SY_STYLE_DECPC,
 // braille n speak
-SY_STYLE_BNS,
+ACS_SY_STYLE_BNS,
 // Accent
-SY_STYLE_ACE,
-SY_STYLE_ESPEAKUP,
+ACS_SY_STYLE_ACE,
+ACS_SY_STYLE_ESPEAKUP,
 };
 
 int acs_sy_events(void);
@@ -1275,7 +1276,7 @@ and I may take advantage of this some day.
 You could time it, and say each word takes so many seconds to speak
 at the current speech rate.
 I've done this before, and it's butt ugly!
-But it's all you have in SY_STYLE_GENERIC.
+But it's all you have in ACS_SY_STYLE_GENERIC.
 
 The last and best solution is index markers.
 Attach a marker to each word, and the unit passes that marker back to you
@@ -1390,7 +1391,7 @@ Style must be set properly
 so that I know how to send and watch for index markers.
 *********************************************************************/
 
-int acs_say_indexed(const char *s, const ofs_type *offsets, int firstmark);
+int acs_say_indexed(const char *s, const acs_ofs_type *offsets, int firstmark);
 
 /*********************************************************************
 Stop speech immediately.
@@ -1474,8 +1475,8 @@ It's up to you.
 int acs_startfifo(const char *pathname);
 void acs_stopfifo(void);
 
-typedef void (*fifo_handler_t)(char *message);
-extern fifo_handler_t acs_fifo_h;
+typedef void (*acs_fifo_handler_t)(char *message);
+extern acs_fifo_handler_t acs_fifo_h;
 
 
 #endif

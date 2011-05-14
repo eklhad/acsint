@@ -28,7 +28,7 @@ int acs_sy_fd0 = -1, acs_sy_fd1 = -1;
 
 static int fifo_fd = -1; /* file descriptor for the interprocess fifo */
 static char *ipmsg; /* interprocess message */
-fifo_handler_t acs_fifo_h;
+acs_fifo_handler_t acs_fifo_h;
 
 /* parent process, if a child is forked to manage the software synth. */
 static int pss_pid;
@@ -50,13 +50,13 @@ acs_curvolume = acs_curspeed = 5;
 acs_curpitch = 3;
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 acs_curpitch = 4;
 break;
 
-case SY_STYLE_BNS:
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_BNS:
+case ACS_SY_STYLE_ACE:
 acs_curvolume = 7;
 break;
 
@@ -64,14 +64,14 @@ break;
 } /* acs_style_defaults */
 
 /* Handler - as index markers are returned to us */
-imark_handler_t acs_imark_h;
+acs_imark_handler_t acs_imark_h;
 
 /* send return to the synth - start speaking */
 static const char kbyte = '\13';
 static const char crbyte = '\r';
 static void ss_cr(void)
 {
-if(acs_style == SY_STYLE_DECEXP || acs_style == SY_STYLE_DECPC)
+if(acs_style == ACS_SY_STYLE_DECEXP || acs_style == ACS_SY_STYLE_DECPC)
 write(acs_sy_fd1, &kbyte, 1);
 write(acs_sy_fd1, &crbyte, 1);
 }
@@ -80,14 +80,14 @@ write(acs_sy_fd1, &crbyte, 1);
 unsigned int *acs_imark_start;
 
 /* location of each index marker relative to acs_imark_start */
-static ofs_type imark_loc[100];
+static acs_ofs_type imark_loc[100];
 static int imark_first, imark_end;
 static int bnsf; // counting control f's from bns
 
 /* move the cursor to the returned index marker. */
 static void indexSet(int n)
 {
-if(acs_style == SY_STYLE_BNS || acs_style == SY_STYLE_ACE) {
+if(acs_style == ACS_SY_STYLE_BNS || acs_style == ACS_SY_STYLE_ACE) {
 /* don't return until you have done this bookkeeping. */
 ++bnsf;
 n = imark_end + bnsf;
@@ -288,8 +288,8 @@ while(i < nr) {
 char c = ss_inbuf[i];
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 if(c >= 1 && c <= 99) {
 acs_log("index %d\n", c);
 indexSet(c);
@@ -300,7 +300,7 @@ acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
-case SY_STYLE_DECPC: case SY_STYLE_DECEXP:
+case ACS_SY_STYLE_DECPC: case ACS_SY_STYLE_DECEXP:
 // This is butt ugly compared to the Doubletalk!
 if(c == '\33') {
 if(nr-i < 8) break;
@@ -334,8 +334,8 @@ acs_log("unknown byte %d\n", c);
 ++i;
 break;
 
-case SY_STYLE_BNS:
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_BNS:
+case ACS_SY_STYLE_ACE:
 if(c == 6) {
 acs_log("index f\n", 0);
 indexSet(0);
@@ -388,15 +388,15 @@ s = c2;
 acs_say_string(s);
 } // acs_say_char
 
-int acs_say_indexed(const char *s, const ofs_type *o, int mark)
+int acs_say_indexed(const char *s, const acs_ofs_type *o, int mark)
 {
 const char *t;
 char ibuf[30]; // index mark buffer
-const ofs_type *o0 = o;
+const acs_ofs_type *o0 = o;
 
 acs_imark_start = acs_rb->cursor;
 imark_end = 0;
-if(acs_style == SY_STYLE_BNS || acs_style == SY_STYLE_ACE) mark = 0;
+if(acs_style == ACS_SY_STYLE_BNS || acs_style == ACS_SY_STYLE_ACE) mark = 0;
 imark_first = mark;
 
 t = s;
@@ -411,7 +411,7 @@ imark_loc[imark_end++] = *o;
 // send the index marker
 ibuf[0] = 0;
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_DOUBLE:
 /* The following if statement addresses a bug that is, as far as I know,
  * specific to doubletalk.
  * We can't send a single letter, and then an index marker
@@ -420,15 +420,15 @@ case SY_STYLE_DOUBLE:
 if(o-o0 > 2 || !*s)
 sprintf(ibuf, "\1%di", mark);
 break;
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_ESPEAKUP:
 sprintf(ibuf, "<mark name=\"%d\"/>", mark);
 break;
-case SY_STYLE_BNS:
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_BNS:
+case ACS_SY_STYLE_ACE:
 strcpy(ibuf, "\06");
 -- bnsf; // you owe me another control f
 break;
-case SY_STYLE_DECPC: case SY_STYLE_DECEXP:
+case ACS_SY_STYLE_DECPC: case ACS_SY_STYLE_DECEXP:
 /* Send this the most compact way we can - 9600 baud can be kinda slow. */
 sprintf(ibuf, "[:i r %d]", mark);
 break;
@@ -456,10 +456,10 @@ void acs_shutup(void)
 char ibyte; // interrupt byte
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
-case SY_STYLE_BNS:
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_BNS:
+case ACS_SY_STYLE_ACE:
 ibyte = 24;
 break;
 default:
@@ -492,20 +492,20 @@ int n0 = n;
 if(n < 0 || n > 9) return -1;
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 doublestring[1] = '0' + n;
 ss_writeString(doublestring);
 break;
 
-case SY_STYLE_DECPC:
+case ACS_SY_STYLE_DECPC:
 n = 10 + 8*n;
 dtpcstring[9] = '0' + n/10;
 dtpcstring[10] = '0' + n%10;
 ss_writeString(dtpcstring);
 break;
 
-case SY_STYLE_DECEXP:
+case ACS_SY_STYLE_DECEXP:
 /* The Dec Express takes volume levels from 60 to 86. */
 /* This code gives a range from 60 to 85. */
 n = 60 + n*72/25;
@@ -514,12 +514,12 @@ extstring[9] = '0' + n % 10;
 ss_writeString(extstring);
 break;
 
-case SY_STYLE_BNS:
+case ACS_SY_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dV", (n+1) * 16 / 10);
 ss_writeString(bnsstring);
 break;
 
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
 break;
@@ -560,24 +560,24 @@ int n0 = n;
 if(n < 0 || n > 9) return -1;
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 doublestring[1] = doublestring[4] = '0' + n;
 ss_writeString(doublestring);
 break;
 
-case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
+case ACS_SY_STYLE_DECEXP: case ACS_SY_STYLE_DECPC:
 n = 50*n + 120;
 sprintf(decstring+5, "%03d]", n);
 ss_writeString(decstring);
 break;
 
-case SY_STYLE_BNS:
+case ACS_SY_STYLE_BNS:
 sprintf(bnsstring, "\x05%02dE", (n+1) * 14 / 10);
 ss_writeString(bnsstring);
 break;
 
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_ACE:
 acestring[2] = acerate[n];
 ss_writeString(acestring);
 break;
@@ -619,27 +619,27 @@ int n0 = n;
 if(n < 0 || n > 9) return -1;
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 n = 9*n + 10;
 doublestring[1] = '0' + n/10;
 ss_writeString(doublestring);
 break;
 
-case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
+case ACS_SY_STYLE_DECEXP: case ACS_SY_STYLE_DECPC:
 n = tohurtz[n];
 sprintf(decstring+8, "%d]", n);
 ss_writeString(decstring);
 break;
 
-case SY_STYLE_BNS:
+case ACS_SY_STYLE_BNS:
 /* BNS pitch is 01 through 63.  An increment of 6, giving levels from 6 .. 60
 should work well. */
 sprintf(bnsstring, "\x05%02dP", (n+1) * 6);
 ss_writeString(bnsstring);
 break;
 
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_ACE:
 acestring[2] = '0' + n;
 ss_writeString(acestring);
 break;
@@ -681,8 +681,8 @@ static const short decpitch[] = {
 static char acestring[] = "\33V5";
 
 switch(acs_style) {
-case SY_STYLE_DOUBLE:
-case SY_STYLE_ESPEAKUP:
+case ACS_SY_STYLE_DOUBLE:
+case ACS_SY_STYLE_ESPEAKUP:
 if(v < 1 || v > 8) return -1;
 		sprintf(buf, "\1%do", v-1);
 		ss_writeString(buf);
@@ -690,7 +690,7 @@ ss_cr();
 acs_curpitch = doublepitch[v];
 break;
 
-case SY_STYLE_DECEXP: case SY_STYLE_DECPC:
+case ACS_SY_STYLE_DECEXP: case ACS_SY_STYLE_DECPC:
 if(v < 1 || v > 8) return -1;
 		sprintf(buf, "[:n%c]", decChars[v]);
 		ss_writeString(buf);
@@ -698,7 +698,7 @@ ss_cr();
 acs_curpitch = decpitch[v];
 break;
 
-case SY_STYLE_ACE:
+case ACS_SY_STYLE_ACE:
 acestring[2] = '0' + v;
 ss_writeString(acestring);
 break;

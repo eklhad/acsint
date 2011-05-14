@@ -71,8 +71,8 @@ return 0;
 } // acs_log
 
 key_handler_t acs_key_h;
-more_handler_t acs_more_h;
-fgc_handler_t acs_fgc_h;
+acs_more_handler_t acs_more_h;
+acs_fgc_handler_t acs_fgc_h;
 ks_echo_handler_t acs_ks_echo_h;
 
 
@@ -80,13 +80,13 @@ static unsigned char inbuf[INBUFSIZE]; /* input buffer for acsint */
 static unsigned char outbuf[OUTBUFSIZE]; /* output buffer for acsint */
 
 // Maintain the tty log for each virtual console.
-static struct readingBuffer *tty_log[MAX_NR_CONSOLES];
-static struct readingBuffer tty_nomem; /* in case we can't allocate */
+static struct acs_readingBuffer *tty_log[MAX_NR_CONSOLES];
+static struct acs_readingBuffer tty_nomem; /* in case we can't allocate */
 static const char nomem_message[] = "Acsint bridge cannot allocate space for this console";
-static struct readingBuffer *tl; // current tty log
-static struct readingBuffer screenBuf;
+static struct acs_readingBuffer *tl; // current tty log
+static struct acs_readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
-struct readingBuffer *acs_rb; /* current reading buffer for the application */
+struct acs_readingBuffer *acs_rb; /* current reading buffer for the application */
 
 static void screenSnap(void)
 {
@@ -125,7 +125,7 @@ acs_rb = tty_log[acs_fgc - 1];
 if(acs_rb && acs_rb != &tty_nomem)
 return; /* already allocated */
 
-acs_rb = malloc(sizeof(struct readingBuffer));
+acs_rb = malloc(sizeof(struct acs_readingBuffer));
 if(acs_rb) acs_log("allocate %d\n", acs_fgc);
 else acs_rb = &tty_nomem;
 tty_log[acs_fgc-1] = acs_rb;
@@ -1134,12 +1134,12 @@ strcpy((char*)outbuf+3, s);
 return acs_write(len+3);
 } // acs_injectstring
 
-int acs_getsentence(char *dest, int destlen, ofs_type *offsets, int prop)
+int acs_getsentence(char *dest, int destlen, acs_ofs_type *offsets, int prop)
 {
 const char *destend = dest + destlen - 1; /* end of destination array */
 char *t = dest;
 const unsigned int *s = acs_rb->cursor;
-ofs_type *o = offsets;
+acs_ofs_type *o = offsets;
 int j, l;
 unsigned int c;
 unsigned char c1; /* cut c down to 1 byte */
@@ -1162,7 +1162,7 @@ return 0;
 }
 
 // zero offsets by default
-if(o) memset(o, 0, sizeof(ofs_type)*destlen);
+if(o) memset(o, 0, sizeof(acs_ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
 if(c == '\n' && prop&ACS_GS_NLSPACE)
@@ -1305,12 +1305,12 @@ return 0;
 } /* acs_getsentence */
 
 /* If you want to manage the unicode chars yourself. */
-int acs_getsentence_uc(unsigned int *dest, int destlen, ofs_type *offsets, int prop)
+int acs_getsentence_uc(unsigned int *dest, int destlen, acs_ofs_type *offsets, int prop)
 {
 const unsigned int *destend = dest + destlen - 1; /* end of destination array */
 unsigned int *t = dest;
 const unsigned int *s = acs_rb->cursor;
-ofs_type *o = offsets;
+unsigned short *o = offsets;
 int j, l;
 unsigned int c;
 unsigned char c1; /* cut c down to 1 byte */
@@ -1333,7 +1333,7 @@ return 0;
 }
 
 // zero offsets by default
-if(o) memset(o, 0, sizeof(ofs_type)*destlen);
+if(o) memset(o, 0, sizeof(unsigned short)*destlen);
 
 while((c = *s) && t < destend) {
 if(c == '\n' && prop&ACS_GS_NLSPACE)

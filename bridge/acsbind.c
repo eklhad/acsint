@@ -649,7 +649,7 @@ while(*s == ' ' || *s == '\t') ++s;
 } /* skipWhite */
 
 /* Process a line from a config file, performs any of the above functions */
-int acs_line_configure(char *s, syntax_handler_t syn_h)
+int acs_line_configure(char *s, acs_syntax_handler_t syn_h)
 {
 	int mkcode, rc;
 char *t, *u;
@@ -774,7 +774,7 @@ numdictwords = 0;
 for(i=0; i<65536; ++i)
 acs_clearpunc(i);
 
-u = uc_names[LANG_ENGLISH]; /* that's all we have right now */
+u = uc_names[ACS_LANG_ENGLISH]; /* that's all we have right now */
 while(u->unicode) {
 acs_setpunc(u->unicode, u->name);
 ++u;
