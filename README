@@ -1,0 +1,19 @@
+The word acsint is shorthand for accessibility intercepter,
+since the acsint system intercepts kernel events and makes the linux computer
+more accessible to a wide range of disabilities.
+The concept was developed by Saqib Shaikh in 2005, but did not
+become practical until notifiers came on the scene in kernel 2.6.26.
+
+There are two parts to the acsint system,
+A device driver, which is documented in drivers/acsint.txt,
+and a user space bridge layer, which is documented in bridge/acsbridge.h.
+No need for me to repeat all that documentation here.
+
+The tests directory contains a few test programs to exercise acsint,
+without relying on any particular speech synthesizer.
+
+I hope the device driver becomes part of the linux kernel, and the bridge
+layer becomes a shared library, offered by many linux distributions.
+That's my dream anyways.
+
+It's all GPL, so have fun with it.
