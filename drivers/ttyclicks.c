@@ -37,7 +37,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
-	("Console output generates clicks, resembling a mechanical teletype.");
+    ("Console output generates clicks, resembling a mechanical teletype.");
 
 static int enabled = 1;
 module_param(enabled, int, 0);
@@ -114,8 +114,8 @@ static void my_printk(struct console *cons, const char *msg, unsigned int len)
 }				/* my_printk */
 
 static struct console clickconsole = {
-	.name =	"tty clicks",
-	.write =	my_printk,
+	.name = "tty clicks",
+	.write = my_printk,
 	.flags = CON_ENABLED,
 	/* hope everything else is ok being zero or null */
 };
@@ -185,7 +185,8 @@ static int charIsEcho(char c)
 
 	for (j = 0; j < nkeypending; ++j) {
 		d = inkeybuffer[j];
-		if (d == c && (long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
+		if (d == c
+		    && (long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
 			break;
 	}
 
@@ -315,6 +316,7 @@ void ttyclicks_click(void)
 	spk_toggle();
 #endif
 }				/* ttyclicks_click */
+
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
@@ -327,14 +329,15 @@ void ttyclicks_cr(void)
 #else
 
 	{
-	int i;
-	for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
-		spk_toggle();
-		udelay(i);
-	}
+		int i;
+		for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
+			spk_toggle();
+			udelay(i);
+		}
 	}
 #endif
 }				/* ttyclicks_cr */
+
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
 #ifdef NO_KDS
@@ -403,37 +406,38 @@ void ttyclicks_notes(const short *p)
 		return;
 
 #ifndef NO_KDS
-kd_mknotes(p);
+	kd_mknotes(p);
 #else
 
 	{
-	int i;
+		int i;
 
-	raw_spin_lock(&speakerlock);
+		raw_spin_lock(&speakerlock);
 
-	i = sf_head;
-	/* Copy shorts into the fifo, until the terminating zero. */
-	while (*p) {
-		sf_fifo[i++] = *p++;
-		if (i == SF_LEN)
-			i = 0;	/* wrap around */
-		if (i == sf_tail) {
-			/* fifo is full */
-			raw_spin_unlock(&speakerlock);
-			return;
+		i = sf_head;
+		/* Copy shorts into the fifo, until the terminating zero. */
+		while (*p) {
+			sf_fifo[i++] = *p++;
+			if (i == SF_LEN)
+				i = 0;	/* wrap around */
+			if (i == sf_tail) {
+				/* fifo is full */
+				raw_spin_unlock(&speakerlock);
+				return;
+			}
 		}
+		sf_head = i;
+
+		raw_spin_unlock(&speakerlock);
+
+		/* first sound,  get things started. */
+		if (!timer_pending(&note_timer))
+			popfifo(0);
 	}
-	sf_head = i;
-
-	raw_spin_unlock(&speakerlock);
-
-	/* first sound,  get things started. */
-	if (!timer_pending(&note_timer))
-		popfifo(0);
-}
 
 #endif
 }				/* ttyclicks_notes */
+
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
 void ttyclicks_bell(void)
@@ -443,6 +447,7 @@ void ttyclicks_bell(void)
 	};
 	ttyclicks_notes(notes);
 }				/* ttyclicks_bell */
+
 EXPORT_SYMBOL_GPL(ttyclicks_bell);
 
 static int soundFromChar(char c, int minor)
@@ -453,13 +458,16 @@ static int soundFromChar(char c, int minor)
 	};
 
 /* are sounds disabled? */
-	if (!(ttyclicks_on & ttyclicks_tty))
+	if (!ttyclicks_on)
 		return 0;
 
 	if (c == '\07') {
 		ttyclicks_bell();
 		return 0;
 	}
+
+	if (!ttyclicks_tty)
+		return 0;
 
 /* Don't click for background screens */
 	if (minor != fg_console + 1)
