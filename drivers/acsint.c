@@ -100,8 +100,11 @@ static void checkAlloc(int mino, bool from_vt)
 		return;		/* already tried to allocate */
 	cb_nomem_alloc[mino] = 1;
 	cb = kmalloc(sizeof(*cb), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
-	if (!cb)
+	if (!cb) {
+		printk(KERN_ERR "Failed to allocate memory for console %d.\n",
+		       mino);
 		return;
+	}
 	cb_reset(cb);
 	cbuf_tty[mino] = cb;
 }
