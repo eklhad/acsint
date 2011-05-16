@@ -102,7 +102,7 @@ static void checkAlloc(int mino, bool from_vt)
 	cb = kmalloc(sizeof(*cb), (from_vt ? GFP_ATOMIC : GFP_KERNEL));
 	if (!cb) {
 		printk(KERN_ERR "Failed to allocate memory for console %d.\n",
-		       mino);
+		       mino + 1);
 		return;
 	}
 	cb_reset(cb);
