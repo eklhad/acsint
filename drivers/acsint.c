@@ -764,6 +764,12 @@ static int isEcho(unsigned int c)
 		return 1;
 	}
 
+/* Because of tab completion in many programs, bash in particular,
+ * I don't want to match tab with space unless space comes
+ * back to me immediately.  It didn't, so drop tab. */
+	if (d == '\t')
+		dropKeysPending(1);
+
 	return 0;
 }				/* isEcho */
 
