@@ -440,6 +440,15 @@ void ttyclicks_notes(const short *p)
 
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
+void ttyclicks_steps(int start, int end, int step, int duration)
+{
+#ifndef NO_KDS
+	kd_mksteps(start, end, step, duration);
+#endif
+}				/* ttyclicks_steps */
+
+EXPORT_SYMBOL_GPL(ttyclicks_steps);
+
 void ttyclicks_bell(void)
 {
 	static const short notes[] = {

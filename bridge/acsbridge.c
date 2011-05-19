@@ -294,7 +294,20 @@ outbuf[2+3*j+2] = notelist[2*j+1];
 }
 outbuf[1] = j;
 return acs_write(2+3*j);
-} // acs_notes
+} /* acs_notes */
+
+int acs_scale(int f1, int f2, int step, int duration)
+{
+outbuf[0] = ACS_STEPS;
+outbuf[1] = step;
+outbuf[2] = f1;
+outbuf[3] = (f1 >> 8);
+outbuf[4] = f2;
+outbuf[5] = (f2 >> 8);
+outbuf[6] = duration;
+outbuf[7] = (duration >> 8);
+return acs_write(8);
+} /* acs_scale */
 
 int acs_bell(void)
 {

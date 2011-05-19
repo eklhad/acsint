@@ -445,6 +445,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 	int nn;			/* number of notes */
 	short notes[2 * (10 + 1)];
 	int isize;		/* size of input to inject */
+	int f1, f2, step, duration;	/* for kd_mksteps */
 	unsigned long irqflags;
 
 	if (!in_use)
@@ -582,6 +583,29 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				break;
 			/* not yet implemented */
 			len -= 3;
+			break;
+
+		case ACS_STEPS:
+			if (len < 7)
+				break;
+			get_user(step, p++);
+			len--;
+			get_user(c, p++);
+			f1 = (unsigned char)c;
+			get_user(c, p++);
+			f1 |= ((int)(unsigned char)c << 8);
+			len -= 2;
+			get_user(c, p++);
+			f2 = (unsigned char)c;
+			get_user(c, p++);
+			f2 |= ((int)(unsigned char)c << 8);
+			len -= 2;
+			get_user(c, p++);
+			duration = (unsigned char)c;
+			get_user(c, p++);
+			duration |= ((int)(unsigned char)c << 8);
+			len -= 2;
+			ttyclicks_steps(f1, f2, step, duration);
 			break;
 
 		case ACS_REFRESH:

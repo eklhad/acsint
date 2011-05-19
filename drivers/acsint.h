@@ -26,6 +26,7 @@ enum acs_command {
 	ACS_CR,
 	ACS_SWOOP,
 	ACS_NOTES,		/* series of notes */
+	ACS_STEPS,		/* like a scale going up or down */
 /* Request to bring the tty log up to date */
 	ACS_REFRESH,
 /* should keys go to the adapter or console or both */

@@ -123,6 +123,16 @@ Notes are played in the background; this routine returns immediately.
 int acs_notes(const short *notelist);
 
 /*********************************************************************
+Play a series or ascending ot descending notes.
+ * Provide the start and end frequencies, and the step.
+The duration is in hundredths of a second, as it was for notes.
+100% goes up by octaves, -50% goes down by octaves.
+12% is a wholetone scale, while 6% is a chromatic scale.
+*********************************************************************/
+
+int acs_scale(int f1, int f2, int step, int duration);
+
+/*********************************************************************
 Play a short low tone if a feature is turned off, or a higher,
 slightly longer tone if the feature is turned on.
 This is basically a convenient wrapper around acs_notes,
