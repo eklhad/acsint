@@ -328,7 +328,7 @@ void ttyclicks_cr(void)
 /*
 	kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
 */
-	kd_mksteps(2900, 3600, 10, 6);
+	kd_mksteps(2900, 3600, 10, 8);
 #else
 
 	{
