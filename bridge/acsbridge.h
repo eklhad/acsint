@@ -123,10 +123,12 @@ Notes are played in the background; this routine returns immediately.
 int acs_notes(const short *notelist);
 
 /*********************************************************************
-Play a series or ascending ot descending notes.
+Play a series of ascending or descending notes.
  * Provide the start and end frequencies, and the step.
-The duration is in hundredths of a second, as it was for notes.
-100% goes up by octaves, -50% goes down by octaves.
+The duration is in milliseconds.
+ * However, this is done by jiffies timing, so is subject to the
+ * resolution of HZ.
+A step of 100% goes up by octaves, -50% goes down by octaves.
 12% is a wholetone scale, while 6% is a chromatic scale.
 *********************************************************************/
 

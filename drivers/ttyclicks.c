@@ -328,7 +328,7 @@ void ttyclicks_cr(void)
 /*
 	kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
 */
-	kd_mksteps(2900, 3600, 10, 1);
+	kd_mksteps(2900, 3600, 10, 6);
 #else
 
 	{
@@ -443,13 +443,13 @@ void ttyclicks_notes(const short *p)
 
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
-void ttyclicks_steps(int start, int end, int step, int duration)
+void ttyclicks_steps(int f1, int f2, int step, int duration)
 {
 	if (!ttyclicks_on)
 		return;
 
 #ifndef NO_KDS
-	kd_mksteps(start, end, step, duration);
+	kd_mksteps(f1, f2, step, duration);
 #endif
 }				/* ttyclicks_steps */
 
