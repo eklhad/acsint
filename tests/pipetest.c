@@ -19,13 +19,13 @@ alist[4] = 0;
 
 /* This is the argv interface, but I've commented it out,
  * because I can test everything from the args in line wrapper.
- * pss_openv("/bin/cat", alist);
+ * acs_pipe_openv("/bin/cat", alist);
 */
 
-pss_open("cat", "pipetest.c", "Makefile", "-", 0);
+acs_pipe_open("cat", "pipetest.c", "Makefile", "-", 0);
 
-f0 = fdopen(ss_fd0, "r");
-f1 = fdopen(ss_fd1, "w");
+f0 = fdopen(acs_sy_fd0, "r");
+f1 = fdopen(acs_sy_fd1, "w");
 
 fprintf(f1, "hello world\n");
 fclose(f1);
