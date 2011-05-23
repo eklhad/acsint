@@ -7,7 +7,8 @@ obj-m += acsint.o
 #  to support the new functions kd_mkpulse, kd_mkswoop, and kd_mknotes.
 
 modules:
-	make -C $(KERNELDIR) M=$(shell pwd) CFLAGS_MODULE="-DNO_KDS"
+	make -C $(KERNELDIR) M=$(shell pwd) \
+		CFLAGS_MODULE="-DCONFIG_TTYCLICKS -DNO_KDS"
 
 modules_install:
 	make -C $(KERNELDIR) M=$(shell pwd) INSTALL_MOD_DIR=acsint modules_install

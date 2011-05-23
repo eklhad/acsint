@@ -20,7 +20,19 @@
 #include <linux/version.h>
 #include <linux/poll.h>
 
+#ifdef CONFIG_TTYCLICKS
 #include "ttyclicks.h"
+#else
+static bool ttyclicks_on;
+static bool ttyclicks_tty;
+static bool ttyclicks_kmsg;
+static void ttyclicks_notes(const short *a){}
+static void ttyclicks_steps(int start, int end, int step, int duration){}
+static void ttyclicks_bell(void){}
+static void ttyclicks_click(void){}
+static void ttyclicks_cr(void){}
+#endif
+
 #include "acsint.h"
 
 #define ACS_DEVICE "/dev/acsint"
