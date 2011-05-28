@@ -64,7 +64,7 @@ and that requires the file descriptors for the various devices.
 So let's put it in a global variable for easy access.
 However, if you are able to use the acs_wait() and acs_all_events()
 functions described in section 12 then you should do so,
-rather than reimplementing the select logic.
+rather than reimplementing the select logic yourself.
 *********************************************************************/
 
 extern int acs_fd; // file descriptor
@@ -83,7 +83,7 @@ int acs_close(void);
 Section 2: sounds.
 Acsint can generate various sounds
 using the pc in-built toggle speaker at port 61.
-this is accomplished via another module, pcclicks.ko.
+this is accomplished via another module, ttyclicks.ko.
 You have to install that module, as well as acsint.ko.
 If you don't want any pc sounds, ever, use the parameter
 insmod pcclicks enabled=0
@@ -124,10 +124,10 @@ int acs_notes(const short *notelist);
 
 /*********************************************************************
 Play a series of ascending or descending notes.
- * Provide the start and end frequencies, and the step.
+Provide the start and end frequencies, and the step.
 The duration is in milliseconds.
- * However, this is done by jiffies timing, so is subject to the
- * resolution of HZ.
+However, this is done by jiffies timing, so is subject to the
+resolution of HZ.
 A step of 100% goes up by octaves, -50% goes down by octaves.
 12% is a wholetone scale, while 6% is a chromatic scale.
 *********************************************************************/
@@ -211,7 +211,7 @@ But like the cursor, they can become null if a lot of output
 pushes them off the back end of the buffer.
 So check for that.
 
-If a mark is near the end of the buffer, and several backspaces come along,
+If a mark is near the front of the buffer, and several backspaces come along,
 the mark could once again be out of range, and set to null.
 As a special exception, a mark that is at the end of buffer is pulled back,
 and will still be at the end of buffer.
@@ -257,7 +257,7 @@ More research is needed here.
 
 To be honest, this entire acsint system is biased towards linear adapters
 that read from the tty log.
-Many things work in line mode,
+Many things work in line mode
 that are not yet implemented, and may never be implemented, in screen mode.
 *********************************************************************/
 
