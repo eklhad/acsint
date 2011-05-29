@@ -861,7 +861,7 @@ static const unsigned int in_c[] = {
 0x2018, 0x2019, 0x201c, 0x201d,
 0};
 static char out_c[] =
-"*'`'`'`' ----**`--`'";
+"*'`'`'`' ----**`--`'`'";
 int i;
 
 for(i=0; in_c[i]; ++i)
