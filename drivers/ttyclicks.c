@@ -348,7 +348,7 @@ EXPORT_SYMBOL_GPL(ttyclicks_cr);
  * Push notes onto a sound fifo and play them via an asynchronous thread.
  */
 
-#define SF_LEN 32		/* length of sound fifo */
+#define SF_LEN 64		/* length of sound fifo */
 static short sf_fifo[SF_LEN];
 static short sf_head, sf_tail;
 
@@ -429,6 +429,14 @@ void ttyclicks_notes(const short *p)
 				return;
 			}
 		}
+		sf_head = i;
+
+	/* try to add on a rest, to carry the last note through */
+	sf_fifo[i++] = -1;
+	sf_fifo[i++] = 1;
+	if (i == SF_LEN)
+		i = 0;	/* wrap around */
+	if (i != sf_tail)
 		sf_head = i;
 
 		raw_spin_unlock(&speakerlock);
