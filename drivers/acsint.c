@@ -832,15 +832,40 @@ static int isEcho(unsigned int c)
  * Meantime this will have to do.
  * But it assumes ascii, and a qwerty keyboard.
  * Let me know if there's a better way. */
-static void post4echo(int key, int ss, int leds)
+static void post4echo(int keytype, struct keyboard_notifier_param *param)
 {
+	int key = param->value;
+	int ss = param->shift & 0xf;
+	int leds = param->ledstate;
 	char keychar;
 	unsigned long irqflags;
 	struct keyhold *kp;	/* key pointer */
+
 	static const char lowercode[] =
 	    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
 	static const char uppercode[] =
 	    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
+
+	if (keytype == KBD_UNICODE) {
+		raw_spin_lock_irqsave(&acslock, irqflags);
+/* display key that was pushed because of KEYCODE or KEYSYM */
+		if (nkeypending
+		    && keystack[nkeypending - 1].keytype != KBD_UNICODE)
+			--nkeypending;
+		if (nkeypending == MAXKEYPENDING)
+			dropKeysPending(1);
+		kp = keystack + nkeypending;
+		kp->unicode = key;
+		kp->when = jiffies;
+		kp->keytype = keytype;
+		++nkeypending;
+		raw_spin_unlock_irqrestore(&acslock, irqflags);
+		return;
+	}
+
+/* KEYSYM not yet implemented */
+	if (keytype != KBD_KEYCODE)
+		return;
 
 	if (key == KEY_KPENTER)
 		key = KEY_ENTER;
@@ -890,7 +915,7 @@ static void post4echo(int key, int ss, int leds)
 	kp = keystack + nkeypending;
 	kp->unicode = keychar;
 	kp->when = jiffies;
-	kp->keytype = KBD_KEYCODE;
+	kp->keytype = keytype;
 	++nkeypending;
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 }				/* post4echo */
@@ -1053,21 +1078,9 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (downflag == 0)
 		goto done;
 
-/* If you get a unicode keyboard event, it wins the day */
+/* post any unicode events for echo */
 	if (type == KBD_UNICODE) {
-		struct keyhold *kp;	/* key pointer */
-		raw_spin_lock_irqsave(&acslock, irqflags);
-		if (nkeypending
-		    && keystack[nkeypending - 1].keytype != KBD_UNICODE)
-			--nkeypending;
-		if (nkeypending == MAXKEYPENDING)
-			dropKeysPending(1);
-		kp = keystack + nkeypending;
-		kp->unicode = key;
-		kp->when = jiffies;
-		kp->keytype = KBD_UNICODE;
-		++nkeypending;
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
+		post4echo(KBD_UNICODE, param);
 		goto done;
 	}
 
@@ -1138,7 +1151,7 @@ event:
 	if (!send)
 		return NOTIFY_STOP;
 
-	post4echo(key, ss, param->ledstate);
+	post4echo(KBD_KEYCODE, param);
 	last_oj = 0;
 
 done:
