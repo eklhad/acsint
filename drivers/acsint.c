@@ -20,17 +20,31 @@
 #include <linux/version.h>
 #include <linux/poll.h>
 
-#ifdef CONFIG_TTYCLICKS
+#if defined(CONFIG_TTYCLICKS) || defined(CONFIG_TTYCLICKS_MODULE)
 #include "ttyclicks.h"
 #else
 static bool ttyclicks_on;
 static bool ttyclicks_tty;
 static bool ttyclicks_kmsg;
-static void ttyclicks_notes(const short *a){}
-static void ttyclicks_steps(int start, int end, int step, int duration){}
-static void ttyclicks_bell(void){}
-static void ttyclicks_click(void){}
-static void ttyclicks_cr(void){}
+static void ttyclicks_notes(const short *a)
+{
+}
+
+static void ttyclicks_steps(int start, int end, int step, int duration)
+{
+}
+
+static void ttyclicks_bell(void)
+{
+}
+
+static void ttyclicks_click(void)
+{
+}
+
+static void ttyclicks_cr(void)
+{
+}
 #endif
 
 #include "acsint.h"
@@ -700,10 +714,14 @@ static struct miscdevice acsint_dev = {
  * they are considered echo chars. */
 
 #define MAXKEYPENDING 8
-/* This holds unicodes */
-static unsigned int inkeybuffer[MAXKEYPENDING];
-static unsigned long inkeytime[MAXKEYPENDING];
+struct keyhold {
+	unsigned int unicode;
+	unsigned long when;	/* in jiffies */
+	int keytype;		/* code or sym or unicode */
+};
+static struct keyhold keystack[MAXKEYPENDING];
 static short nkeypending;	/* number of keys pending */
+
 /* Key echo states:
  * 0 nothing special
  * 1 tab or ^i match space, more spaces coming
@@ -719,10 +737,8 @@ static short keyechostate;
 static void dropKeysPending(int mark)
 {
 	int i, j;
-	for (i = 0, j = mark; j < nkeypending; ++i, ++j) {
-		inkeybuffer[i] = inkeybuffer[j];
-		inkeytime[i] = inkeytime[j];
-	}
+	for (i = 0, j = mark; j < nkeypending; ++i, ++j)
+		keystack[i] = keystack[j];
 	nkeypending -= mark;
 	if (!nkeypending)
 		flushInKeyBuffer();
@@ -761,7 +777,7 @@ static int isEcho(unsigned int c)
 
 /* drop old keys */
 	for (j = 0; j < nkeypending; ++j)
-		if ((long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
+		if ((long)jiffies - (long)keystack[j].when <= HZ * ECHOEXPIRE)
 			break;
 	if (j) {
 		dropKeysPending(j);
@@ -770,7 +786,7 @@ static int isEcho(unsigned int c)
 	}
 
 /* to jump into the state machine we need to match on the first character */
-	d = inkeybuffer[0];
+	d = keystack[0].unicode;
 	if (d == '\t' && c == ' ') {
 		dropKeysPending(1);
 		keyechostate = 1;
@@ -793,7 +809,7 @@ static int isEcho(unsigned int c)
 	}
 
 	for (j = 0; j < nkeypending; ++j) {
-		if (inkeybuffer[j] != c)
+		if (keystack[j].unicode != c)
 			continue;
 /* straight echo match */
 		dropKeysPending(j + 1);
@@ -820,6 +836,7 @@ static void post4echo(int key, int ss, int leds)
 {
 	char keychar;
 	unsigned long irqflags;
+	struct keyhold *kp;	/* key pointer */
 	static const char lowercode[] =
 	    " \0331234567890-=\177\tqwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
 	static const char uppercode[] =
@@ -870,8 +887,10 @@ static void post4echo(int key, int ss, int leds)
 	raw_spin_lock_irqsave(&acslock, irqflags);
 	if (nkeypending == MAXKEYPENDING)
 		dropKeysPending(1);
-	inkeybuffer[nkeypending] = keychar;
-	inkeytime[nkeypending] = jiffies;
+	kp = keystack + nkeypending;
+	kp->unicode = keychar;
+	kp->when = jiffies;
+	kp->keytype = KBD_KEYCODE;
 	++nkeypending;
 	raw_spin_unlock_irqrestore(&acslock, irqflags);
 }				/* post4echo */
@@ -1034,20 +1053,23 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (downflag == 0)
 		goto done;
 
-#if 0
-/* This is how we should be putting keystrokes in the echo queue. */
-/* But I don't get any unicode events from my keyboard. */
+/* If you get a unicode keyboard event, it wins the day */
 	if (type == KBD_UNICODE) {
+		struct keyhold *kp;	/* key pointer */
 		raw_spin_lock_irqsave(&acslock, irqflags);
+		if (nkeypending
+		    && keystack[nkeypending - 1].keytype != KBD_UNICODE)
+			--nkeypending;
 		if (nkeypending == MAXKEYPENDING)
 			dropKeysPending(1);
-		inkeybuffer[nkeypending] = key;
-		inkeytime[nkeypending] = jiffies;
+		kp = keystack + nkeypending;
+		kp->unicode = key;
+		kp->when = jiffies;
+		kp->keytype = KBD_UNICODE;
 		++nkeypending;
 		raw_spin_unlock_irqrestore(&acslock, irqflags);
 		goto done;
 	}
-#endif
 
 	if (type != KBD_KEYCODE)
 		goto done;
