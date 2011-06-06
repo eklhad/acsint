@@ -277,30 +277,52 @@ static struct notifier_block nb_key = {
 
 #ifdef NO_KDS
 
-#define PORT_SPEAKER 0x61
-#define PORT_TIMERVAL 0x42
-#define PORT_TIMER2 0x43
+/* This stuff belongs in drivers/input/misc/pcspkr.c */
 
-static DEFINE_RAW_SPINLOCK(speakerlock);
+#if defined(CONFIG_MIPS) || defined(CONFIG_X86)
+/* Use the global PIT lock ! */
+#include <asm/i8253.h>
+#else
+#include <asm/8253pit.h>
+static DEFINE_RAW_SPINLOCK(i8253_lock);
+#endif
 
-/* togle the inbuilt speaker */
-static void spk_toggle(void)
+/* Toggle the speaker, but not if a tone is sounding */
+static void speaker_toggle(void)
 {
-	unsigned char c;
+	char c;
 	unsigned long flags;
 
-/* Some other program might turn the tone on in the midst of our toggle,
- * or otherwise mess with the io port, so I have to irq. */
-	raw_spin_lock_irqsave(&speakerlock, flags);
-	c = inb(PORT_SPEAKER);
-	/* cannot interrupt a tone with a click */
+	raw_spin_lock_irqsave(&i8253_lock, flags);
+	c = inb_p(0x61);
 	if ((c & 3) != 3) {
-		c &= ~1;
-		c ^= 2;
-		outb(c, PORT_SPEAKER);
+		c &= 0xfe;
+		c ^= 2;		/* toggle */
+		outb(c, 0x61);
 	}
-	raw_spin_unlock_irqrestore(&speakerlock, flags);
-}				/* spk_toggle */
+	raw_spin_unlock_irqrestore(&i8253_lock, flags);
+}
+
+static void speaker_sing(unsigned int freq)
+{
+	unsigned long flags;
+	raw_spin_lock_irqsave(&i8253_lock, flags);
+	if (freq) {
+		unsigned int count = PIT_TICK_RATE / freq;
+		/* set command for counter 2, 2 byte write */
+		outb_p(0xB6, 0x43);
+		/* select desired HZ */
+		outb_p(count & 0xff, 0x42);
+		outb((count >> 8) & 0xff, 0x42);
+		/* enable counter 2 */
+		outb_p(inb_p(0x61) | 3, 0x61);
+	} else {
+		/* disable counter 2 */
+		outb(inb_p(0x61) & 0xFC, 0x61);
+	}
+	raw_spin_unlock_irqrestore(&i8253_lock, flags);
+}
+
 #endif
 
 /* the sound of a character click */
@@ -311,9 +333,9 @@ void ttyclicks_click(void)
 #ifndef NO_KDS
 	kd_mkpulse(TICKS_CLICK);
 #else
-	spk_toggle();
+	speaker_toggle();
 	udelay(TICKS_CLICK);
-	spk_toggle();
+	speaker_toggle();
 #endif
 }				/* ttyclicks_click */
 
@@ -334,7 +356,7 @@ void ttyclicks_cr(void)
 	{
 		int i;
 		for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
-			spk_toggle();
+			speaker_toggle();
 			udelay(i);
 		}
 	}
@@ -344,61 +366,187 @@ void ttyclicks_cr(void)
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
 #ifdef NO_KDS
+
+/* This stuff belongs in drivers/tty/vt/keyboard.c */
+
 /*
  * Push notes onto a sound fifo and play them via an asynchronous thread.
+ * kd_mksound is a single tone, but kd_mknotes is a series of notes.
+ * this is used primarily by the accessibility modules, to sound
+ * various alerts and conditions for blind users.
+ * This is particularly helpful when the adapter is not working,
+ * for whatever reason.  These functions are central to the kernel,
+ * and do not depend on sound cards, loadable modules, etc.
+ * These notes can also alert a system administrator to conditions
+ * that warrant immediate attention.
+ * Each note is specified by 2 shorts.  The first is the frequency in hurtz,
+ * and the second is the duration in hundredths of a second.
+ * A frequency of -1 is a rest.
+ * A frequency of 0 ends the list of notes.
  */
 
 #define SF_LEN 64		/* length of sound fifo */
 static short sf_fifo[SF_LEN];
-static short sf_head, sf_tail;
+static int sf_head, sf_tail;
+static DEFINE_RAW_SPINLOCK(soundfifo_lock);
 
 /* Pop the next sound out of the sound fifo. */
-static void popfifo(unsigned long);
-static DEFINE_TIMER(note_timer, popfifo, 0, 0);
-static void popfifo(unsigned long notUsed)
+static void pop_soundfifo(unsigned long);
+
+static DEFINE_TIMER(kd_mknotes_timer, pop_soundfifo, 0, 0);
+
+static void pop_soundfifo(unsigned long notUsed)
 {
 	unsigned long flags;
-	short i, freq, duration;
+	int freq, duration;
+	int i;
 	long jifpause;
 
-	raw_spin_lock_irqsave(&speakerlock, flags);
-
-	del_timer(&note_timer);
+	raw_spin_lock_irqsave(&soundfifo_lock, flags);
 
 	i = sf_tail;
 	if (i == sf_head) {
-		/* turn off singing speaker */
-		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
-		goto done;	/* sound fifo is empty */
+		freq = 0;
+		duration = 0;
+	} else {
+		freq = sf_fifo[i];
+		duration = sf_fifo[i + 1];
+		i += 2;
+		if (i == SF_LEN)
+			i = 0;
+		sf_tail = i;
 	}
 
-	/* First short holds the frequency */
-	freq = sf_fifo[i++];
-	if (i == SF_LEN)
-		i = 0;		/* wrap around */
-	duration = sf_fifo[i++];
-	if (i == SF_LEN)
-		i = 0;
-	sf_tail = i;
+	raw_spin_unlock_irqrestore(&soundfifo_lock, flags);
 
-	jifpause = msecs_to_jiffies(duration * 10);
-	mod_timer(&note_timer, jiffies + jifpause);
+	if (freq == 0) {
+		/* turn off singing speaker */
+		speaker_sing(0);
+		return;
+	}
+
+	jifpause = msecs_to_jiffies(duration);
+	/* not sure of the rounding, if duration < HZ */
+	if (jifpause == 0)
+		jifpause = 1;
+	mod_timer(&kd_mknotes_timer, jiffies + jifpause);
 
 	if (freq < 0) {
 		/* This is a rest between notes */
-		outb(inb_p(PORT_SPEAKER) & 0xFC, PORT_SPEAKER);
+		speaker_sing(0);
 	} else {
-		duration = 1193182 / freq;
-		outb_p(inb_p(PORT_SPEAKER) | 3, PORT_SPEAKER);
-		/* set command for counter 2, 2 byte write */
-		outb_p(0xB6, PORT_TIMER2);
-		outb_p(duration & 0xff, PORT_TIMERVAL);
-		outb((duration >> 8) & 0xff, PORT_TIMERVAL);
+		speaker_sing(freq);
+	}
+}
+
+/* Push a string of notes into the sound fifo. */
+static void my_mknotes(const short *p)
+{
+	int i;
+	bool wake = false;
+	unsigned long flags;
+
+	if (*p == 0)
+		return;		/* empty list */
+
+	raw_spin_lock_irqsave(&soundfifo_lock, flags);
+
+	i = sf_head;
+	if (i == sf_tail)
+		wake = true;
+
+	/* Copy shorts into the fifo, until the terminating zero. */
+	while (*p) {
+		sf_fifo[i++] = *p++;
+		sf_fifo[i++] = (*p++) * 10;
+		if (i == SF_LEN)
+			i = 0;	/* wrap around */
+		if (i == sf_tail) {
+			/* fifo is full */
+			goto done;
+		}
+		sf_head = i;
 	}
 
+	/* try to add on a rest, to carry the last note through */
+	sf_fifo[i++] = -1;
+	sf_fifo[i++] = 10;
+	if (i == SF_LEN)
+		i = 0;		/* wrap around */
+	if (i != sf_tail)
+		sf_head = i;
+
 done:
-	raw_spin_unlock_irqrestore(&speakerlock, flags);
-}				/* popfifo */
+	raw_spin_unlock_irqrestore(&soundfifo_lock, flags);
+
+	/* first sound,  get things started. */
+	if (wake)
+		pop_soundfifo(0);
+}
+
+/* Push an ascending or descending sequence of notes into the sound fifo.
+ * Step is a geometric factor on frequency, increase by x percent.
+ * 100% goes up by octaves, -50% goes down by octaves.
+ * 12% is a wholetone scale, while 6% is a chromatic scale.
+ * Duration is in milliseconds, for very fast frequency sweeps.  But this
+ * is based on jiffies timing, so is subject to the resolution of HZ. */
+static void my_mksteps(int f1, int f2, int step, int duration)
+{
+	int i;
+	bool wake = false;
+	unsigned long flags;
+
+	/* are the parameters in range? */
+	if (step != (char)step)
+		return;
+	if (duration <= 0 || duration > 2000)
+		return;
+	if (f1 < 50 || f1 > 8000)
+		return;
+	if (f2 < 50 || f2 > 8000)
+		return;
+
+	/* avoid infinite loops */
+	if (step == 0 || (f1 < f2 && step < 0) || (f1 > f2 && step > 0))
+		return;
+
+	raw_spin_lock_irqsave(&soundfifo_lock, flags);
+
+	i = sf_head;
+	if (i == sf_tail)
+		wake = true;
+
+	/* Copy shorts into the fifo, until start reaches end */
+	while ((step > 0 && f1 < f2) || (step < 0 && f1 > f2)) {
+		sf_fifo[i++] = f1;
+		sf_fifo[i++] = duration;
+		if (i == SF_LEN)
+			i = 0;	/* wrap around */
+		if (i == sf_tail) {
+			/* fifo is full */
+			goto done;
+		}
+		sf_head = i;
+		f1 = f1 * (100 + step) / 100;
+		if (f1 < 50 || f1 > 8000)
+			break;
+	}
+
+	/* try to add on a rest, to carry the last note through */
+	sf_fifo[i++] = -1;
+	sf_fifo[i++] = 10;
+	if (i == SF_LEN)
+		i = 0;		/* wrap around */
+	if (i != sf_tail)
+		sf_head = i;
+
+done:
+	raw_spin_unlock_irqrestore(&soundfifo_lock, flags);
+
+	/* first sound,  get things started. */
+	if (wake)
+		pop_soundfifo(0);
+}
 
 #endif
 
@@ -407,45 +555,10 @@ void ttyclicks_notes(const short *p)
 {
 	if (!ttyclicks_on)
 		return;
-
-#ifndef NO_KDS
-	kd_mknotes(p);
+#ifdef NO_KDS
+	my_mknotes(p);
 #else
-
-	{
-		int i;
-
-		raw_spin_lock(&speakerlock);
-
-		i = sf_head;
-		/* Copy shorts into the fifo, until the terminating zero. */
-		while (*p) {
-			sf_fifo[i++] = *p++;
-			if (i == SF_LEN)
-				i = 0;	/* wrap around */
-			if (i == sf_tail) {
-				/* fifo is full */
-				raw_spin_unlock(&speakerlock);
-				return;
-			}
-		}
-		sf_head = i;
-
-	/* try to add on a rest, to carry the last note through */
-	sf_fifo[i++] = -1;
-	sf_fifo[i++] = 1;
-	if (i == SF_LEN)
-		i = 0;	/* wrap around */
-	if (i != sf_tail)
-		sf_head = i;
-
-		raw_spin_unlock(&speakerlock);
-
-		/* first sound,  get things started. */
-		if (!timer_pending(&note_timer))
-			popfifo(0);
-	}
-
+	kd_mknotes(p);
 #endif
 }				/* ttyclicks_notes */
 
@@ -455,8 +568,9 @@ void ttyclicks_steps(int f1, int f2, int step, int duration)
 {
 	if (!ttyclicks_on)
 		return;
-
-#ifndef NO_KDS
+#ifdef NO_KDS
+	my_mksteps(f1, f2, step, duration);
+#else
 	kd_mksteps(f1, f2, step, duration);
 #endif
 }				/* ttyclicks_steps */
@@ -646,7 +760,7 @@ static void __exit click_exit(void)
 #ifdef NO_KDS
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
-	popfifo(0);
+	pop_soundfifo(0);
 #endif
 }				/* click_exit */
 
