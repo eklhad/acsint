@@ -15,5 +15,11 @@ without relying on any particular speech synthesizer.
 I hope the device driver becomes part of the linux kernel, and the bridge
 layer becomes a shared library, offered by many linux distributions.
 That's my dream anyways.
+To this end, the patch directory contains a patch to put the sounds
+into the keyboard / pcspkr / event layer, where they belong.
+This is probably a necessary first step.
+If this patch is not accepted for any reason,
+then ttyclicks has to keep making its own sounds, which works,
+but is suboptimal.
 
 It's all GPL, so have fun with it.
