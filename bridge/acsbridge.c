@@ -15,7 +15,6 @@ and declared in acsbridge.h.
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdarg.h>
-#include <signal.h>
 
 #include <linux/vt.h>
 
