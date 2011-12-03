@@ -909,6 +909,9 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 	if (ss & ACS_SS_CTRL && isalpha(keychar))
 		keychar = (keychar | 0x20) - ('a' - 1);
 
+	if (leds & K_CAPSLOCK && isalpha(keychar))
+		keychar ^= 0x20;
+
 	raw_spin_lock_irqsave(&acslock, irqflags);
 	if (nkeypending == MAXKEYPENDING)
 		dropKeysPending(1);
