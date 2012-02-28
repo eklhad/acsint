@@ -15,6 +15,7 @@ and declared in acsbridge.h.
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 
 #include <linux/vt.h>
 
@@ -213,6 +214,38 @@ rc = -1;
 acs_fd = -1;
 return rc;
 } // acs_close
+
+void
+acs_nodecheck(const char *devname)
+{
+int fd, uid;
+int m1, m2;
+struct stat buf;
+char line[20];
+char *s;
+
+uid = geteuid();
+if(uid) return; /* not root */
+
+fd = open("/sys/devices/virtual/misc/acsint/dev", O_RDONLY);
+if(fd < 0) return; /* nothing in /sys to help us */
+if(read(fd, line, sizeof(line)) <= 0) {
+close(fd);
+return;
+}
+m1 = strtol(line, &s, 10);
+++s;
+m2 = strtol(s, &s, 10);
+close(fd);
+
+/* if stat fails I'm going to assume it's not there and create it */
+if(stat(devname, &buf)) goto create;
+if(major(buf.st_rdev) == m1 && minor(buf.st_rdev) == m2) return;
+unlink(devname);
+
+create:
+mknod(devname, S_IFCHR|0666, makedev(m1, m2));
+} /* acs_nodecheck */
 
 // Write a command to /dev/acsint.
 
@@ -661,7 +694,7 @@ int culen; /* catch up length */
 unsigned int *custart; // where does catch up start
 int nlen; // length of new area
 int diff;
-int minor;
+int m2;
 char refreshed = 0;
 unsigned int d;
 
@@ -740,15 +773,15 @@ break;
 
 case ACS_TTY_NEWCHARS:
 /* this is the refresh data in line mode
- * minor is always the foreground console; we could probably discard it. */
-minor = inbuf[i+1];
+ * m2 is always the foreground console; we could probably discard it. */
+m2 = inbuf[i+1];
 culen = inbuf[i+2] | ((unsigned short)inbuf[i+3]<<8);
 acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
 if(nr-i < culen*4) break;
 
-tl = tty_log[minor - 1];
+tl = tty_log[m2 - 1];
 if(!tl || tl == &tty_nomem) {
 /* not allocated; no room for this data */
 i += culen*4;

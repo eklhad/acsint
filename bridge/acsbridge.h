@@ -79,6 +79,12 @@ int acs_open(const char *devname);
 // Free the AccessBridge, closing the associated device.
 int acs_close(void);
 
+/* Fix up the major and minor number of /dev/acsint - linux only.
+ * You should call this before acs_open().
+ * This is a fallback in case udev is not configured properly,
+ * or does not run properly. */
+void acs_nodecheck(const char *devname);
+
 /*********************************************************************
 Section 2: sounds.
 Acsint can generate various sounds
