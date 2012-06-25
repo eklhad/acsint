@@ -2,9 +2,11 @@ KERNELDIR = /lib/modules/$(shell uname -r)/build
 
 obj-m += ttyclicks.o
 obj-m += acsint.o
+obj-m += hq_kern.o
 
 #  You need to define NO_KDS if your kernel has not been patched
 #  to support the new functions kd_mkpulse, kd_mkswoop, and kd_mknotes.
+#  See the "patch" directory of this project.
 
 modules:
 	make -C $(KERNELDIR) M=$(shell pwd) \
