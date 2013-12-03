@@ -1266,6 +1266,7 @@ ACS_SY_STYLE_BNS,
 // Accent
 ACS_SY_STYLE_ACE,
 ACS_SY_STYLE_ESPEAKUP,
+ACS_SY_STYLE_DISPATCH,
 };
 
 int acs_sy_events(void);
