@@ -1265,6 +1265,7 @@ ACS_SY_STYLE_DECPC,
 ACS_SY_STYLE_BNS,
 // Accent
 ACS_SY_STYLE_ACE,
+// Here are the software synthesizers, run through a pipe.
 ACS_SY_STYLE_ESPEAKUP,
 ACS_SY_STYLE_DISPATCH,
 };
