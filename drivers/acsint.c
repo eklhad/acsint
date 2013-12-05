@@ -219,25 +219,18 @@ static int last_fgc;		/* last fg_console */
  * This is for macros, or cut&paste. */
 static void tty_pushstring(const char *cp, int len)
 {
-	char c;
-	struct tty_struct *tty;
 	struct vc_data *d = vc_cons[fg_console].d;
 
 	if (!d)
 		return;
 
-	tty = d->port.tty;
-	if (!tty)
-		return;
-
-	while (len) {
-		get_user(c, cp);
-		tty_insert_flip_char(tty, c, 0);
-		cp++;
-		--len;
-	}
-
-	con_schedule_flip(tty);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
+	tty_insert_flip_string(d->port.tty, cp, len);
+	tty_flip_buffer_push(d->port.tty);
+#else
+	tty_insert_flip_string(&d->port, cp, len);
+	tty_flip_buffer_push(&d->port);
+#endif
 }				/* tty_pushstring */
 
 /* File operations for /dev/acsint. */
