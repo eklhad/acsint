@@ -67,7 +67,10 @@ Default is 0 (no).\n\
 This does not work unless you patch vt.c.");
 
 /* Define NO_KDS if your kernel does not yet support kd_mkpulse,
- * kd_mkswoop, and kd_mknotes. */
+ * kd_mkswoop, and kd_mknotes.
+ * Thus far, sadly, I have had no success getting these sounds built
+ * into the official kernel. So let's just assume they're not there. */
+#define NO_KDS
 
 /*
  * Here are some symbols that we export to other modules
