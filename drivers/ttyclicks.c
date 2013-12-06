@@ -266,7 +266,7 @@ done:
 
 static struct notifier_block nb_key = {
 	.notifier_call = keystroke,
-	.priority = -100
+	.priority = -70
 };
 
 /* Here are some routines to click the speaker, or make tones, etc. */
@@ -720,7 +720,7 @@ done:
 
 static struct notifier_block nb_vt = {
 	.notifier_call = vt_out,
-	.priority = -100
+	.priority = -70
 };
 
 /* Load and unload the module. */
