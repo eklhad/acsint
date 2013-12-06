@@ -213,23 +213,17 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	int downflag = param->down;
 	int shiftstate = param->shift;
 
+	/* if no sounds, then no need to do anything. */
+	/* Also, no unicode, no control keys, and only down events. */
+	if (!(ttyclicks_on & ttyclicks_tty) ||
+	type != KBD_KEYSYM ||
+	param->vc->vc_mode == KD_GRAPHICS ||
+	downflag == 0 ||
+	key == 0 ||
+	shiftstate & 0xe)
+		return NOTIFY_DONE;
+
 	raw_spin_lock(&keybuflock);
-
-	/* Sorry, this doesn't work in unicode. */
-	if (type != KBD_KEYSYM)
-		goto done;
-
-	if (param->vc->vc_mode == KD_GRAPHICS)
-		goto done;
-/* Only the key down events */
-	if (downflag == 0)
-		goto done;
-	if (key == 0)
-		goto done;
-
-/* no control or alt keys */
-	if (shiftstate & 0xe)
-		goto done;
 
 /* If we changed consoles, clear the pending keystrokes */
 	if (minor != keyminor) {
@@ -250,7 +244,6 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	inkeytime[nkeypending] = jiffies;
 	++nkeypending;
 
-done:
 	raw_spin_unlock(&keybuflock);
 	return NOTIFY_DONE;
 }				/* keystroke */
@@ -587,7 +580,6 @@ EXPORT_SYMBOL_GPL(ttyclicks_bell);
 
 static int soundFromChar(char c, int minor)
 {
-	int isecho = charIsEcho(c);
 	static const short capnotes[] = {
 		3000, 3, 0, 0
 	};
@@ -613,7 +605,7 @@ static int soundFromChar(char c, int minor)
 		return 0;
 	}
 
-	if (isecho && c >= 'A' && c <= 'Z') {
+	if (charIsEcho(c) && c >= 'A' && c <= 'Z') {
 		ttyclicks_notes(capnotes);
 		return TICKS_CHARWAIT;
 	}
