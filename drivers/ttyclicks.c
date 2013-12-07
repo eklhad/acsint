@@ -144,63 +144,37 @@ static struct console clickconsole = {
  * What follows is kinda complicated, but it actually works.
  */
 
-#define MAXKEYPENDING 8
-static char inkeybuffer[MAXKEYPENDING];
-static unsigned long inkeytime[MAXKEYPENDING];
-static short nkeypending;	/* number of keys pending */
-/* minor number of tty where the keystrokes came from */
-static int keyminor;
 #define ECHOEXPIRE 3		/* in seconds */
-static DEFINE_RAW_SPINLOCK(keybuflock);
+#define ECHOMAX 16
 
-/* Drop remembered keystrokes prior to mark */
-static void dropKeysPending(int mark)
-{
-	int i, j;
-
-	for (i = 0, j = mark; j < nkeypending; ++i, ++j) {
-		inkeybuffer[i] = inkeybuffer[j];
-		inkeytime[i] = inkeytime[j];
-	}
-	nkeypending -= mark;
-}				/* dropKeysPending */
+static struct {
+	char inkey;
+	unsigned long intime;
+} echochars[ECHOMAX];
+static int echead, ectail;
 
 /* char is displayed on screen; is it echo? */
 static int charIsEcho(char c)
 {
-	int rc = 0, j;
-	unsigned long flags;
+	int j = ectail;
 	char d;
 
-/* Do the high runner case first. */
-	if (!nkeypending)
-		return 0;
-
-/*
- * The other access to this lock, in keyboard notifier,
- * is part of the keyboard interrupt handler.
- * If it starts spinning, it never gets swapped out to let this routine
- * release the lock; and all linux shuts down.
- * Thus I have to disable interrupts.
- */
-
-	raw_spin_lock_irqsave(&keybuflock, flags);
-
-	for (j = 0; j < nkeypending; ++j) {
-		d = inkeybuffer[j];
-		if (d == c
-		    && (long)jiffies - (long)inkeytime[j] <= HZ * ECHOEXPIRE)
-			break;
+	while(j != echead) {
+		if ((long)jiffies - (long)echochars[j].intime > HZ * ECHOEXPIRE) {
+			if(++j == ECHOMAX)
+				j = 0;
+			ectail = j;
+			continue;
+		}
+		d = echochars[j].inkey;
+		if(++j == ECHOMAX)
+			j = 0;
+		if(d != c) continue;
+		ectail = j;
+		return 1;
 	}
 
-	if (j < nkeypending) {
-		rc = 1;
-		++j;
-	}
-
-	dropKeysPending(j);
-	raw_spin_unlock_irqrestore(&keybuflock, flags);
-	return rc;
+	return 0;
 }				/* charIsEcho */
 
 static int
@@ -208,10 +182,9 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 {
 	struct keyboard_notifier_param *param = data;
 	char key = param->value;
-	struct vc_data *vc = param->vc;
-	int minor = vc->vc_num + 1;
 	int downflag = param->down;
 	int shiftstate = param->shift;
+	int j;
 
 	/* if no sounds, then no need to do anything. */
 	/* Also, no unicode, no control keys, and only down events. */
@@ -223,28 +196,15 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	shiftstate & 0xe)
 		return NOTIFY_DONE;
 
-	raw_spin_lock(&keybuflock);
-
-/* If we changed consoles, clear the pending keystrokes */
-	if (minor != keyminor) {
-		nkeypending = 0;
-		keyminor = minor;
+	j = echead;
+	if(++j == ECHOMAX)
+		j = 0;
+	if(j != ectail) {
+		echochars[echead].inkey = key;
+		echochars[echead].intime = jiffies;
+		echead = j;
 	}
 
-/* make sure there's room, then push the key */
-	if (nkeypending == MAXKEYPENDING) {
-		int j;
-		for (j = 1; j < nkeypending; ++j) {
-			inkeybuffer[j - 1] = inkeybuffer[j];
-			inkeytime[j - 1] = inkeytime[j];
-		}
-		--nkeypending;
-	}
-	inkeybuffer[nkeypending] = key;
-	inkeytime[nkeypending] = jiffies;
-	++nkeypending;
-
-	raw_spin_unlock(&keybuflock);
 	return NOTIFY_DONE;
 }				/* keystroke */
 
