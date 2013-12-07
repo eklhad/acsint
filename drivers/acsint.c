@@ -224,7 +224,7 @@ static void tty_pushstring(const char *cp, int len)
 	if (!d)
 		return;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 11)
 	tty_insert_flip_string(d->port.tty, cp, len);
 	tty_flip_buffer_push(d->port.tty);
 #else
