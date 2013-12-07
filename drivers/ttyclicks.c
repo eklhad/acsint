@@ -267,9 +267,6 @@ static struct notifier_block nb_key = {
 /* intervals, measured in microseconds */
 #define TICKS_CLICK 600
 #define TICKS_CHARWAIT 4000
-#define TICKS_TOPCR 260
-#define TICKS_BOTCR 60
-#define TICKS_INCCR -2
 
 #ifdef NO_KDS
 
@@ -314,6 +311,8 @@ static void speaker_sing(unsigned int freq)
 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
 }
 
+static void my_mksteps(int f1, int f2, int step, int duration) ;
+
 #endif
 
 /* the sound of a character click */
@@ -337,20 +336,14 @@ void ttyclicks_cr(void)
 	if (!ttyclicks_on)
 		return;
 
-#ifndef NO_KDS
-/*
-	kd_mkswoop(TICKS_TOPCR, TICKS_BOTCR, TICKS_INCCR);
-*/
-	kd_mksteps(2900, 3600, 10, 8);
-#else
+/* If I could do this as a continuous swoop, it would look like this.
+ *	for (i = 260; i > 60; i -= 2) { speaker_toggle(); udelay(i); }
+ * but this just takes up too much cpu, so we have to settle for choppy steps. */
 
-	{
-		int i;
-		for (i = TICKS_TOPCR; i > TICKS_BOTCR; i += TICKS_INCCR) {
-			speaker_toggle();
-			udelay(i);
-		}
-	}
+#ifndef NO_KDS
+	kd_mksteps(2900, 3600, 10, 10);
+#else
+	my_mksteps(2900, 3600, 10, 10);
 #endif
 }				/* ttyclicks_cr */
 
@@ -413,6 +406,7 @@ static void pop_soundfifo(unsigned long notUsed)
 	if (freq == 0) {
 		/* turn off singing speaker */
 		speaker_sing(0);
+		del_timer(&kd_mknotes_timer);
 		return;
 	}
 
