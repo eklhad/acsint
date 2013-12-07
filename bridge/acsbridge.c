@@ -779,6 +779,14 @@ culen = inbuf[i+2] | ((unsigned short)inbuf[i+3]<<8);
 acs_log("new %d\n", culen);
 i += 4;
 if(!culen) break;
+if(acs_debug) {
+for(j=0; j<culen; ++j) {
+d = * (int*) (inbuf + i + 4*j);
+if(d < ' ' || d >= 0x7f) d = '_';
+acs_log("%c", d);
+}
+acs_log("\n");
+}
 if(nr-i < culen*4) break;
 
 tl = tty_log[m2 - 1];
