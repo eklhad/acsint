@@ -756,11 +756,9 @@ break;
 case ACS_TTY_MORECHARS:
 if(i > nr-8) break;
 d = *(unsigned int *) (inbuf+i+4);
-if(acs_debug) {
 acs_log("output echo %d", inbuf[i+1]);
-if(inbuf[i+1]) acs_log(" 0x%x", d);
-acs_log("\n");
-}
+if(d >= ' ' && d < 0x7f) acs_log("/%c\n", d);
+else acs_log(";%x\n", d);
 /* If echo is nonzero, then the refresh has already been done. */
 if(acs_more_h) acs_more_h(inbuf[i+1], d);
 i += 8;

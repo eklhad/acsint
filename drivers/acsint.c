@@ -958,12 +958,10 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 			wake = true;
 		rbuf_head[0] = ACS_TTY_MORECHARS;
 		rbuf_head[1] = echo;
-		if (echo) {
-			cb->echopoint = cb->head;
 			*(unsigned int *)(rbuf_head + 4) = c;
-		} else
-			*(unsigned int *)(rbuf_head + 4) = 0;
 		rbuf_head += 8;
+		if (echo)
+			cb->echopoint = cb->head;
 	}
 
 	if (wake)
