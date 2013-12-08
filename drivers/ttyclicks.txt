@@ -24,7 +24,7 @@ based solely on the clicks of the teletype.
 After my roommate read through the printout and verified the results,
 I tucked it away in my notebook and turned it in the next day for a grade.
 Although I now have a speech synthesizer at hand,
-I still need the audio feedback that was an unintentional
+I still rely on the audio feedback that was an unintentional
 feature of the mechanical teletype.
 To this end I wrote a loadable module, ttyclicks.ko,
 which creates similar sounds using the PC speaker.
@@ -32,19 +32,18 @@ which creates similar sounds using the PC speaker.
 It is important that this be a separate, stand alone kernel module
 that does not depend on anything else.
 If the adapter isn't running,
-if the synthesizer isn't working,
-if the sound card isn't working,
+if the synthesizer isn't working, if the braille display isn't working,
+if we're talking to the wrong serial port, if the sound card isn't working,
 if the sound card is not properly initialized,
-if the sound module is not loaded,
-if the wrong sound module is loaded,
-if an essential daemon is not running -
-at least I have my clicks.
+if the sound module is not loaded, if the wrong sound module is loaded,
+if an essential daemon is not running - at least I have my clicks.
 I can tell, to some degree, what the computer is doing.
 If it gets to a login prompt, I know what that sounds like.
 I can log in and listen for the single click of the $ prompt,
 which tells me I have a shell.
 Then I can issue some basic commands,
 trying to load modules and start the adapter.
+All this I do without speech.
 I need these clicks to be present whenever the kernel is running.
 To this end, ttyclicks is a self-contained module
 that is loaded first in the boot sequence,
@@ -70,6 +69,17 @@ Beyound this, it tells me that the machine has gotten to grub successfully,
 and is not stuck in bios for some bizarre reason.
 It is difficult to overstate the importance of this little in-built speaker
 for the blind user.
+
+This module might not click and chirp if you are in X.
+It responds to text characters that pass through the standard tty,
+and probably doesn't do anything in graphics mode.
+Even the terminal emulator, running under a desktop, still runs through X,
+and probably won't work with ttyclicks.
+You really need to be at run level 3.
+See /etc/inittab for the run level.
+This module is for command line users,
+or users who will stay in command mode long enough to make sure their
+software is properly launched and speaking.
 
 Module parameters:
 
@@ -132,13 +142,13 @@ The calling function can then sleep for the specified number of milliseconds,
 if the context permits.
 I may submit such a patch some day,
 but in the meantime you have to leave sleep = 0 and burn cpu cycles,
-or patch the kernel yourself, whence sleep=1 will work properly.
-The following patch is appropriate for kernel 2.6.36 and above.
+or apply my patch to your kernel, whence sleep=1 will work properly.
+The following patch is appropriate for kernel 2.12.3.
 
 diff -uprN a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
---- a/drivers/tty/vt/vt.c	2011-03-19 00:22:03.000000000 -0400
-+++ b/drivers/tty/vt/vt.c	2011-03-19 00:22:03.000000000 -0400
-@@ -2255,6 +2255,15 @@ rescan_last_byte:
+--- a/drivers/tty/vt/vt.c	2013-12-08 01:46:58.000000000 -0500
++++ b/drivers/tty/vt/vt.c	2013-12-08 01:46:58.000000000 -0500
+@@ -2202,6 +2202,15 @@ rescan_last_byte:
  					&param) == NOTIFY_STOP)
  			continue;
  
@@ -155,12 +165,11 @@ diff -uprN a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
                   * only allow a glyph to be displayed if the code is
                   * not normally used (such as for cursor movement) or
 
-This module performs functions that really belong in keyboard.c,
+This module implements some functions that really belong in keyboard.c,
 along side kd_mksound().
-I envision kd_mkpulse, kd_mkswoop, and kd_mknotes.
-These functions issue a 0.6 millisecond pulse,
-perform a quick swoop  from one frequency to another,
-and play a sequence of tones, respectively.
+I envision kd_mkpulse, kd_mknotes, and kd_mksteps.
+These functions issue a 0.6 millisecond pulse, play a sequence of tones,
+and play a chromatic scale, respectively.
 I may submit such a patch some day,
 but in the meantime this module performs these functions,
 and makes them available to other modules, and hence to various adapters.
@@ -172,7 +181,7 @@ As mentioned above, this should really be moved to kd_mkpulse in keyboard.c.
 
 void ttyclicks_cr(void);
 
-Generate a frequency swoop from 1160 to 1500 hz.
+Generate a quick frequency swoop from 2900 to 3600 hz.
 This sound is associated with the newline character at the console,
 but you can use this function to generate the same sound whenever you wish.
 
@@ -182,14 +191,23 @@ Play a series of notes in the background.
 Each note is defined by two shorts, a frequency and a duration.
 The frequency is in hurtz, and the duration is in hundredths of a second.
 A frequency of -1 is a rest.
-The queue can only hold 32 notes,
-so don't try to play an entire sonata.
+The queue can only hold 64 notes, so don't try to play an entire sonata.
+
+void ttyclicks_steps(int freq1, int freq2, int step, int duration)
+
+Play a series of notes, of the specified duration, moving from
+frequency freq1 to frequency freq2 in a geometric progression of step%.
+This is a customizable chromatic scale.
+The traditional scale, based on half tones, and starting at middle C,
+has an approximate step of 6%, and looks like this.
+ttyclicks_mksteps(260, 530, 6, 150);
+Use a negative step for a descending scale.
 
 void ttyclicks_bell(void);
 
 This function generates an 1800 hz tone for a tenth of a second.
 this is associated with the control G bell.
-(The traditional bell is 1000 hz, but I wanted a slightly higher tone.)
+The traditional bell is 1000 hz, but I wanted a slightly higher tone.
 As long as this module is loaded, it swallows control G, and sounds the bell,
 rather then passing it through to the console and letting the console
 ring the bell.  This allows the master switch, ttyclicks_on,
