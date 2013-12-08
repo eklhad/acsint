@@ -36,6 +36,7 @@ Then run insmod on the resulting kernel object.
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/vt_kern.h>	/* for fg_console */
+#include <linux/version.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
@@ -45,15 +46,18 @@ MODULE_DESCRIPTION("Half qwerty keyboard for the one-handed typist.");
 static void
 tty_pushchar(int minor, int ch)
 {
-	struct tty_struct *tty;
 	struct vc_data *d = vc_cons[fg_console].d;
+
 	if (!d)
 		return;
-	tty = d->port.tty;
-	if (!tty)
-		return;
-    tty_insert_flip_char(tty, ch, 0);
-    con_schedule_flip(tty);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 9, 11)
+	tty_insert_flip_char(d->port.tty, ch, 0);
+	tty_flip_buffer_push(d->port.tty);
+#else
+	tty_insert_flip_char(&d->port, ch, 0);
+	tty_flip_buffer_push(&d->port);
+#endif
 }				/* tty_pushchar */
 
 /* Reverse the keyboard, with and without shift */
