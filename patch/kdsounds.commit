@@ -1,0 +1,36 @@
+Add another sound to the pc speaker driver, and a layer above to play notes.
+
+The speaker driver can play a tone at a specified frequency,
+or the standard control G bell,
+which is a special case of TONE at 1000 hz 0.1 seconds.
+This patch adds kd_mkpulse() to generate a soft click.
+This is introduced to support accessibility modules and adapters in the future.
+Using notifiers, a module can easily provide soft clicks,
+i.e. audible feedback, whenever a key is depressed,
+or when that keystroke is echoed on screen, whichever you prefer.
+This allows a blind user, for example, to have rapid feedback while typing,
+even if he is, at the same time, listening to text that is already on screen.
+It is faster and more convenient than having characters echoed verbally.
+And it works all the time, even if speech or braille is not working,
+for whatever reason.  And there are many reasons those adapters could fail.
+Misconfigured sound card, bad serial connection,
+software synth not loading, etc.
+Thus these small forms of audio feedback are very important!
+
+Another function introduced by this patch is kd_mknotes,
+which plays a series of tones in the background.
+Of course you could do this yourself with kd_mksound and timers,
+but why should everyone reinvent the wheel?
+It is better to write the function once, properly, in the kernel,
+and let modules use it thereafter.
+Again, this is a means to an end.
+Accessibility modules can generate rapid sequences of notes
+to indicate various conditions, sometimes error conditions,
+especially if speech or braille is not working.
+These notes may be the only feedback the user has to diagnose the problem.
+This may be useful to other developers in other situations as well.
+
+kd_mksteps runs something like a chromatic scale,
+from one frequency to another in specified steps.
+The half-tone scale, with a step of 6%, starting at middle C, is approximately
+kd_mksteps(260, 530, 6, 150);
