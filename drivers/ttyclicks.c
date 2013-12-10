@@ -28,16 +28,15 @@
 #include <linux/ctype.h>
 #include <linux/console.h>
 #include <linux/module.h>
-
-#include <asm/io.h>		/* for inb() outb() */
-#include <asm/delay.h>
+#include <linux/io.h>		/* for inb() outb() */
+#include <linux/delay.h>
 
 #include "ttyclicks.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Karl Dahlke - eklhad@gmail.com");
 MODULE_DESCRIPTION
-    ("Console output generates clicks, resembling a mechanical teletype.");
+	("Console output generates clicks, resembling a mechanical teletype.");
 
 static int enabled = 1;
 module_param(enabled, int, 0);
@@ -61,10 +60,10 @@ MODULE_PARM_DESC(kmsg,
 
 static int sleep;
 module_param(sleep, int, 0);
-MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters,\n\
-rather than a CPU busy loop.\n\
-Default is 0 (no).\n\
-This does not work unless you patch vt.c.");
+MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters,\n"
+	"rather than a CPU busy loop.\n"
+	"Default is 0 (no).\n"
+	"This does not work unless you patch vt.c.");
 
 /* Define NO_KDS if your kernel does not yet support kd_mkpulse,
  * kd_mkswoop, and kd_mknotes.
@@ -169,7 +168,8 @@ static int charIsEcho(char c)
 		d = echochars[j].inkey;
 		if (++j == ECHOMAX)
 			j = 0;
-		if (d != c) continue;
+		if (d != c)
+			continue;
 		ectail = j;
 		return 1;
 	}
@@ -271,7 +271,7 @@ static void speaker_sing(unsigned int freq)
 	raw_spin_unlock_irqrestore(&i8253_lock, flags);
 }
 
-static void my_mksteps(int f1, int f2, int step, int duration) ;
+static void my_mksteps(int f1, int f2, int step, int duration);
 
 #endif
 
@@ -288,7 +288,6 @@ void ttyclicks_click(void)
 	speaker_toggle();
 #endif
 }				/* ttyclicks_click */
-
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
@@ -298,7 +297,8 @@ void ttyclicks_cr(void)
 
 /* If I could do this as a continuous swoop, it would look like this.
  *	for (i = 260; i > 60; i -= 2) { speaker_toggle(); udelay(i); }
- * but this just takes up too much cpu, so we have to settle for choppy steps. */
+ * but this just takes up too much cpu,
+ * so we have to settle for choppy steps. */
 
 #ifndef NO_KDS
 	kd_mksteps(2900, 3600, 10, 10);
@@ -306,7 +306,6 @@ void ttyclicks_cr(void)
 	my_mksteps(2900, 3600, 10, 10);
 #endif
 }				/* ttyclicks_cr */
-
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
 #ifdef NO_KDS
@@ -506,7 +505,6 @@ void ttyclicks_notes(const short *p)
 	kd_mknotes(p);
 #endif
 }				/* ttyclicks_notes */
-
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
 void ttyclicks_steps(int f1, int f2, int step, int duration)
@@ -519,7 +517,6 @@ void ttyclicks_steps(int f1, int f2, int step, int duration)
 	kd_mksteps(f1, f2, step, duration);
 #endif
 }				/* ttyclicks_steps */
-
 EXPORT_SYMBOL_GPL(ttyclicks_steps);
 
 void ttyclicks_bell(void)
@@ -529,7 +526,6 @@ void ttyclicks_bell(void)
 	};
 	ttyclicks_notes(notes);
 }				/* ttyclicks_bell */
-
 EXPORT_SYMBOL_GPL(ttyclicks_bell);
 
 static int soundFromChar(char c, int minor)
