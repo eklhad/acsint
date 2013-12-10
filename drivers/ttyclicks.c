@@ -8,16 +8,11 @@
  * before the speech synthesizer has uttered a word.
  * It also throttles the output, which would otherwise fly by the screen
  * faster than any blind person could even so much as hit control s.
+ * Please see Documentation/accessibility/ttyclicks.txt for more details.
  *
- * Copyright (C) Karl Dahlke, 2011.
+ * Copyright (C) Karl Dahlke, 2013.
  * This software may be freely distributed under the GPL,
  * general public license, as articulated by the Free Software Foundation.
- *
- * This module uses notifiers, and will not work with kernels prior to 2.6.26.
- * Type `uname -r` to find your kernel version.
- *
- * Compile this as a lkernel module on your system.
- * Then run insmod on the resulting kernel object.
  */
 
 #include <linux/notifier.h>
@@ -60,15 +55,9 @@ MODULE_PARM_DESC(kmsg,
 
 static int sleep;
 module_param(sleep, int, 0);
-MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters,\n"
-	"rather than a CPU busy loop.\n"
-	"Default is 0 (no).\n"
-	"This does not work unless you patch vt.c.");
+MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters, not yet implemented.");
 
-/* Define NO_KDS if your kernel does not yet support kd_mkpulse,
- * kd_mkswoop, and kd_mknotes.
- * Thus far, sadly, I have had no success getting these sounds built
- * into the official kernel. So let's just assume they're not there. */
+/* Define NO_KDS if your kernel does not yet support kd_mkpulse etc */
 #define NO_KDS
 
 /*
@@ -85,9 +74,12 @@ bool ttyclicks_kmsg = true;
 EXPORT_SYMBOL_GPL(ttyclicks_kmsg);
 
 /*
- * Don't click the escape sequences that move the cursor around the screen.
+ * Don't click the ansi escape sequences that move the cursor on the screen.
  * However, esc [ ... H moves the cursor to a new line, and might be worth
  * a cr sound. Not sure about that one.
+ * escState holds the state of the escape sequence.
+ * 0 regular output, 1 escape received, 2 escape [ received.
+ * A letter ends the escape sequence and goes from state 2 to state 0.
  */
 
 static char escState;
@@ -119,14 +111,13 @@ static struct console clickconsole = {
 	.name = "tty clicks",
 	.write = my_printk,
 	.flags = CON_ENABLED,
-	/* hope everything else is ok being zero or null */
 };
 
 /*
  * Now for something subtle.
  * I often hit caps lock by accident.  Don't we all?
  * But I can't tell the difference, until I've typed an entire paragraph
- * in upper case.  Isn't that frustrating?
+ * in upper case.
  * So it is helpful to hear a high beep every time a capital letter is echoed.
  * It's easy to test for upper case (at least in English).
  * But when does an output character represent an echo of an input character?
@@ -140,7 +131,11 @@ static struct console clickconsole = {
  * That is the only reason to monitor keystrokes.
  * If I didn't want echo capital letters to sound different,
  * I wouldn't need a keyboard notifier at all.
- * What follows is kinda complicated, but it actually works.
+ * Retain up to 16 keystrokes, with time stamps in jiffies,
+ * in a circular buffer, with head and tail pointers.
+ * kb notifier puts keys on at the head,
+ * and vt notifier takes keys off at the tail,
+ * matching them against vt output and checking for echo.
  */
 
 #define ECHOEXPIRE 3		/* in seconds */
@@ -160,6 +155,7 @@ static int charIsEcho(char c)
 
 	while (j != echead) {
 		if ((long)jiffies - (long)echochars[j].intime > HZ * ECHOEXPIRE) {
+/* this keystroke too old, discard it */
 			if (++j == ECHOMAX)
 				j = 0;
 			ectail = j;
@@ -199,6 +195,7 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	j = echead;
 	if (++j == ECHOMAX)
 		j = 0;
+/* typing ahead, is there room for this key in the echo buffer? */
 	if (j != ectail) {
 		echochars[echead].inkey = key;
 		echochars[echead].intime = jiffies;
@@ -294,12 +291,6 @@ void ttyclicks_cr(void)
 {
 	if (!ttyclicks_on)
 		return;
-
-/* If I could do this as a continuous swoop, it would look like this.
- *	for (i = 260; i > 60; i -= 2) { speaker_toggle(); udelay(i); }
- * but this just takes up too much cpu,
- * so we have to settle for choppy steps. */
-
 #ifndef NO_KDS
 	kd_mksteps(2900, 3600, 10, 10);
 #else
@@ -528,6 +519,7 @@ void ttyclicks_bell(void)
 }				/* ttyclicks_bell */
 EXPORT_SYMBOL_GPL(ttyclicks_bell);
 
+/* Returns a time in microseconds to wait. */
 static int soundFromChar(char c, int minor)
 {
 	static const short capnotes[] = {
@@ -560,8 +552,7 @@ static int soundFromChar(char c, int minor)
 		return TICKS_CHARWAIT;
 	}
 
-/* I don't know what to do with nonprintable characters. */
-/* I'll just pause, like they are spaces. */
+/* Treat a nonprintable characterlike a space; just pause. */
 	if (c >= 0 && c <= ' ')
 		return TICKS_CHARWAIT;
 
@@ -619,8 +610,6 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 /*
  * If it's the bell, I make the beep, not the console.
  * This is the only char that this module eats.
- * Although eating char events is facilitated by VT_PREWRITE,
- * which requires kernel 2.6.26 or higher.
  */
 
 	if (c == 7)
