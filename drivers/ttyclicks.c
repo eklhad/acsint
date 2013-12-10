@@ -2,7 +2,8 @@
  * If you are old enough, this will remind you of the sounds of a mechanical
  * teletype running at 1200 baud.
  * Why would you want such a thing?
- * It provides valuable audio feedback to blind users.
+ * You might not, but a blind person might.
+ * The clicks provide valuable audio feedback to blind users.
  * They know when the computer responds to a command,
  * and they can discern the quantity and format of that response,
  * before the speech synthesizer has uttered a word.
@@ -10,7 +11,7 @@
  * faster than any blind person could even so much as hit control s.
  * Please see Documentation/accessibility/ttyclicks.txt for more details.
  *
- * Copyright (C) Karl Dahlke, 2013.
+ * Copyright (C) Karl Dahlke, 2004-2013.
  * This software may be freely distributed under the GPL,
  * general public license, as articulated by the Free Software Foundation.
  */
