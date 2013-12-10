@@ -159,17 +159,17 @@ static int charIsEcho(char c)
 	int j = ectail;
 	char d;
 
-	while(j != echead) {
+	while (j != echead) {
 		if ((long)jiffies - (long)echochars[j].intime > HZ * ECHOEXPIRE) {
-			if(++j == ECHOMAX)
+			if (++j == ECHOMAX)
 				j = 0;
 			ectail = j;
 			continue;
 		}
 		d = echochars[j].inkey;
-		if(++j == ECHOMAX)
+		if (++j == ECHOMAX)
 			j = 0;
-		if(d != c) continue;
+		if (d != c) continue;
 		ectail = j;
 		return 1;
 	}
@@ -197,9 +197,9 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 		return NOTIFY_DONE;
 
 	j = echead;
-	if(++j == ECHOMAX)
+	if (++j == ECHOMAX)
 		j = 0;
-	if(j != ectail) {
+	if (j != ectail) {
 		echochars[echead].inkey = key;
 		echochars[echead].intime = jiffies;
 		echead = j;
