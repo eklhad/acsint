@@ -887,23 +887,11 @@ memcpy(ipmsg, buf, nr);
 ipmsg[nr] = 0;
 }
 
+/* send text a line at a time */
 while(s = strchr(ipmsg, '\n')) {
 *s = 0;
-if(!s[1]) {
-if(acs_fifo_h) (*acs_fifo_h)(ipmsg);
-else free(ipmsg);
-ipmsg = 0;
-return;
-}
-
 i = s - ipmsg;
-if(acs_fifo_h) {
-char *newmsg = malloc(i+1);
-if(newmsg) {
-strcpy(newmsg, ipmsg);
-(*acs_fifo_h)(newmsg);
-}
-}
+if(i && acs_fifo_h) (*acs_fifo_h)(ipmsg);
 ++s;
 nr = strlen(s);
 memmove(ipmsg, s, nr+1);

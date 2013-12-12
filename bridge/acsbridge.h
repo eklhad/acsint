@@ -1482,14 +1482,15 @@ void acs_style_defaults(void);
 
 /*********************************************************************
 Section 14: messages from other processes.
-Other processes can send messages to your adapter through a fifo.
+Other processes can send short messages to your adapter through a fifo.
 Each message must end with newline.
 The message is then passed back to you through a handler.
-the message is allocated; free it when you are done.
 You can use this to send text or configuration commands
 directly to the synthesizer.
 Or you can reconfigure your adapter from another process.
 It's up to you.
+Don't cat a large file; there is no flow control.
+This is just for short sentences or tests or configurations.
 *********************************************************************/
 
 int acs_startfifo(const char *pathname);
