@@ -388,9 +388,99 @@ static const struct uc_name english_uc[] = {
 {0, 0}
 };
 
+static const struct uc_name portuguese_uc[] = {
+{7, "bipe"},
+{8, "beque speice"},
+{9, "tab"},
+{10, "linha nova"},
+{12, "retorno"},
+{13, "enter"},
+{27, "esc"},
+{' ', "espaço"},
+{'!', "exclamação"},
+{'"', "aspas"},
+{'#', "cardinal"},
+{'$', "cifrão"},
+{'%', "por cento"},
+{'&', "e"},
+{'\'', "apóstrofo"},
+{'(', "abre parênteses"},
+{')', "fecha parênteses"},
+{'*', "asterisco"},
+{'+', "mais"},
+{',', "vírgula"},
+{'-', "hífen"},
+{'.', "ponto"},
+{'/', "barra"},
+{':', "dois pontos"},
+{';', "ponto e vírgula"},
+{'<', "menor"},
+{'=', "igual"},
+{'>', "maior"},
+{'?', "interrogação"},
+{'@', "arroba"},
+{'[', "abre colchetes"},
+{'\\', "barra invertida"},
+{']', "fecha colchetes"},
+{'^', "circunflexo"},
+{'_', "sublinhado"},
+{'`', "grave"},
+{'{', "abre chaves"},
+{'|', "barra vertical"},
+{'}', "fecha chaves"},
+{'~', "til"},
+{0x7f, "delete"},
+{0xa0, "quebra"},
+{0xa2, "centavos"},
+{0xa3, "libra"},
+{0xa4, "moeda"},
+{0xa5, "iene"},
+{0xa6, "barra cortada"},
+{0xa7, "seção"},
+{0xa8, "trema"},
+{0xa9, "copyright"},
+{0xaa, "feminino"},
+{0xab, "seta esquerda"},
+{0xad, "hífen suave"},
+{0xae, "registrado"},
+{0xaf, "macro"},
+{0xb0, "graus"},
+{0xb1, "mais ou menos"},
+{0xb2, "quadrado"},
+{0xb3, "cubo"},
+{0xb4, "agudo"},
+{0xb5, "micro"},
+{0xb7, "bolinha"},
+{0xb8, "cedilha"},
+{0xba, "masculino"},
+{0xbb, "seta direita"},
+{0xbc, "um quarto"},
+{0xbd, "meio"},
+{0xbe, "três quartos"},
+{0xd7, "vezes"},
+{0xf7, "dividido por"},
+{0x113, "grave"},
+{0x2013, "hífen"},
+{0x2014, "traveção"},
+{0x2018, "grave"},
+{0x2019, "apóstrofo"},
+{0x201c, "grave"},
+{0x201d, "apóstrofo"},
+{0x2022, "estrela"},
+{0x2026, "reticências"},
+{0x2190, "seta esquerda"},
+{0x2191, "seta cima"},
+{0x2192, "seta direita"},
+{0x2193, "seta baixo"},
+{0x21d4, "seta dupla"},
+{0, 0}
+};
+
 static const struct uc_name *uc_names[] = {
 0,
 english_uc,
+english_uc,
+portuguese_uc,
 };
 
 void acs_clearpunc(unsigned int c)
@@ -415,8 +505,7 @@ punclist[c] = malloc(strlen(s) + 1);
 strcpy(punclist[c], s);
 } /* acs_setpunc */
 
-/* The replacement dictionary is all iso, no unicodes. */
-/* You might get away with n tilde, but nothing beyond a byte. */
+/* The replacement dictionary is currently ascii, but needs to be unicode. */
 
 static char *dict1[NUMDICTWORDS];
 static char *dict2[NUMDICTWORDS];
@@ -641,6 +730,7 @@ strcpy(rootword, t);
 return rootword;
 } /* acs_smartreplace */
 
+/* This works in ascii or utf8 */
 static void skipWhite(char **t)
 {
 char *s = *t;
@@ -774,7 +864,7 @@ numdictwords = 0;
 for(i=0; i<65536; ++i)
 acs_clearpunc(i);
 
-u = uc_names[ACS_LANG_ENGLISH]; /* that's all we have right now */
+u = uc_names[acs_lang]; /* that's all we have right now */
 while(u->unicode) {
 acs_setpunc(u->unicode, u->name);
 ++u;

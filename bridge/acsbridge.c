@@ -35,13 +35,17 @@ and declared in acsbridge.h.
 
 int acs_fd = -1; /* file descriptor for /dev/acsint */
 static int vcs_fd; /* file descriptor for /dev/vcsa */
+
 static unsigned char vcs_header[4];
 #define nrows (int)vcs_header[0]
 #define ncols (int)vcs_header[1]
 #define csr (int)vcs_header[3] // cursor row
 #define csc (int)vcs_header[2] // cursor column
+
 int acs_fgc = 1; // current foreground console
-int acs_lang; /* language that the adapter is running in */
+
+int acs_lang = ACS_LANG_EN; /* language that the adapter is running in */
+
 /* postprocess the text from the tty */
 int acs_postprocess = ACS_PP_CTRL_H | ACS_PP_CRLF |
 ACS_PP_CTRL_OTHER | ACS_PP_ESCB;
@@ -885,11 +889,9 @@ acs_rb->cursor = tc;
 } // acs_cursorsync
 
 /* This routine lowers a unicode down to an ascii symbol that is essentially equivalent.
+ * Mostly for things that are equivalent to apostrophe or space or dash.
  * If this unicode is not in our table then we return the same unicode,
- * unless the unicode is greater than 256, whence we return dot.
- * This effectively retains the iso8859-1 chars;
- * we should really have code here that converts to other pages
- * based on your locale. */
+ * unless the unicode is greater than 256, whence we return question mark. */
 unsigned int acs_downshift(unsigned int u)
 {
 static const unsigned int in_c[] = {
@@ -905,8 +907,7 @@ int i;
 for(i=0; in_c[i]; ++i)
 if(u == in_c[i]) return out_c[i];
 
-if(u >= 256) return '?';
-return u;
+return (u < 256 ? u : '?');
 }
 
 /* Return the character pointed to by the temp cursor.
@@ -974,26 +975,60 @@ static void putback(int n)
 	}
 } // putback
 
+/* This is what iswalpha should do, but doesn't!! */
+static int lang_alpha(int c)
+{
+	if(c == (c&0x7f) && isalpha(c)) return 1;
+
+	switch(acs_lang) {
+	case ACS_LANG_DE:
+		if(c == 0xdf) return 1;
+		c |= 0x20;
+		if(c == 0xe4 || c == 0xf4 || c == 0xf6) return 1;
+		break;
+
+	case ACS_LANG_PT:
+		if( c == 0xe0 || c == 0xe1 || c == 0xe3 || c == 0xe7) return 1;
+		if(c == 0xe9 || c == 0xea || c == 0xed) return 1;
+		if(c == 0xf3 || c == 0xf4 || c == 0xf5 || c == 0xfa || c == 0xfc) return 1;
+		break;
+
+	case ACS_LANG_FR:
+		c |= 0x20;
+		if(c == 0xe0 || c == 0xe8 || c == 0xe9 || c == 0xea || c == 0xee) return 1;
+		if(c == 0xf4 || c == 0xfb) return 1;
+		break;
+
+	}
+
+	return 0;
+} /* lang_alpha */
+
+static int lang_alnum(int c)
+{
+	if(c == (c&0x7f) && isalnum(c)) return 1;
+	return lang_alpha(c);
+} /* lang_alnum */
+
 // start of word (actually token/symbol)
 int acs_startword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	unsigned int c = acs_getc();
-/* calling getc() means we are in the range for the ctype functions */
+	unsigned int c = acs_getc_uc();
 
 if(!c) return 0;
 
-	if(!isalnum(c)) {
+	if(!lang_alnum(c)) {
 		if(c == '\n' || c == ' ' || c == '\7') return 1;
 		// a punctuation mark, an atomic token.
 		// But wait, if there are more than four in a row,
 		// we have a linear token.  Pull back to the start.
 		for(forward=0; acs_forward(); ++forward)
-			if(c != acs_getc()) break;
+			if(c != acs_getc_uc()) break;
 		putback(-(forward+1));
 		for(backward=0; acs_back(); ++backward)
-			if(c != acs_getc()) break;
+			if(c != acs_getc_uc()) break;
 		acs_forward();
 		if(forward+backward < 4) putback(backward);
 		return 1;
@@ -1001,13 +1036,13 @@ if(!c) return 0;
 
 	apos = apos1 = 0;
 	do {
-		c = acs_getc();
+		c = acs_getc_uc();
 		if(c == '\'') {
 			if(apos1) break;
 			apos = apos1 = 1;
 			continue;
 		}
-		if(!isalnum(c)) break;
+		if(!lang_alnum(c)) break;
 		apos = 0;
 	} while(acs_back());
 	acs_forward();
@@ -1021,18 +1056,17 @@ int acs_endword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	unsigned int c = acs_getc();
-/* calling getc() means we are in the range for the ctype functions */
+	unsigned int c = acs_getc_uc();
 
 if(!c) return 0;
 
-	if(!isalnum(c)) {
+	if(!lang_alnum(c)) {
 		if(c == '\n' || c == ' ' || c == '\7') return 1;
 		for(backward=0; acs_back(); ++backward)
-			if(c != acs_getc()) break;
+			if(c != acs_getc_uc()) break;
 		putback(backward+1);
 		for(forward=0; acs_forward(); ++forward)
-			if(c != acs_getc()) break;
+			if(c != acs_getc_uc()) break;
 		acs_back();
 		if(forward+backward < 4) putback(-forward);
 		return 1;
@@ -1040,13 +1074,13 @@ if(!c) return 0;
 
 	apos = apos1 = 0;
 	do {
-		c = acs_getc();
+		c = acs_getc_uc();
 		if(c == '\'') {
 			if(apos1) break;
 			 apos = apos1 = 1;
 			continue;
 		}
-		if(!isalnum(c)) break;
+		if(!lang_alnum(c)) break;
 		apos = 0;
 	} while(acs_forward());
 	acs_back();
@@ -1224,13 +1258,13 @@ c = ' ';
 
 c1 = acs_downshift(c);
 
-if(c == ' ') {
+if(c1 == ' ') {
 alnum = 0;
 if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
-if(!spaces) *t++ = c;
+if(!spaces) *t++ = c1;
 spaces = 1;
 ++s;
 continue;
@@ -1253,9 +1287,8 @@ continue;
 
 spaces = 0;
 
-if(isalnum(c1)) {
-if(!alnum) {
-// new word
+if(lang_alnum(c)) {
+if(!alnum) { // new word
 if(o) o[t-dest] = s-acs_rb->cursor;
 }
 // building our word
@@ -1265,20 +1298,20 @@ alnum = 1;
 continue;
 }
 
-/* some unicodes like 0x92 downshift to apostrophe */
-if(c1 == '\'' && alnum && isalpha(acs_downshift(s[1]))) {
+if(c1 == '\'' && alnum && lang_alpha(s[1])) {
 const char *u;
 const unsigned int *v;
-unsigned int v0;
+unsigned char v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
-for(u=t-1; u>=dest && isalpha((unsigned char)*u); --u)  ;
+for(u=t-1; u>=dest && lang_alpha((unsigned char)*u); --u)  ;
 if(u >= dest) {
 if(*u == '\'') goto punc;
 if(isdigit((unsigned char)*u)) goto punc;
 }
-for(v=s+1; isalpha(v0 = acs_downshift(*v)); ++v)  ;
+for(v=s+1; lang_alpha(*v); ++v)  ;
+v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive
@@ -1300,7 +1333,7 @@ c == s[2] &&
 c == s[3] &&
 c == s[4]) {
 char reptoken[60];
-const char *pname = acs_getpunc(c); /* punctuation name */
+const char *pname = acs_getpunc(c1); /* punctuation name */
 if(pname) {
 strncpy(reptoken, pname, 30);
 reptoken[30] = 0;
@@ -1361,7 +1394,7 @@ int acs_getsentence_uc(unsigned int *dest, int destlen, acs_ofs_type *offsets, i
 const unsigned int *destend = dest + destlen - 1; /* end of destination array */
 unsigned int *t = dest;
 const unsigned int *s = acs_rb->cursor;
-unsigned short *o = offsets;
+acs_ofs_type *o = offsets;
 int j, l;
 unsigned int c;
 unsigned char c1; /* cut c down to 1 byte */
@@ -1384,7 +1417,7 @@ return 0;
 }
 
 // zero offsets by default
-if(o) memset(o, 0, sizeof(unsigned short)*destlen);
+if(o) memset(o, 0, sizeof(acs_ofs_type)*destlen);
 
 while((c = *s) && t < destend) {
 if(c == '\n' && prop&ACS_GS_NLSPACE)
@@ -1395,13 +1428,13 @@ c = ' ';
 
 c1 = acs_downshift(c);
 
-if(c == ' ') {
+if(c1 == ' ') {
 alnum = 0;
 if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
-if(!spaces) *t++ = c;
+if(!spaces) *t++ = c1;
 spaces = 1;
 ++s;
 continue;
@@ -1424,31 +1457,31 @@ continue;
 
 spaces = 0;
 
-if(isalnum(c1)) {
-if(!alnum) {
-// new word
+if(lang_alnum(c)) {
+if(!alnum) { // new word
 if(o) o[t-dest] = s-acs_rb->cursor;
 }
 // building our word
-*t++ = c1;
+*t++ = c;
 ++s;
 alnum = 1;
 continue;
 }
 
-/* some unicodes like 0x92 downshift to apostrophe */
-if(c1 == '\'' && alnum && isalpha(acs_downshift(s[1]))) {
+if(c1 == '\'' && alnum && lang_alpha(s[1])) {
 const unsigned int *v;
-unsigned int v0;
+unsigned char v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
-for(v=t-1; v>=dest && isalpha(v0 = acs_downshift(*v)); --v)  ;
+for(v=t-1; v>=dest && lang_alpha(*v); --v)  ;
 if(v >= dest) {
+v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 }
-for(v=s+1; isalpha(v0 = acs_downshift(*v)); ++v)  ;
+for(v=s+1; lang_alpha(*v); ++v)  ;
+v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive

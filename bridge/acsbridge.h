@@ -904,7 +904,11 @@ so this is mostly planning for the future.)
 
 enum acs_lang {
 ACS_LANG_NONE,
-ACS_LANG_ENGLISH,
+ACS_LANG_EN,
+ACS_LANG_DE,
+ACS_LANG_PT,
+ACS_LANG_FR,
+ACS_LANG_PL,
 };
 
 extern int acs_lang;
@@ -1002,9 +1006,9 @@ This is read as dash length 5, see getsentence() below.
 ---- is 4 separate words.  That's just my convention.
 
 What about the word niño in Spanish?
-I use isalpha() from the ctype library to determine what is a letter,
-so if you call setlocale(3), this just might work.
-I may indeed recognize this as one word.
+I use iswalpha() from the wctype library, on the unicodes in the buffer,
+to determine what is a letter, so it should work,
+as long as your $LANG reflects your desired language.
 *********************************************************************/
 int acs_startword(void);
 int acs_endword(void);
