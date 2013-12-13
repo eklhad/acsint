@@ -1219,6 +1219,13 @@ strcpy((char*)outbuf+3, s);
 return acs_write(len+3);
 } // acs_injectstring
 
+static const char *lengthword[] = {
+	" ",
+	" length ",
+	" langes ",
+	" cumprimento ",
+};
+
 int acs_getsentence(char *dest, int destlen, acs_ofs_type *offsets, int prop)
 {
 const char *destend = dest + destlen - 1; /* end of destination array */
@@ -1341,7 +1348,7 @@ reptoken[30] = 0;
 reptoken[0] = c1;
 reptoken[1] = 0;
 }
-strcat(reptoken, " length ");
+strcat(reptoken, lengthword[acs_lang]);
 for(j=5; c == s[j]; ++j)  ;
 sprintf(reptoken+strlen(reptoken), "%d", j);
 l = strlen(reptoken);
@@ -1511,7 +1518,7 @@ reptoken[30] = 0;
 reptoken[0] = c1;
 reptoken[1] = 0;
 }
-strcat(reptoken, " length ");
+strcat(reptoken, lengthword[acs_lang]);
 for(j=5; c == s[j]; ++j)  ;
 sprintf(reptoken+strlen(reptoken), "%d", j);
 l = strlen(reptoken);
