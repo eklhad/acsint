@@ -12,6 +12,116 @@ Also manage punctuation pronunciations and word replacements.
 #define stringEqual !strcmp
 
 
+/* Internationalization support routines */
+/* Switch between unicode and utf8. */
+
+static unsigned char *uni_p;
+
+/* assumes there is room at uni_p and advances it accordingly */
+static int uni_1(unsigned int c)
+{
+	    if(c <= 0x7f) {
+			*uni_p++ = c;
+		return 1;
+	}
+	    if(c <= 0x7ff) {
+			*uni_p++ = 0xc0 | ((c >> 6) & 0x1f);
+			*uni_p++ = 0x80 | (c & 0x3f);
+		return 2;
+	}
+	    if(c <= 0xffff) {
+			*uni_p++ = 0xe0 | ((c >> 12) & 0xf);
+			*uni_p++ = 0x80 | ((c >> 6) & 0x3f);
+			*uni_p++ = 0x80 | (c & 0x3f);
+		return 3;
+	}
+	    if(c <= 0x1fffff) {
+			*uni_p++ = 0xf0 | ((c >> 18) & 7);
+			*uni_p++ = 0x80 | ((c >> 12) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 6) & 0x3f);
+			*uni_p++ = 0x80 | (c & 0x3f);
+		return 4;
+	}
+	    if(c <= 0x3ffffff) {
+			*uni_p++ = 0xf8 | ((c >> 24) & 3);
+			*uni_p++ = 0x80 | ((c >> 18) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 12) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 6) & 0x3f);
+			*uni_p++ = 0x80 | (c & 0x3f);
+		return 5;
+	}
+	    if(c <= 0x7fffffff) {
+			*uni_p++ = 0xfc | ((c >> 30) & 1);
+			*uni_p++ = 0x80 | ((c >> 24) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 18) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 12) & 0x3f);
+			*uni_p++ = 0x80 | ((c >> 6) & 0x3f);
+			*uni_p++ = 0x80 | (c & 0x3f);
+		return 6;
+	}
+	return 0;
+} /* uni_1 */
+
+static unsigned int utf8_1(void)
+{
+	unsigned int c;
+	int j;
+	unsigned char mask;
+	unsigned char base = *uni_p++;
+	if(base <= 0x7f) return base;
+	mask = 0x80;
+	j = 0;
+	while(mask&base) {
+		++j;
+		base &= ~mask;
+		mask >>= 1;
+	}
+	if(j == 1 || j > 6) return '?'; /* malformed */
+	c = base;
+	for(--j; j; --j) {
+		c <<= 6;
+		base = *uni_p;
+		if((base & 0xc0) != 0x80) return '?';
+		c |= (base&0x3f);
+		++uni_p;
+	}
+	return (c ? c : '?');
+} /* utf8_1 */
+
+/* These functions allocate; you need to free when done. */
+unsigned char *acs_uni2utf8(const unsigned int *ubuf)
+{
+	const unsigned int *t;
+	int l = 0;
+	unsigned char tempbuf[8];
+	char *out;
+	for(t=ubuf; *t; ++t) {
+		uni_p = tempbuf;
+		l += uni_1(*t);
+	}
+	out = malloc(l+1);
+	if(!out) return 0;
+	uni_p = out;
+	for(t=ubuf; *t; ++t)
+		uni_1(*t);
+	*uni_p = 0;
+	return out;
+} /* uni2utf8 */
+
+unsigned int *acs_utf82uni(const unsigned char *ubuf)
+{
+	unsigned int *out;
+	int l = 0;
+	uni_p = (unsigned char *)ubuf;
+	while(utf8_1()) ++l;
+	out = malloc((l+1) * sizeof(unsigned int));
+	if(!out) return 0;
+	l = 0;
+	uni_p = (unsigned char *)ubuf;
+	while(out[l] = utf8_1()) ++l;
+	return out;
+} /* acs_utf82uni */
+
 /* Turn a key code and a shift state into a modified key number. */
 
 #define MK_RANGE (ACS_NUM_KEYS * 16)

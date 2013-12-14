@@ -32,6 +32,7 @@ Section 11: get a chunk of text to read.
 Section 12: synthesizer communications.
 Section 13: synthesizer speed, volume, pitch, etc.
 Section 14: messages from other processes.
+Section 15: international support.
 *********************************************************************/
 
 #ifndef ACSBRIDGE_H
@@ -101,13 +102,13 @@ You can also turn sounds on and off dynamically, as shown below.
 *********************************************************************/
 
 // Any and all sounds, on or off.
-int acs_sounds(int enabled) ;
+int acs_sounds(int enabled);
 
 // Clicks and chirps from tty output, on or off.
-int acs_tty_clicks(int enabled) ;
+int acs_tty_clicks(int enabled);
 
 // Alert tones from kernel warning/error messages, on or off.
-int acs_kmsg_tones(int enabled) ;
+int acs_kmsg_tones(int enabled);
 
 // Generate a soft click
 int acs_click(void);
@@ -1502,6 +1503,19 @@ void acs_stopfifo(void);
 
 typedef void (*acs_fifo_handler_t)(char *message);
 extern acs_fifo_handler_t acs_fifo_h;
+
+
+/*********************************************************************
+Section 15: international support.
+These are used internally, but might be useful to an adapter.
+Bringing in a new language is terribly nasty!
+It's not centralized in one place.
+You have to grep for acs_lang and see wherever it is used.
+Then add new words or cases or code for the new language.
+*********************************************************************/
+
+unsigned char *acs_uni2utf8(const unsigned int *unicode_buf);
+unsigned int *acs_utf82uni(const unsigned char *utf8_buf);
 
 
 #endif
