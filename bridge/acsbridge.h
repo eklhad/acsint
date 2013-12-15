@@ -766,6 +766,7 @@ but I allow for it here.
 That way if you switch synthesizers you still have the same corrections.
 For ease of implementation I put limits on the length of a word
 and the number of words in the replacement dictionary.
+The length bounds the utf8 representation of the word.
 
 Replacement is case insensitive.
 I do not, at this point, atempt to preserve the case after replacement.
@@ -775,7 +776,7 @@ If the second word in setword() is null then the first word
 is removed from the dictionary.
 *********************************************************************/
 
-#define WORDLEN 24
+#define WORDLEN 32
 #define NUMDICTWORDS 1000
 
 int acs_setword(const char *word1, const char *word2);
@@ -1508,12 +1509,20 @@ extern acs_fifo_handler_t acs_fifo_h;
 /*********************************************************************
 Section 15: international support.
 These are used internally, but might be useful to an adapter.
+The ctype looking functions like acs_isalpha
+do what I thought iswalpha would do, but doesn't.
+Set your locale, and iswalpha says that every letter in every language
+is a letter; acs_isalpha returns nonzero only for your letters.
+So acs_isalpha(omega) is true only if your LANG is Greek.
+
 Bringing in a new language is terribly nasty!
 It's not centralized in one place.
 You have to grep for acs_lang and see wherever it is used.
 Then add new words or cases or code for the new language.
 *********************************************************************/
 
+int acs_isalpha(unsigned int uc);
+int acs_isalnum(unsigned int uc);
 unsigned char *acs_uni2utf8(const unsigned int *unicode_buf);
 unsigned int *acs_utf82uni(const unsigned char *utf8_buf);
 

@@ -122,6 +122,41 @@ unsigned int *acs_utf82uni(const unsigned char *ubuf)
 	return out;
 } /* acs_utf82uni */
 
+int acs_isalpha(unsigned int c)
+{
+	if(c == (c&0x7f) && isalpha(c)) return 1;
+
+	switch(acs_lang) {
+	case ACS_LANG_DE:
+		if(c == 0xdf) return 1;
+		c |= 0x20;
+		if(c == 0xe4 || c == 0xf4 || c == 0xf6) return 1;
+		break;
+
+	case ACS_LANG_PT:
+		c |= 0x20;
+		if( c == 0xe0 || c == 0xe1 || c == 0xe3 || c == 0xe7) return 1;
+		if(c == 0xe9 || c == 0xea || c == 0xed) return 1;
+		if(c == 0xf3 || c == 0xf4 || c == 0xf5 || c == 0xfa || c == 0xfc) return 1;
+		break;
+
+	case ACS_LANG_FR:
+		c |= 0x20;
+		if(c == 0xe0 || c == 0xe8 || c == 0xe9 || c == 0xea || c == 0xee) return 1;
+		if(c == 0xf4 || c == 0xfb) return 1;
+		break;
+
+	}
+
+	return 0;
+} /* acs_isalpha */
+
+int acs_isalnum(unsigned int c)
+{
+	if(c == (c&0x7f) && isalnum(c)) return 1;
+	return acs_isalpha(c);
+} /* acs_isalnum */
+
 /* Turn a key code and a shift state into a modified key number. */
 
 #define MK_RANGE (ACS_NUM_KEYS * 16)
@@ -133,9 +168,14 @@ if(ss & ~0xf) return -1;
 return ss * ACS_NUM_KEYS + key;
 } /* acs_build_mkcode */
 
-/* Match two strings, n characters, case insensitive. */
-/* This is pure ascii. */
-static int wordmatch_ci(const char *s, const char *t, int n)
+/* Match two strings, n characters, case insensitive.
+ * This is pure ascii, because I'm looking for keywords in a config file,
+ * keywords like "pause" for the pause key on your keyboard,
+ * so there won't be any utf8 or anything weird.
+ * This is used solely by the ascii2mkcode function below.
+ * If s and t match up to length n, but s has more letters after,
+ * then it is not a match. */
+static int keywordmatch_ci(const char *s, const char *t, int n)
 {
 char c;
 while(n) {
@@ -147,7 +187,7 @@ if(c) return 0;
 c = s[0] | 0x20;
 if(c >= 'a' && c <= 'z') return 0;
 return 1;
-} /* wordmatch_ci */
+} /* keywordmatch_ci */
 
 /* Build a modified key code from an ascii string. */
 /* Remember the encoded key and state; needed by line_configure below. */
@@ -231,7 +271,7 @@ goto done;
 
 for(kw=keywords; kw->name; ++kw) {
 int l = strlen(kw->name);
-if(!wordmatch_ci(s, kw->name, l)) continue;
+if(!keywordmatch_ci(s, kw->name, l)) continue;
 key = kw->keycode;
 s += l;
 goto done;
@@ -242,12 +282,12 @@ goto done;
 if(!(ss & (ACS_SS_ALT|ACS_SS_CTRL)))
 goto error;
 
-/* next character should be empty, or space, or < */
+/* next character should be empty or space or < or | */
 if(s[1] && !strchr(" \t<|", s[1])) goto error;
 c = (unsigned char) s[0];
 ++s;
 
-if(isalpha(c)) {
+if(c < 0x80 && isalpha(c)) {
 c = tolower(c);
 key = lettercode[c-'a'];
 goto done;
@@ -273,7 +313,11 @@ error:
 return -1;
 } /* acs_ascii2mkcode */
 
+/* Anything you might type, or capture through cut&paste, therefore utf8 */
 static char *macrolist[MK_RANGE];
+
+/* Speech commands should really be ascii, but that is
+ * adapter specific, so I'm not sure. */
 static char *speechcommandlist[MK_RANGE];
 
 void acs_clearmacro(int mkcode)
@@ -322,8 +366,8 @@ speechcommandlist[mkcode] = malloc(strlen(s) + 1);
 strcpy(speechcommandlist[mkcode], s);
 } /* acs_setspeechcommand */
 
-static char *punclist[65536];
-
+/* Preset words for punctuation and other unicodes.
+ * These can be changed in your config file. */
 struct uc_name {
 unsigned int unicode;
 const char *name;
@@ -589,9 +633,11 @@ static const struct uc_name portuguese_uc[] = {
 static const struct uc_name *uc_names[] = {
 0,
 english_uc,
-english_uc,
+english_uc, // should be german
 portuguese_uc,
 };
+
+static char *punclist[65536];
 
 void acs_clearpunc(unsigned int c)
 {
@@ -615,24 +661,42 @@ punclist[c] = malloc(strlen(s) + 1);
 strcpy(punclist[c], s);
 } /* acs_setpunc */
 
-/* The replacement dictionary is currently ascii, but needs to be unicode. */
+/* The replacement dictionary, in utf8 */
 
 static char *dict1[NUMDICTWORDS];
 static char *dict2[NUMDICTWORDS];
 static int numdictwords;
-static char lowerdict[WORDLEN+1];
+static char lowerdict[WORDLEN+8];
 
 static int lowerword(const char *w)
 {
-char c;
-int i;
-for(i=0; (c = *w); ++i, ++w) {
-if(i == WORDLEN) return -1;
-if(!isalpha((unsigned char)c)) return -1;
-lowerdict[i] = tolower(c);
-}
-lowerdict[i] = 0;
-return 0;
+	char *lp = lowerdict; // lower case word pointer
+	unsigned int uc; // unicode of each letter
+
+	while(*w) {
+		uni_p = (unsigned char *)w;
+		uc = utf8_1(); // convert utf8 to unicode
+		if(!acs_isalpha(uc)) return -1; // not a letter in your language
+		w = (char *)uni_p; // prior call pushes uni_p along
+		
+/* Within this routine, everything is assumed to be a letter.
+ * We only need ask how to lower-case a letter.
+ * In most cases we can just or in the bit 0x20.
+ * This works for English, most western languages, even Greek.
+ * So test for a couple exceptions, like ss in German, then or in 0x20. */
+
+		if(uc != 0xdf)
+			uc |= 0x20;
+		
+// back to utf8
+		uni_p = (unsigned char *)lp;
+		uni_1(uc);
+		lp = (char *)uni_p;
+		if(lp > lowerdict + WORDLEN) return -1; // too long
+	}
+
+	*lp = 0;
+	return 0;
 } /* lowerword */
 
 static int
@@ -699,6 +763,9 @@ The routine mkroot() leaves the root word in rootword[],
 and returns a numeric code for the suffix that was removed.
 The reconst() routine reconstitutes the word in the same array,
 by appending the designated suffix; the suffix that was removed by mkroot().
+This is English only, at present,
+and need to be rewritten for every language,
+based on the rules for regular plurals, conjugation, and tense.
 *********************************************************************/
 
 static int isvowel(int c)
@@ -706,7 +773,7 @@ static int isvowel(int c)
 return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
 } /* isvowel */
 
-static char rootword[WORDLEN+8];
+static char rootword[WORDLEN+16];
 
 /* Twelve regular English suffixes. */
 static const char suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
@@ -828,9 +895,13 @@ int len = strlen(s);
 	if(len > WORDLEN) return 0; // too long
 t = acs_replace(s);
 if(t) return t;
+
 // not there; look for the root
+if(acs_lang != ACS_LANG_EN) return 0; // english only
+
 root = mkroot();
 if(!root) return 0;
+
 t = acs_replace(rootword);
 if(!t) return 0;
 		for(i=0; t[i]; ++i)

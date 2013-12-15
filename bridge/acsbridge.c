@@ -975,41 +975,6 @@ static void putback(int n)
 	}
 } // putback
 
-/* This is what iswalpha should do, but doesn't!! */
-static int lang_alpha(int c)
-{
-	if(c == (c&0x7f) && isalpha(c)) return 1;
-
-	switch(acs_lang) {
-	case ACS_LANG_DE:
-		if(c == 0xdf) return 1;
-		c |= 0x20;
-		if(c == 0xe4 || c == 0xf4 || c == 0xf6) return 1;
-		break;
-
-	case ACS_LANG_PT:
-		if( c == 0xe0 || c == 0xe1 || c == 0xe3 || c == 0xe7) return 1;
-		if(c == 0xe9 || c == 0xea || c == 0xed) return 1;
-		if(c == 0xf3 || c == 0xf4 || c == 0xf5 || c == 0xfa || c == 0xfc) return 1;
-		break;
-
-	case ACS_LANG_FR:
-		c |= 0x20;
-		if(c == 0xe0 || c == 0xe8 || c == 0xe9 || c == 0xea || c == 0xee) return 1;
-		if(c == 0xf4 || c == 0xfb) return 1;
-		break;
-
-	}
-
-	return 0;
-} /* lang_alpha */
-
-static int lang_alnum(int c)
-{
-	if(c == (c&0x7f) && isalnum(c)) return 1;
-	return lang_alpha(c);
-} /* lang_alnum */
-
 // start of word (actually token/symbol)
 int acs_startword(void)
 {
@@ -1019,7 +984,7 @@ int acs_startword(void)
 
 if(!c) return 0;
 
-	if(!lang_alnum(c)) {
+	if(!acs_isalnum(c)) {
 		if(c == '\n' || c == ' ' || c == '\7') return 1;
 		// a punctuation mark, an atomic token.
 		// But wait, if there are more than four in a row,
@@ -1042,7 +1007,7 @@ if(!c) return 0;
 			apos = apos1 = 1;
 			continue;
 		}
-		if(!lang_alnum(c)) break;
+		if(!acs_isalnum(c)) break;
 		apos = 0;
 	} while(acs_back());
 	acs_forward();
@@ -1060,7 +1025,7 @@ int acs_endword(void)
 
 if(!c) return 0;
 
-	if(!lang_alnum(c)) {
+	if(!acs_isalnum(c)) {
 		if(c == '\n' || c == ' ' || c == '\7') return 1;
 		for(backward=0; acs_back(); ++backward)
 			if(c != acs_getc_uc()) break;
@@ -1080,7 +1045,7 @@ if(!c) return 0;
 			 apos = apos1 = 1;
 			continue;
 		}
-		if(!lang_alnum(c)) break;
+		if(!acs_isalnum(c)) break;
 		apos = 0;
 	} while(acs_forward());
 	acs_back();
@@ -1294,7 +1259,7 @@ continue;
 
 spaces = 0;
 
-if(lang_alnum(c)) {
+if(acs_isalnum(c)) {
 if(!alnum) { // new word
 if(o) o[t-dest] = s-acs_rb->cursor;
 }
@@ -1305,19 +1270,19 @@ alnum = 1;
 continue;
 }
 
-if(c1 == '\'' && alnum && lang_alpha(s[1])) {
+if(c1 == '\'' && alnum && acs_isalpha(s[1])) {
 const char *u;
 const unsigned int *v;
 unsigned char v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
-for(u=t-1; u>=dest && lang_alpha((unsigned char)*u); --u)  ;
+for(u=t-1; u>=dest && acs_isalpha((unsigned char)*u); --u)  ;
 if(u >= dest) {
 if(*u == '\'') goto punc;
 if(isdigit((unsigned char)*u)) goto punc;
 }
-for(v=s+1; lang_alpha(*v); ++v)  ;
+for(v=s+1; acs_isalpha(*v); ++v)  ;
 v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
@@ -1464,7 +1429,7 @@ continue;
 
 spaces = 0;
 
-if(lang_alnum(c)) {
+if(acs_isalnum(c)) {
 if(!alnum) { // new word
 if(o) o[t-dest] = s-acs_rb->cursor;
 }
@@ -1475,19 +1440,19 @@ alnum = 1;
 continue;
 }
 
-if(c1 == '\'' && alnum && lang_alpha(s[1])) {
+if(c1 == '\'' && alnum && acs_isalpha(s[1])) {
 const unsigned int *v;
 unsigned char v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
-for(v=t-1; v>=dest && lang_alpha(*v); --v)  ;
+for(v=t-1; v>=dest && acs_isalpha(*v); --v)  ;
 if(v >= dest) {
 v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 }
-for(v=s+1; lang_alpha(*v); ++v)  ;
+for(v=s+1; acs_isalpha(*v); ++v)  ;
 v0 = acs_downshift(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
