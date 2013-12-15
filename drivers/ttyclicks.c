@@ -56,7 +56,7 @@ MODULE_PARM_DESC(kmsg,
 
 static int sleep;
 module_param(sleep, int, 0);
-MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters, not yet implemented.");
+MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters - not yet implemented.");
 
 /* Define NO_KDS if your kernel does not yet support kd_mkpulse etc */
 #define NO_KDS
@@ -80,7 +80,7 @@ EXPORT_SYMBOL_GPL(ttyclicks_kmsg);
  * a cr sound. Not sure about that one.
  * escState holds the state of the escape sequence.
  * 0 regular output, 1 escape received, 2 escape [ received.
- * A letter ends the escape sequence and goes from state 2 to state 0.
+ * A letter ends the escape sequence and goes from state 2 back to state 0.
  */
 
 static char escState;
@@ -121,7 +121,7 @@ static struct console clickconsole = {
  * in upper case.
  * So it is helpful to hear a high beep every time a capital letter is echoed.
  * It's easy to test for upper case (at least in English).
- * But when does an output character represent an echo of an input character?
+ * but when does an output character represent an echo of an input character?
  * Don't count on tty cooked mode to tell you;
  * lots of editors put the tty in raw mode,
  * and then there's ssh (when you're working remotely), and so on.
@@ -129,11 +129,12 @@ static struct console clickconsole = {
  * I watch the keystrokes as they come in, and give them time stamps.
  * If an output letter matches an input letter, and not too much time
  * has gone by, I call it an echo character.
+ * It's not perfect, but nearly so.
  * That is the only reason to monitor keystrokes.
  * If I didn't want echo capital letters to sound different,
  * I wouldn't need a keyboard notifier at all.
- * Retain up to 16 keystrokes, with time stamps in jiffies,
- * in a circular buffer, with head and tail pointers.
+ * Retain up to 16 keystrokes with time stamps in jiffies
+ * in a circular buffer with head and tail pointers.
  * kb notifier puts keys on at the head,
  * and vt notifier takes keys off at the tail,
  * matching them against vt output and checking for echo.
@@ -184,7 +185,7 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	int j;
 
 	/* if no sounds, then no need to do anything. */
-	/* Also, no unicode, no control keys, and only down events. */
+	/* Also, no raw, no control keys, and only down events. */
 	if (!(ttyclicks_on & ttyclicks_tty) ||
 	type != KBD_KEYSYM ||
 	param->vc->vc_mode == KD_GRAPHICS ||
@@ -221,8 +222,9 @@ static struct notifier_block nb_key = {
 };
 
 /* Here are some routines to click the speaker, or make tones, etc. */
+/* In each case ttyclicks_on is the master switch. */
 
-/* intervals, measured in microseconds */
+/* intervals measured in microseconds */
 #define TICKS_CLICK 600
 #define TICKS_CHARWAIT 4000
 
@@ -628,8 +630,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		/*
 		 * This magical line of code only works if you edit vt.c
 		 * and recompile the kernel.
-		 * A patch for 2.3.37 can be found here.
-		 * http://www.eklhad.net/linux/click-sleep-2.6.37.patch
+		 * A patch for 3.12.3 can be found in the patch directory.
 		 */
 
 		param->c = 0xac97;
@@ -682,11 +683,12 @@ static int __init click_init(void)
 
 static void __exit click_exit(void)
 {
+	ttyclicks_on = 0;
+
 	unregister_console(&clickconsole);
 	unregister_keyboard_notifier(&nb_key);
 	unregister_vt_notifier(&nb_vt);
 
-	ttyclicks_on = 0;
 #ifdef NO_KDS
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
