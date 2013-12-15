@@ -38,7 +38,7 @@ Section 15: international support.
 #ifndef ACSBRIDGE_H
 #define ACSBRIDGE_H
 
-#include "acsint.h"
+#include "../drivers/acsint.h"
 
 
 /*********************************************************************

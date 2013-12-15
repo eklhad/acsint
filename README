@@ -22,4 +22,7 @@ If this patch is not accepted for any reason,
 then ttyclicks has to keep making its own sounds, which works,
 but is suboptimal.
 
+Finally the jupiter directory is my adapter, built upon the acsint system.
+It has its own README file and documentation.
+
 It's all GPL, so have fun with it.
