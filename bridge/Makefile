@@ -15,4 +15,7 @@ LIBNAME = libacs.a
 ${LIBNAME} : ${OBJS}
 	ar rs ${LIBNAME} $?
 
+clean:
+	rm -f $(OBJS) $(LIBNAME)
+
 -include ${SRCS:.c=.d}

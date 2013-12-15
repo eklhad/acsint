@@ -21,6 +21,9 @@ all : jupiter
 jupiter : $(OBJS) $(ACSLIB)
 	cc -s -o jupiter $(OBJS) $(ACSLIB)
 
+clean :
+	rm -f $(OBJS) jupiter
+
 install : jupiter
 	install -d ${bindir}
 	install jupiter ${bindir}
