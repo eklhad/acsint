@@ -43,12 +43,12 @@ I have the clicks to fall back on.
 
 As you can see from the above paragraph,
 I don't want to run these clicks through anybody's sound card.
-There are too many points of failure along that pathway.
+There are too many points of failure along that path.
 Instead, I use the in-built toggle speaker at port 0x61.
 Not all machines have this speaker, but most do,
 and I wouldn't buy a computer that didn't.
 
-Other programs, outside of the linux kernel, can stil take advantage of
+Other programs, outside of the linux kernel, can also take advantage of
 this legacy speaker.
 Grub, for instance, beeps when it brings up the menu,
 provided I put a control G in the title.
@@ -82,8 +82,7 @@ These sounds can be turned on or off at run time by the exported symbol
 	bool ttyclicks_on;
 Thus other modules can turn sounds on or off.
 In particular, any adapter that includes a lodable module
-has access to this master switch,
-along with most of the other parameters that control this module.
+has access to this master switch.
 
 fgtty = 1 or 0
 
@@ -111,55 +110,8 @@ This is not true output, and does not generate clicks by default.
 However, you can set this parameter to 1 if you want these characters
 to generate clicks.
 
-sleep = 0 or 1
-
-When this parameter is 0, the computer times its clicks by cpu loops.
-A click is, for instance,
-	toggle the speaker; /* start pulse */
-	udelay(600);
-	toggle the speaker; /* end pulse */
-	udelay(4000-600);
-This is not optimal, but at present there are few practical alternatives.
-We can't sleep when called from the PREWRITE notifier, which is atomic.
-Once the notifier returns, the vt process can sleep,
-and that is precisely what I do, but that requires a patch to the kernel.
-A better approach adds a new return value, NOTIFY_PAUSE,
-along with the number of milliseconds to sleep.
-The calling function can then sleep for the specified number of milliseconds,
-if the context permits.
-I may submit such a patch some day,
-but in the meantime you have to leave sleep = 0 and burn cpu cycles,
-or apply my patch to your kernel, whence sleep=1 will work properly.
-The following patch is appropriate for kernel 2.12.3.
-
-diff -uprN a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
---- a/drivers/tty/vt/vt.c	2013-12-08 01:46:58.000000000 -0500
-+++ b/drivers/tty/vt/vt.c	2013-12-08 01:46:58.000000000 -0500
-@@ -2202,6 +2202,15 @@ rescan_last_byte:
- 					&param) == NOTIFY_STOP)
- 			continue;
- 
-+/* Sleep for a while.  I would call msleep(),
-+ * but that addds an extra jiffy.  Timing is tight, and I can't afford that.
-+ * Results would be inconsistent, based on the value of HZ.  This is better. */
-+		if(param.c == 0xac97) {
-+			unsigned long timeout = msecs_to_jiffies(4);
-+			while (timeout)
-+				timeout = schedule_timeout_uninterruptible(timeout);
-+		}
-+
-                 /* If the original code was a control character we
-                  * only allow a glyph to be displayed if the code is
-                  * not normally used (such as for cursor movement) or
-
-This module implements some functions that really belong in keyboard.c,
-along side kd_mksound().
-I envision kd_mkpulse, kd_mknotes, and kd_mksteps.
-These functions issue a 0.6 millisecond pulse, play a sequence of tones,
-and play a chromatic scale, respectively.
-I may submit such a patch some day,
-but in the meantime this module performs these functions,
-and makes them available to other modules, and hence to various adapters.
+Exported functions.
+These are all subject to the master switch ttyclicks_on.
 
 void ttyclicks_click(void);
 
@@ -171,7 +123,7 @@ Generate a quick frequency swoop from 2900 to 3600 hz.
 This sound is associated with the newline character at the console,
 but you can use this function to generate the same sound whenever you wish.
 
-void ttyclicks_notes(const short *p);
+void ttyclicks_notes(const short *notelist);
 
 Play a series of notes in the background.
 Each note is defined by two shorts, a frequency and a duration.
