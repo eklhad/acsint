@@ -450,95 +450,6 @@ static const struct uc_name english_uc[] = {
 {0xd7, "times"},
 {0xf7, "divided by"},
 {0x113, "backquote"},
-{0x391, "Alpha"},
-{0x392, "Beta"},
-{0x393, "Gamma"},
-{0x394, "Delta"},
-{0x395, "Epsilon"},
-{0x396, "Zaita"},
-{0x397, "Aita"},
-{0x398, "Thaita"},
-{0x399, "Iota"},
-{0x39a, "Kappa"},
-{0x39b, "Lambda"},
-{0x39c, "Mew"},
-{0x39d, "New"},
-{0x39e, "Ksie"},
-{0x39f, "Omikrohn"},
-{0x3a0, "Pie"},
-{0x3a1, "Row"},
-{0x3a3, "Sigma"},
-{0x3a4, "Toue"},
-{0x3a5, "Upsilon"},
-{0x3a6, "Fie"},
-{0x3a7, "Kie"},
-{0x3a8, "Psie"},
-{0x3a9, "Omega"},
-{0x3b1, "alpha"},
-{0x3b2, "beta"},
-{0x3b3, "gamma"},
-{0x3b4, "delta"},
-{0x3b5, "epsilon"},
-{0x3b6, "zaita"},
-{0x3b7, "aita"},
-{0x3b8, "thaita"},
-{0x3b9, "iota"},
-{0x3ba, "kappa"},
-{0x3bb, "lambda"},
-{0x3bc, "mew"},
-{0x3bd, "new"},
-{0x3be, "ksie"},
-{0x3bf, "omikron"},
-{0x3c0, "pie"},
-{0x3c1, "row"},
-{0x3c2, "sigma f"},
-{0x3c3, "sigma"},
-{0x3c4, "toue"},
-{0x3c5, "upsilon"},
-{0x3c6, "fie"},
-{0x3c7, "kie"},
-{0x3c8, "psie"},
-{0x3c9, "omega"},
-{0x2013, "dash"},
-{0x2014, " dash "},
-{0x2018, "backquote"},
-{0x2019, "apostrophe"},
-{0x201c, "backquote"},
-{0x201d, "apostrophe"},
-{0x2022, "star"},
-{0x2026, "..."},
-{0x2032, "prime"},
-{0x2135, "oleph"},
-{0x2190, "left arrow"},
-{0x2191, "up arrow"},
-{0x2192, "right arrow"},
-{0x2193, "down arrow"},
-{0x21d4, "double arrow"},
-{0x2200, "every"},
-{0x2202, "d"},
-{0x2203, "some"},
-{0x2205, "empty set"},
-{0x2207, "del"},
-{0x2208, "member of"},
-{0x2209, "not a member of"},
-{0x220d, "such that"},
-{0x2211, "sum"},
-{0x221e, "infinity"},
-{0x2220, "angle"},
-{0x2229, "intersect"},
-{0x222a, "union"},
-{0x222b, "integral"},
-{0x2245, "congruent to"},
-{0x2260, "not equal"},
-{0x2264, "less than or equal to"},
-{0x2265, "grater than or equal to"},
-{0x2282, "proper subset of"},
-{0x2283, "proper superset of"},
-{0x2284, "not a subset of"},
-{0x2286, "subset of"},
-{0x2287, "superset of"},
-{0x25ba, "star"},
-{0x266d, "flat"},
 {0, 0}
 };
 
@@ -925,6 +836,7 @@ int acs_line_configure(char *s, acs_syntax_handler_t syn_h)
 	int mkcode, rc;
 char *t, *u;
 char save, c;
+unsigned int p_uc; // punctuation unicode
 
 // leading whitespace doesn't matter
 skipWhite(&s);
@@ -932,11 +844,7 @@ skipWhite(&s);
 // comment line starts with #, except for ## space or# digit
 if(s[0] == '#') {
 if(!s[1]) return 0;
-if(!strchr("1234567890.+-*/", s[1])) {
-++s;
-if(s[0] != '#') return 0;
-if(s[1] != ' ' && s[1] != '\t') return 0;
-}
+if(!strchr("1234567890.+-*/", s[1])) return 0;
 }
 
 mkcode = acs_ascii2mkcode(s, &s);
@@ -1002,28 +910,48 @@ return 0;
 // at this point we are setting the pronunciation of a punctuation or a word
 c = *s;
 if(!c) return 0; // empty line
-if(isdigit((unsigned char)c)) return -1;
 
 t = strpbrk(s, " \t");
 if(t) { save = *t; *t = 0; }
 
-if(isalpha((unsigned char)c)) {
-if(!t) return acs_setword(s, 0);
-u = t + 1;
-skipWhite(&u);
-rc = acs_setword(s, u);
-*t = save;
-return rc;
-}
-
-// punctuation
+uni_p = (unsigned char *)s;
+p_uc = utf8_1();
+if(*uni_p == 0 || uni_p == (unsigned char *)t) {
+punc:
 // cannot leave it with no pronunciation
 if(!t) return -1;
 *t = save;
 skipWhite(&t);
 if(!*t) return -1;
-acs_setpunc(c, t);
+if(p_uc <= ' ') return -1;
+if(p_uc >= 0x10000) return -1;
+if(acs_isalnum(p_uc)) return -1;
+acs_setpunc(p_uc, t);
 return 0;
+}
+
+if(c == 'u' && isdigit((unsigned char)s[1])) {
+p_uc = strtol(s+1, &s, 10);
+if(*s == 0 || s == t) goto punc;
+if(t) *t = save;
+return -1;
+}
+
+if(c == 'x' && isxdigit((unsigned char)s[1])) {
+p_uc = strtol(s+1, &s, 16);
+if(*s == 0 || s == t) goto punc;
+if(t) *t = save;
+return -1;
+}
+
+// The only thing left is word replacement.
+if(!t) return acs_setword(s, 0);
+
+u = t + 1;
+skipWhite(&u);
+rc = acs_setword(s, u);
+*t = save;
+return rc;
 } /* acs_line_configure */
 
 /* Go back to the default configuration. */

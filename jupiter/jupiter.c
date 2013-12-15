@@ -1127,6 +1127,7 @@ fprintf(stderr, "Synthesizer is: dbe = doubletalk external,\n");
 fprintf(stderr, "dte = dectalk external, dtp = dectalk pc,\n");
 fprintf(stderr, "bns = braille n speak, ace = accent, esp = espeakup.\n");
 fprintf(stderr, "port is 0 1 2 or 3, for the serial device.\n");
+fprintf(stderr, "jupiter tc    to test the configuration file.\n");
 exit(1);
 }
 
@@ -1183,6 +1184,12 @@ tp_readLiteral = 1;
 testTTS();
 return 0;
 }
+
+if(argc && stringEqual(argv[0], "tc")) {
+j_configure();
+return 0;
+}
+
 
 if(argc != 2) usage();
 for(i=0; synths[i].name; ++i)
