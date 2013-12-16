@@ -577,11 +577,13 @@ strcpy(punclist[c], s);
 static char *dict1[NUMDICTWORDS];
 static char *dict2[NUMDICTWORDS];
 static int numdictwords;
-static char lowerdict[WORDLEN+8];
+// Build the lower case word, in utf8 or in unicode.
+static char lw_utf8[WORDLEN+8];
+static unsigned int lw_uc[WORDLEN+1];
 
 static int lowerword(const char *w)
 {
-	char *lp = lowerdict; // lower case word pointer
+	char *lp = lw_utf8; // lower case word pointer
 	unsigned int uc; // unicode of each letter
 
 	while(*w) {
@@ -603,7 +605,7 @@ static int lowerword(const char *w)
 		uni_p = (unsigned char *)lp;
 		uni_1(uc);
 		lp = (char *)uni_p;
-		if(lp > lowerdict + WORDLEN) return -1; // too long
+		if(lp > lw_utf8 + WORDLEN) return -6; // too long
 	}
 
 	*lp = 0;
@@ -615,15 +617,15 @@ inDictionary(void)
 {
 int i;
 for(i=0; i<numdictwords; ++i)
-if(stringEqual(lowerdict, dict1[i])) return i;
+if(stringEqual(lw_utf8, dict1[i])) return i;
 return -1;
 } /* inDictionary */
 
 int acs_setword(const char *word1, const char *word2)
 {
-int j;
-if(lowerword(word1)) return -1;
-if(word2 && strlen(word2) > WORDLEN) return -1;
+int j, rc;
+if(rc = lowerword(word1)) return rc;
+if(word2 && strlen(word2) > WORDLEN) return -6;
 j = inDictionary();
 if(j < 0) {
 if(!word2) return 0;
@@ -631,8 +633,8 @@ if(!word2) return 0;
 j = numdictwords;
 if(j == NUMDICTWORDS) return -1; // no room
 ++numdictwords;
-dict1[j] = malloc(strlen(lowerdict) + 1);
-strcpy(dict1[j], lowerdict);
+dict1[j] = malloc(strlen(lw_utf8) + 1);
+strcpy(dict1[j], lw_utf8);
 }
 if(dict2[j]) free(dict2[j]);
 dict2[j] = 0;
@@ -651,7 +653,7 @@ dict1[numdictwords] = dict2[numdictwords] = 0;
 return 0;
 } /* acs_setword */
 
-char *acs_replace(const char *word1)
+static char *acs_replace(const char *word1)
 {
 int j;
 if(lowerword(word1)) return 0;
@@ -702,7 +704,7 @@ static int mkroot(void)
 	char l0, l1, l2, l3, l4; /* trailing letters */
 	short wdlen, l;
 
-strcpy(rootword, lowerdict);
+strcpy(rootword, lw_utf8);
 	wdlen = strlen(rootword);
 	l = wdlen - 5;
 	if(l < 0) return 0; // word too short to safely rootinize

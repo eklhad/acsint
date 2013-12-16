@@ -762,11 +762,9 @@ That way if you switch synthesizers you still have the same corrections.
 For ease of implementation I put limits on the length of a word
 and the number of words in the replacement dictionary.
 The length bounds the utf8 representation of the word.
-
 Replacement is case insensitive.
 I do not, at this point, atempt to preserve the case after replacement.
 So if dog goes to cat, then Dog also goes to cat.
-
 If the second word in setword() is null then the first word
 is removed from the dictionary.
 *********************************************************************/
@@ -775,7 +773,6 @@ is removed from the dictionary.
 #define NUMDICTWORDS 1000
 
 int acs_setword(const char *word1, const char *word2);
-char *acs_replace(const char *word1);
 
 /*********************************************************************
 Smartreplace is a replacement function that understands most English suffixes.
@@ -788,15 +785,14 @@ to avoid compooter, red, and lib rary.
 So this is a smarter replacement dictionary.
 It is of course English centered;
 folks from other countries will need to reimplement this for their locale.
-
-Note that we require the root word to be replaced with one or more words,
+Note that I require the root word to be replaced with one or more words,
 not punctuations etc, so that we can meaningfully put the suffix back on.
 *********************************************************************/
 
 char *acs_smartreplace(const char *word1);
 
 /*********************************************************************
-At this point we have described four configuration functions:
+At this point I have described four configuration functions:
 
 bind a macro to a modified key
 bind a speech function to a modified key

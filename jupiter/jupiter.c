@@ -226,6 +226,9 @@ break;
 case -5:
 fprintf(stderr, "bypass cannot be mixed with any other commands");
 break;
+case -6:
+fprintf(stderr, "word is too long");
+break;
 default:
 fprintf(stderr, "syntax error");
 } // switch
@@ -1189,7 +1192,6 @@ if(argc && stringEqual(argv[0], "tc")) {
 j_configure();
 return 0;
 }
-
 
 if(argc != 2) usage();
 for(i=0; synths[i].name; ++i)
