@@ -644,11 +644,6 @@ cat >foo
 hit control #7, and then return, and then control d (EOF).
 foo will contain exactly the same utf8 characters
 as the corresponding line in acstest.cfg.
-When doing dynamic cut&paste, grab a block of unicode chars
-from the buffer, convert to utf8 using iconv,
-put ^#7<  in front (or some such key designator),
-and call acs_line_configure().
-It should work.
 *********************************************************************/
 
 int acs_injectstring(const char *s);
@@ -815,7 +810,6 @@ Or you can type the line in at the keyboard
 and reconfigure the adapter on the fly.
 
 A blank line, or line beginning with # is ignored.
-Use ## to set the pronunciation of #
 
 The four functions have the following syntax.
 
@@ -837,6 +831,9 @@ read reed
 
 # set punctuation pronunciation
 }  right brace
+#  Or use unicode in decimal or hex.
+u969	omega
+x3c9	omega
 
 A leading at sign, as in @x, means either alt key, not both simultaneously.
 It issues two calls to acs_setspeechcommand internally.
@@ -900,8 +897,6 @@ So you'll want to set this variable before you do anything else.
 It could be a parameter to your adapter, or it can be derived from
 the environment variable $LANG, as edbrowse does.
 If it is not set, reset_configure assumes English.
-(For now English is all we have,
-so this is mostly planning for the future.)
 *********************************************************************/
 
 enum acs_lang {
