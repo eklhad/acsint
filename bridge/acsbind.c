@@ -579,7 +579,6 @@ static char *dict2[NUMDICTWORDS];
 static int numdictwords;
 // Build the lower case word, in utf8 or in unicode.
 static char lw_utf8[WORDLEN+8];
-static unsigned int lw_uc[WORDLEN+1];
 
 static int lowerword(const char *w)
 {
@@ -674,14 +673,8 @@ The routine mkroot() leaves the root word in rootword[],
 and returns a numeric code for the suffix that was removed.
 The reconst() routine reconstitutes the word in the same array,
 by appending the designated suffix; the suffix that was removed by mkroot().
-To be international, this is all done in unicode;
-althoughEnglish is the only language implemented.
+To be international, this is all done in unicode.
 *********************************************************************/
-
-static int isvowel(int c)
-{
-return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
-} /* isvowel */
 
 static unsigned int rootword[WORDLEN+16];
 
@@ -692,20 +685,22 @@ static int rootlen(void)
 	return i;
 } /* rootlen */
 
-/* Twelve regular English suffixes. */
-static const char suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
-// I believe the last two 's and 'll are vestigial and not used.
-// Anything 's or 'll is handled in tpxlate.c
+static unsigned int *inline_uni(char *t)
+{
+unsigned int uc;
+int i = 0;
+uni_p = (unsigned char *)t;
+while(rootword[i] = uc = utf8_1())
+++i;
+return rootword;
+} /* inline_uni */
 
-/* Which suffixes drop e or y when appended? */
-static const char sufdrop[] = "  y  e   y  ";
+static int isvowel_english(int c)
+{
+return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
+} /* isvowel_english */
 
-/* Which suffixes double the final consonent, as in dropped. */
-static const char sufdouble[] = {
-	0,0,0,0,1,0,0,1,0,0,0,0};
-
-/* extract the root word */
-static int mkroot(int wdlen)
+static int mkroot_english(int wdlen)
 {
 	char l0, l1, l2, l3, l4; /* trailing letters */
 	short l;
@@ -782,16 +777,22 @@ static int mkroot(int wdlen)
 	} // end final ed
 
 	return 0;
-} /* mkroot */
+} /* mkroot_english */
 
 /* reconstruct the word based upon its root and the removed suffix */
-static void reconst(int root)
+static void reconst_english(int root)
 {
+static const char suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
+/* I believe the last two 's and 'll are vestigial and not used.
+ * Anything 's or 'll is handled in tpxlate.c
+ * Which suffixes drop e or y when appended? */
+static const char sufdrop[] = "  y  e   y  ";
+/* Which suffixes double the final consonent, as in dropped. */
+static const char sufdouble[] = {
+	0,0,0,0,1,0,0,1,0,0,0,0};
 	unsigned int *t;
 	short i, wdlen;
 	unsigned int c;
-
-	if(!root) return; /* nothing to do */
 
 	--root;
 	wdlen = rootlen();
@@ -806,15 +807,31 @@ static void reconst(int root)
 	*++t = 0;
 } /* reconst */
 
+typedef int (*root_fn)(int);
+
+static const root_fn mkroot_fns[] = {
+0,
+mkroot_english,
+0,
+0};
+
+typedef void (*reconst_fn)(int);
+
+static const reconst_fn reconst_fns[] = {
+0,
+reconst_english,
+0,
+0};
+
 char *acs_replace_iso(const char *s, int len)
 {
 int i, root;
 char *t;
 unsigned int c;
+root_fn f;
 
 uni_p = (unsigned char *)lw_utf8;
 for(i=0; i<len; ++i, ++s) {
-if(i > WORDLEN) return 0;
 if((char *)uni_p - lw_utf8 > WORDLEN) return 0;
 c = *(unsigned char *)s;
 // This should already be a letter, but let's recheck.
@@ -830,9 +847,9 @@ t = fromDictionary(lw_utf8);
 if(t) return t;
 
 // not there; extrac the root word
-if(acs_lang != ACS_LANG_EN) return 0; // english only
+if(!(f = mkroot_fns[acs_lang])) return 0;
 
-root = mkroot(i);
+root = (*f)(i);
 if(!root) return 0;
 
 // english is all ascii, do this the easy way.
@@ -844,10 +861,56 @@ if(!t) return 0;
 rootword[i] = t[i];
 }
 rootword[i] = 0;
-		reconst(root);
+		(*reconst_fns[acs_lang])(root);
 for(i=0; (lw_utf8[i] = rootword[i]); ++i)  ;
 return lw_utf8;
 } /* acs_replace_iso */
+
+unsigned int *acs_replace(const unsigned int *s, int len)
+{
+int i, root;
+char *t;
+unsigned int c;
+root_fn f;
+
+uni_p = (unsigned char *)lw_utf8;
+for(i=0; i<len; ++i, ++s) {
+if((char *)uni_p - lw_utf8 > WORDLEN) return 0;
+c = *s;
+// This should already be a letter, but let's recheck.
+if(!acs_isalpha(c)) return 0;
+// This turns c to lower case for all the letters we know about so far.
+if(c != 0xdf) c |= 0x20;
+rootword[i] = c;
+uni_1(c);
+}
+rootword[i] = 0;
+*uni_p = 0;
+
+t = fromDictionary(lw_utf8);
+if(t) return inline_uni(t);
+
+// not there; extrac the root word
+if(!(f = mkroot_fns[acs_lang])) return 0;
+
+root = (*f)(i);
+if(!root) return 0;
+
+/* have to go back to utf8 to do the lookup */
+uni_p = (unsigned char *)lw_utf8;
+for(i=0; c = rootword[i]; ++i)
+uni_1(c);
+*uni_p = 0;
+t = fromDictionary(lw_utf8);
+if(!t) return 0;
+// and back to unicode
+inline_uni(t);
+// can't add the suffix if there are punctuations and things
+for(i=0; c = rootword[i]; ++i)
+if(c != ' ' && !acs_isalpha(c)) return 0;
+		(*reconst_fns[acs_lang])(root);
+return rootword;
+} /* acs_replace */
 
 /* This works in ascii or utf8 */
 static void skipWhite(char **t)
@@ -1057,4 +1120,32 @@ acs_setkey(key, ss);
 }
 }
 } /* acs_resumekeys */
+
+/* These routines should perhaps be in acstalk.c,
+ * but they have to convert to utf8. */
+void acs_say_char(unsigned int c)
+{
+char ubuf[8];
+char *s = acs_getpunc(c);
+if(!s) {
+uni_p = (unsigned char *)ubuf;
+uni_1(c);
+*uni_p = 0;
+s = ubuf;
+}
+acs_say_string(s);
+} // acs_say_char
+
+void acs_say_string_uc(const unsigned int *s)
+{
+static unsigned char buf[256];
+uni_p = buf;
+while(*s) {
+uni_1(*s++);
+if(uni_p - buf < 250) continue;
+write(acs_sy_fd1, buf, uni_p - buf);
+uni_p = buf;
+}
+acs_say_string(uni_p > buf ? (char *)buf : "");
+} /* acs_say_string_uc */
 

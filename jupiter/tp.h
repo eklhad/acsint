@@ -79,7 +79,7 @@ void doEncode(void) ;
 
 /* sourcefile=tpxlate.c */
 int setupTTS(void) ;
-void speakChar(int c, int sayit, int bellsound, int asword) ;
+void speakChar(unsigned int c, int sayit, int bellsound, int asword) ;
 void textBufSwitch(void) ;
 void carryOffsetForward(const char *s) ;
 void textbufClose(const char *s, int overflow) ;

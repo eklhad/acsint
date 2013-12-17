@@ -1359,7 +1359,7 @@ So as always, you need to set the synthesizer style.
 
 The say_char routine looks in the punctuation pronunciation table,
 getpunc(), to see if you have specified a pronunciation.
-If not, it just sends the character on to the synthesizer.
+If not, it converts unicode to utf8 and sends to the synth.
 
 This is basically a write(2) call.
 It will block if the synth is not ready, but it should be ready.
@@ -1372,8 +1372,9 @@ So let's say you are doing that, and you believe it is ready to speak
 the next item - you can send it out here.
 *********************************************************************/
 
-int acs_say_char(char c);
-int acs_say_string(const char *s);
+void acs_say_char(unsigned int c);
+void acs_say_string(const char *s);
+void acs_say_string_uc(const unsigned int *s);
 
 /*********************************************************************
 Send a string to the synth, but include an index marker for each
@@ -1408,7 +1409,7 @@ Style must be set properly
 so that I know how to send and watch for index markers.
 *********************************************************************/
 
-int acs_say_indexed(const char *s, const acs_ofs_type *offsets, int firstmark);
+void acs_say_indexed(const char *s, const acs_ofs_type *offsets, int firstmark);
 
 /*********************************************************************
 Stop speech immediately.

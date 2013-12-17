@@ -273,7 +273,7 @@ return 0;
  * asword = 1, say the word cap before capital letter.
  * asword = 2, a letter is spoken using the nato phonetic alphabet,
  * thus making it clear whether it is m or n. */
-void speakChar(int c, int sayit, int bellsound, int asword)
+void speakChar(unsigned int c, int sayit, int bellsound, int asword)
 {
 	short i;
 	const char *t;

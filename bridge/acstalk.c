@@ -370,25 +370,15 @@ if(source&2) acs_sy_events();
 if(source&1) acs_events();
 } // acs_all_events
 
-int acs_say_string(const char *s)
+/* string has to be ascii or utf8 */
+void acs_say_string(const char *s)
 {
-write(acs_sy_fd1, s, strlen(s));
+int l = strlen(s);
+if(l) write(acs_sy_fd1, s, l);
 ss_cr();
 } // acs_say_string
 
-int acs_say_char(char c)
-{
-char c2[2];
-char *s = acs_getpunc(c);
-if(!s) {
-c2[0] = c;
-c2[1] = 0;
-s = c2;
-}
-acs_say_string(s);
-} // acs_say_char
-
-int acs_say_indexed(const char *s, const acs_ofs_type *o, int mark)
+void acs_say_indexed(const char *s, const acs_ofs_type *o, int mark)
 {
 const char *t;
 char ibuf[30]; // index mark buffer
