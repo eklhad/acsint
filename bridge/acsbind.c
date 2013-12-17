@@ -613,25 +613,32 @@ static int lowerword(const char *w)
 } /* lowerword */
 
 static int
-inDictionary(void)
+inDictionary(const char *s)
 {
-int i;
-for(i=0; i<numdictwords; ++i)
-if(stringEqual(lw_utf8, dict1[i])) return i;
-return -1;
+	int i;
+	for(i=0; i<numdictwords; ++i)
+		if(stringEqual(s, dict1[i])) return i;
+	return -1;
 } /* inDictionary */
+
+static char *
+fromDictionary(const char *s)
+{
+int j = inDictionary(s);
+return (j >= 0 ? dict2[j] : 0);
+} /* fromDictionary */
 
 int acs_setword(const char *word1, const char *word2)
 {
 int j, rc;
 if(rc = lowerword(word1)) return rc;
 if(word2 && strlen(word2) > WORDLEN) return -6;
-j = inDictionary();
+j = inDictionary(lw_utf8);
 if(j < 0) {
 if(!word2) return 0;
 // new entry
 j = numdictwords;
-if(j == NUMDICTWORDS) return -1; // no room
+if(j == NUMDICTWORDS) return -7; // no room
 ++numdictwords;
 dict1[j] = malloc(strlen(lw_utf8) + 1);
 strcpy(dict1[j], lw_utf8);
@@ -653,15 +660,6 @@ dict1[numdictwords] = dict2[numdictwords] = 0;
 return 0;
 } /* acs_setword */
 
-static char *acs_replace(const char *word1)
-{
-int j;
-if(lowerword(word1)) return 0;
-j = inDictionary();
-if(j < 0) return 0;
-return dict2[j];
-} /* acs_replace */
-
 /*********************************************************************
 A word is passed to us for possible replacement.
 Our first task is to look it up in the replacement dictionary.
@@ -676,9 +674,8 @@ The routine mkroot() leaves the root word in rootword[],
 and returns a numeric code for the suffix that was removed.
 The reconst() routine reconstitutes the word in the same array,
 by appending the designated suffix; the suffix that was removed by mkroot().
-This is English only, at present,
-and need to be rewritten for every language,
-based on the rules for regular plurals, conjugation, and tense.
+To be international, this is all done in unicode;
+althoughEnglish is the only language implemented.
 *********************************************************************/
 
 static int isvowel(int c)
@@ -686,10 +683,19 @@ static int isvowel(int c)
 return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
 } /* isvowel */
 
-static char rootword[WORDLEN+16];
+static unsigned int rootword[WORDLEN+16];
+
+static int rootlen(void)
+{
+	int i;
+	for(i=0; rootword[i]; ++i)  ;
+	return i;
+} /* rootlen */
 
 /* Twelve regular English suffixes. */
 static const char suftab[] = "s   es  ies ing ing ing d   ed  ed  ied 's  'll ";
+// I believe the last two 's and 'll are vestigial and not used.
+// Anything 's or 'll is handled in tpxlate.c
 
 /* Which suffixes drop e or y when appended? */
 static const char sufdrop[] = "  y  e   y  ";
@@ -699,15 +705,15 @@ static const char sufdouble[] = {
 	0,0,0,0,1,0,0,1,0,0,0,0};
 
 /* extract the root word */
-static int mkroot(void)
+static int mkroot(int wdlen)
 {
 	char l0, l1, l2, l3, l4; /* trailing letters */
-	short wdlen, l;
+	short l;
 
-strcpy(rootword, lw_utf8);
-	wdlen = strlen(rootword);
 	l = wdlen - 5;
 	if(l < 0) return 0; // word too short to safely rootinize
+// This is english specific, and all english letters are ascii,
+// so no problem putting them into chars and using routines like strchr.
 	l4 = rootword[l+4];
 	l3 = rootword[l+3];
 	l2 = rootword[l+2];
@@ -781,14 +787,14 @@ strcpy(rootword, lw_utf8);
 /* reconstruct the word based upon its root and the removed suffix */
 static void reconst(int root)
 {
-	char *t;
+	unsigned int *t;
 	short i, wdlen;
-	char c;
+	unsigned int c;
 
 	if(!root) return; /* nothing to do */
 
 	--root;
-	wdlen = strlen(rootword);
+	wdlen = rootlen();
 	t = rootword + wdlen-1;
 	if(sufdouble[root]) c = *t, *++t = c;
 	if(sufdrop[root] == *t) --t;
@@ -800,29 +806,48 @@ static void reconst(int root)
 	*++t = 0;
 } /* reconst */
 
-char *acs_smartreplace(const char *s)
+char *acs_replace_iso(const char *s, int len)
 {
 int i, root;
 char *t;
-int len = strlen(s);
-	if(len > WORDLEN) return 0; // too long
-t = acs_replace(s);
+unsigned int c;
+
+uni_p = (unsigned char *)lw_utf8;
+for(i=0; i<len; ++i, ++s) {
+if(i > WORDLEN) return 0;
+if((char *)uni_p - lw_utf8 > WORDLEN) return 0;
+c = *(unsigned char *)s;
+// This should already be a letter, but let's recheck.
+if(!acs_isalpha(c)) return 0;
+if(c != 0xdf) c |= 0x20;
+rootword[i] = c;
+uni_1(c);
+}
+rootword[i] = 0;
+*uni_p = 0;
+
+t = fromDictionary(lw_utf8);
 if(t) return t;
 
-// not there; look for the root
+// not there; extrac the root word
 if(acs_lang != ACS_LANG_EN) return 0; // english only
 
-root = mkroot();
+root = mkroot(i);
 if(!root) return 0;
 
-t = acs_replace(rootword);
+// english is all ascii, do this the easy way.
+for(i=0; (lw_utf8[i] = rootword[i]); ++i)  ;
+t = fromDictionary(lw_utf8);
 if(!t) return 0;
-		for(i=0; t[i]; ++i)
+		for(i=0; t[i]; ++i) {
 			if(t[i] != ' ' && !isalpha((unsigned char)t[i])) return 0;
-strcpy(rootword, t);
+rootword[i] = t[i];
+}
+rootword[i] = 0;
 		reconst(root);
-return rootword;
-} /* acs_smartreplace */
+for(i=0; (lw_utf8[i] = rootword[i]); ++i)  ;
+return lw_utf8;
+} /* acs_replace_iso */
 
 /* This works in ascii or utf8 */
 static void skipWhite(char **t)

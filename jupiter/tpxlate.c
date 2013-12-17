@@ -390,25 +390,6 @@ void textbufClose(const char *s, int overflow)
 } /* textbufClose */
 
 
-/* wrapper around acs_smartreplace, providing a length */
-/* Stop at an apostrophe, like the reader's books */
-/* Not sure if this makes any sense. */
-static char *xl_smartreplace(const char *s, int len)
-{
-	int i;
-char c;
-
-	if(len > WORDLEN) return 0;
-
-	for(i=0; i < len; ++i, ++s) {
-		shortPhrase[i] = c = *s;
-if(c == '\'') return 0;
-}
-	shortPhrase[i] = 0;
-
-return acs_smartreplace(shortPhrase);
-} /* xl_smartreplace */
-
 /* isvowel, kinda like isalpha etc. */
 int isvowel(char c)
 {
@@ -2086,7 +2067,7 @@ alphaToken:
 	 * runTow->ogetherWord.  Thus readingRainbow will be
 	 * transmuted into reeding rainbow, via read -> reed. */
 	while(1) {
-		ur = xl_smartreplace(start, end-start);
+		ur = acs_replace_iso(start, end-start);
 		if(ur) {
 			if(appendString(ur)) goto overflow;
 			appendBackup();

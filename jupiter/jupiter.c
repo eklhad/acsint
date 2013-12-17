@@ -227,7 +227,10 @@ case -5:
 fprintf(stderr, "bypass cannot be mixed with any other commands");
 break;
 case -6:
-fprintf(stderr, "word is too long");
+fprintf(stderr, "dictionary word or replacement word is too long");
+break;
+case -7:
+fprintf(stderr, "too many words in the replacement dictionary");
 break;
 default:
 fprintf(stderr, "syntax error");

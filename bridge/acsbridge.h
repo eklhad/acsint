@@ -775,7 +775,7 @@ is removed from the dictionary.
 int acs_setword(const char *word1, const char *word2);
 
 /*********************************************************************
-Smartreplace is a replacement function that understands most English suffixes.
+acs_replace is a replacement function that understands most English suffixes.
 If you have, for instance, replaced computer with compeuter,
 then this function maps computers to compeuters as well.
 If read goes to reed, then reading goes to reeding.
@@ -789,7 +789,7 @@ Note that I require the root word to be replaced with one or more words,
 not punctuations etc, so that we can meaningfully put the suffix back on.
 *********************************************************************/
 
-char *acs_smartreplace(const char *word1);
+char *acs_replace_iso(const char *word1, int len);
 
 /*********************************************************************
 At this point I have described four configuration functions:
