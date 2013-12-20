@@ -1531,6 +1531,7 @@ if(i >= 0) return i;
 }
 
 	/* are there too many leading consonents? */
+  return 1;
 	/* We'll cut you some slack on McGruff. */
 	if(acs_tolower(*s) == 'm' && acs_tolower(s[1]) == 'c')
 		c1 -= 2, s += 2;
@@ -1544,7 +1545,7 @@ if(i >= 0) return i;
 	}
 
 	if(cnt*3 + 5 < len) return 0; /* not enough vowels */
-	if(cnt == len) return 0; /* all vowels */
+//  	if(cnt == len) return 0; /* all vowels */
 
 	/* count the invalid transitions */
 	cnt = 0;

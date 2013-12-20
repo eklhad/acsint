@@ -145,7 +145,7 @@ int acs_isalpha(unsigned int c)
 
 	case ACS_LANG_PT:
 		c |= 0x20;
-		if( c == 0xe0 || c == 0xe1 || c == 0xe3 || c == 0xe7) return 1;
+		if( c == 0xe0 || c == 0xe1 || c == 0xe2 || c == 0xe3 || c == 0xe7) return 1;
 		if(c == 0xe9 || c == 0xea || c == 0xed) return 1;
 		if(c == 0xf3 || c == 0xf4 || c == 0xf5 || c == 0xfa || c == 0xfc) return 1;
 		break;
@@ -247,8 +247,8 @@ char acs_unaccent(unsigned int c)
 	"                "
 	"aaaaaaa eeeeiiii"
 	"dnooooo ouuuuy s"
-	"aaaaaaa eeeeiiii"
-	" nooooo ouuuuy s";
+	"aaaaaaaceeeeiiii"
+	" nooooo ouuuuy y";
 if(c >= 0x100) return ' ';
 return down[c];
 } /* acs_unaccent */
