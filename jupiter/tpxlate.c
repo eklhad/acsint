@@ -3,7 +3,7 @@
 tpxlate.c: perform final translations to prepare for tts.
 This expands the constructs that were encoded in tpencode.c.
 
-Copyright (C) Karl Dahlke, 2011.
+Copyright (C) Karl Dahlke, 2014.
 This software may be freely distributed under the GPL, general public license,
 as articulated by the Free Software Foundation.
 
@@ -31,7 +31,6 @@ char tp_alnumPrep = 0;
 char tp_relativeDate = 0;
 char tp_showZones = 0;
 int tp_myZone = -5; /* offset from gmt */
-char tp_digitWords = 0; /* read digits as words */
 char tp_acronUpper = 1; /* acronym letters in upper case? */
 char tp_acronDelim = ' ';
 char tp_oneSymbol; /* read one symbol - not a sentence */
@@ -49,6 +48,9 @@ but we hope most of the changes are captured in these strings.
 *********************************************************************/
 
 struct OUTWORDS {
+const char *real2;
+const char *real3[26];
+const char *contractions[60];
 const char *decades[8];
 const char *hundredWord;
 const char *thousandWord;
@@ -73,6 +75,8 @@ const char *midnightWord;
 const char *oclockWord;
 const char *andWord;
 const char *orWord;
+const char *capWord;
+const char *unicodeWord;
 const char *halfWord;
 const char *toTheWord;
 const char *squareWord;
@@ -105,14 +109,13 @@ const char *oreqWord;
 const char *months[12];
 const char *zones[30];
 const char *nohundred[30];
-const char *articles[20];
+const char *articles[32];
 const char *verbs[20];
 const char *slashOrPhrases[8];
 const char *areaWord;
 const char *extWord;
-const char *emotPhrase[8];
 const char *states[54];
-const char *bible[67];
+const char *bible[73];
 const char *chapterWord;
 const char *verseWord;
 const char *versesWord;
@@ -124,13 +127,134 @@ const char *flowInto[12];
 const char *natoWords[26];
 };
 
-static const struct OUTWORDS outwords[3] = {
+static const struct OUTWORDS outwords[5] = {
 
 { /* no output words for the zero language */
-{0}
+0
 
 },{ /* English */
 
+// 2 letter words
+"adahalamanasatauawaxhalamapaedehelemenbedehemereweyeidifinisithipiofohonorowoxozcodogohojolonosotouhumunupusbymy",
+// 3 letter words
+{
+"abe abs>ace ack^act ada>add ado^ads^adz^"
+"aft age ago aha>aid ail>aim air ala^ale>"
+"alf>all alm>alo>alp alt amo^amp amy ana>"
+"and ani>ann ant any ape app^apt^arc are "
+"arg>ark arm art ase>ash ask ass ast>ate "
+"aud>aux ave>awe^awk awl^axe aye aze>azy>",
+"bac>bad baf>bag bah>bak bal>bam ban bar "
+"bas bat bay bec>bed bee beg bek>bel>ben "
+"ber^bes^bet bib bic bid bif^big bik>bil>"
+"bin bio bis>bit bla>bly boa bob boc^boe>"
+"bog^bok>bom>bon^boo bop>bor^bow box boy "
+"bra^bry>btw^bub>bud bug bum bun bur bus "
+"but buy bye ",
+"cab cad caf cal cam can cap car cas cat "
+"caw>cel cen cob cod cog com con coo cop "
+"cor cot cow coy cry cub cud^cum>cup cus "
+"cut cuz^",
+"dab dad dam dan dat>dax^day deb dec ded>"
+"dee>def>del den deo>det dev dew dib did "
+"die dig dim din dip dis>dob>doc>doe>dog "
+"dom>don dos dot dry dub>dud^due dug duh>"
+"dum>dun duo^dye ",
+"eak>eal>ear eat ebb ebs>eck>ect>eek^eel^"
+"eep>eke^egg ego elf>elk>elm elp>els>elt>ema>"
+"emy end eon^era^erg>esh>esk>est>etc eth>"
+"eve evi>ewe ext>eye ",
+"fab fad fag^fan far fat fax fay feb fed "
+"fee fer few fez fib fie>fig fin fit fix "
+"fiz flo flu fly foe fog foo for fox fro "
+"fry fud^fug>fun fur fus fyi ",
+"gab gad gaf>gag gak>gal gam>gan>gap gar "
+"gas gat>gay gee>gem gen geo get gig^gin "
+"gip^git>gnu gob god gon>goo gor got gov "
+"guf>gum gun gus gut guy gym gyp>",
+"hab hac had haf>hag hak hal ham han>hap "
+"har>has hat haw>hay hed hee>hem hen her "
+"hew>hex hey hic hid him hin>hip his hit "
+"hob hoc hoe hog hon hoo hop hor^hot how "
+"hub hud hue^hug hum hun hut hyp>",
+"ian>ice ich>ick>icy ids>ied>ier>iff>ike "
+"ilk>ill ime>imp inc^ine>ink inn ins>int "
+"ion ips>ire>irk>ise>ish>isk>iso ist>ite>"
+"ith>its ity>ive>ivy ize>",
+"jab jac jag>jam jan jap jar jaw jay jed "
+"jem jen jet jew jib jif jig jim jin jip "
+"job joc joe jog jon jot joy jud jug jut ",
+"kam kan kap kar kat kay ked^keg ken key "
+"kid kim kin kip kit kob kod kon kop kub "
+"kut ",
+"lab lac>lad lag^lam lan>lap law lax lay "
+"lea led^lee leg lei>lem len>les>let lew^"
+"lex lib lid lie lim lin lip lis>lit liv>"
+"liz lob^loc log lop^los^lot lou^lox low "
+"lug lux>lyn ",
+"mac mad mag mak mam^man map mar^mas>mat "
+"max maw may med meg mel men mes>met mew>"
+"mex mid mig min mip mir^mis^mit mix mob "
+"mod mom mop mos>mow mox>muc>mud muf>mug "
+"mum mus>mut mux ",
+"nab nad>nag nak>nan>nap nas>nay ned nel "
+"neo>net new nip nit nod non nop nor nos>"
+"not nov>now nox nub nuc>nuk>num nun nut ",
+"oaf>oak oam>oar oat obe>obs>ock>odd ode^"
+"ods>off oft oge>ohm oil ola>old ole>oli^"
+"ome>one ong>onk>ons>oon>oop>ops opt ora "
+"orb ore org ork>orn>orr>ors>ort>ose>osh>"
+"ost>ote>oth>oul>our out ova owe owl own "
+"ows>",
+"pac pad pak pal pam pan par pas>pat paw "
+"pay pea peb ped>peg pek pel pen pep per "
+"pet pew phi pic pie pig pik pil pin pip>"
+"pit ply pod poe poo pop pot pow>pox poy "
+"pre pro pry pub pug pun pup pur put ",
+"que quo quy ",
+"rac rad rag rak ram ran rap rat raw ray "
+"raz red rem reo rep rex rev^rew rib rid "
+"rif>rig ril>rim rin>rip ris>rit>rob roc>"
+"rod rok>rom ron rop rot row roy roz rub "
+"rue rug rum run rut rye ",
+"sac>sad sag sal sam san>sap sar>sas>sat "
+"saw sax say sea sco sed see sel>sep>set "
+"sew sex sha she shy sic>sid>sil sim sin "
+"sip sir sis>sit six ski sky sly sob soc "
+"sod sog son sop^sot>sow sox soy spa spy "
+"sty sub sue sum sun sup^syn ",
+"tab tac tad^tag tak tal>tam tan tap tar "
+"tat>tax taz>tea ted tee tel ten tes>tex "
+"the thy tib>tic tie tif tik>til tim tin "
+"tip tis^tiz>toc tod>toe tom ton too top "
+"tor>tos>tot tow tox>toy try tub tug tum "
+"tun tut tux two ",
+"ugh^uma>una uni uno ups>urn use ush>",
+"vac vad val>van var>vat vax vet vex via^"
+"vic vie vik vim vix voc vol von vow vox ",
+"wac wad wag wam wap war was wax wav>way "
+"web wed wee^wer>wet who^why wic wig win "
+"wip wix woe^wok^won woo wop>wow wry ",
+"",
+"yac yak yam yan>yap yaw yee yen yes yet "
+"yon yot you yuk yum yup ",
+"zac zag zam zak zan zap zar zed zen zig "
+"zip zit>zoo "
+},
+/* contractions, we don't need 's possessive or 'll future tense. */
+{	"isn't", "wasn't", "hasn't", "didn't",
+	"hadn't", "i've", "you've", "we've", "they've",
+	"who've", "who'd", "who're",
+	"how've", "how'd", "how're",
+	"doesn't", "haven't", "weren't", "mustn't",
+	"shouldn't", "couldn't", "wouldn't", "don't",
+	"aren't", "ain't", "oughtn't", "mightn't",
+	"shan't", "i'm", "can't", "won't",
+	"i'd", "you'd", "he'd", "she'd",
+	"they'd", "we'd", "it'd",
+	"would've", "should've", "could've", "must've",
+	"you're", "we're", "they're",
+0},
 {"twenty", "thirdy", "fordy", "fifdy", "sixdy", "sevendy", "eighty", "ninety"},
 "hundred", "thousand", "million", "billion", "trillion",
 {"thousand", "million", "billion", "trillion", 0},
@@ -150,6 +274,8 @@ static const struct OUTWORDS outwords[3] = {
 "thursday", "friday", "saturday"},
 "noon", "midnight", "uhclock",
 "and", "or",
+"cap ",
+"code",
 "half",
 "to the", "squared", "cubed",
 "dash", "colen", "bang", "minus", "doller", "dollers", "cent", "cents",
@@ -184,8 +310,6 @@ static const struct OUTWORDS outwords[3] = {
 "his/her", "her/his",
 0},
 ", area code", "extension",
-{"wink wink", "that's funny", "so sad", "wow",
-"ha ha", "told you so"},
 {0,
 "ahlebama", "alaska", "arizoana", "arkansaw",
 "californya", "colurrado", "connetiket", "dellawair",
@@ -231,10 +355,232 @@ static const struct OUTWORDS outwords[3] = {
 "popa", "kebeck", "romeo", "seeara", "tango",
 "uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
 
-},{ /* Spanish */
+},{ /* German */
+
+/* not entirely complete */
+// 2 letter words
+"andedueresinjamaumzu",
+// 3 letter words
+{0},
+// contractions, none in this language
+{0},
+{"zwansig", "dreizig", "vierzig", "fünfzig", "sechzig", "sebzig", "ochtzig", "neunzig"},
+"hundert", "tausand", "million", "billion", "trillion",
+{"tausand", "million", "billion", "trillion", 0},
+"hundert",
+{"0", /* I haven't found a good portable word for zero */
+"einz", "zwei", "drei", "vier", "fünf", "sechs", "seben", "ocht", "neun"},
+"o",
+{"zehn", "elf", "zwolf", "dreizehn", "vierzehn",
+"fünfzehn", "sechzehn", "sebenzehn", "ochtzehn", "neunzehn"},
+{"nullte", "erste", "zweite", "drite", "vierte",
+"fünfte", "sechte", "sebente", "octhe", "neunte",
+"zehnte", "elfte", "zwolfte", "dreizehnte", "vierzehnte",
+"fünfzehnte", "sechzehnte", "sebenzehnte", "ochtzehnte", "neunzehnte"},
+{"zwansigte", "dreizigte", "vierzigte", "fünfzigte", "sechzigte", "sebzigte", "ochtzigte", "neunzigte"},
+"heute", "gestern", "morgan",
+{"sontag", "muntag", "deenstag", "mitwok",
+"donerstag", "freitag", "samstag"},
+"mittag", "mitternacht", "uhr",
+"und", "odor",
+"auf ",
+"num",
+"halp",
+"zu", "squared", "cubed",
+"dash", "colen", "bang", "minus", "toller", "toller", "cent", "cents",
+"das ist,", "zum beispiel,",
+"die", "langes", "bei",
+"punck", "punck", "an", "zu", "durch",
+"slash", "numer", "numern",
+"less than", "greater than", "eequals", "or eequal to",
+{"januar", "februar", "march",
+"aiprle", "mei", "june",
+"juligh", "august", "september",
+"october", "noavember", "december"},
+{0,
+"pasifik ganz zeit", "pasifik tages zeit",
+"berge ganz zeit", "berge tages zeit",
+"sentralisch ganz zeit", "sentralisch tages zeit",
+"osternn ganz zeit", "osternn tages zeit",
+"hawaiian ganz zeit",
+"britisches ganz zeit", "britisches tages zeit",
+"grenich mean zeit", "weld zeit", "weld zeit",
+0},
+{"zimmer", "suite", "apartment", "apt",
+"dept", "department", "box", "pobox",
+"part", "piece", "site", "box",
+"car", "flug", "numer",
+0},
+{"ein","eine","einen","einem","der","die","das","des","den","dem","diese","diesen",
+"mein","meine","meinen","sein","seine","seinen","usere","useren","dein","deine","deinen",0},
+{"ist", "war", "solle", "könne", "möchte", "bin", "kannst", "habe", "hat",
+"wölle", "will", "kam", "kam", "gabe", "macht",
+0},
+{"er/sie", "sie/er", "ihm/ihr", "ihr/ihm",
+"sein/ihr", "ihr/sein",
+0},
+", area code", "extension",
+{0,
+"ahlebama", "alaska", "arizoana", "arkansaw",
+"californya", "colurrado", "connetiket", "dellawair",
+"floridda", "jorja", "hohwighey", "ighdaho",
+"illinoy", "indeeana", "ighowa", "kansis",
+"kintucky", "looeeseeana", "main", "maralend",
+"massichusitts", "michigan", "minnassoada", "mississippy",
+"missoory", "mohntana", "nubraska", "nuvvada",
+"new hampsher", "new jerzy", "new mexico", "new york",
+"north carolighna", "north deckoada", "oahigho", "oakla hoama",
+"oragohn", "pensle vainya", "rode ighlend", "south carolighna",
+"south deckoada", "tennessee", "texis", "utaw",
+"vermont", "verginya", "washington", "wisconsen",
+"west verginya", "wyoming", "D C", "porta reeko",
+"vergin ighlends"},
+{0,
+"genisis", "exidis", "levitikis", "numbers", "duterronomy",
+"joshua", "judges", "rooth", "first samule", "second samule",
+"first kings", "second kings", "first chronicles", "second chronicles",
+"ezra", "neeamigha", "esther", "jobe", "salms", "prohverbs",
+"ekleaziasties", "solomon", "ighzaia", "jeramigha",
+"lamentations", "izeakyal", "dannyal", "hoazaya", "jole",
+"aimus", "oabedigha", "joana", "mighka", "naium", "habekuk",
+"zephannigha", "haggigh", "zakirrigha", "malikigh",
+"matheu", "mark", "luke", "john", "acts", "romens",
+"first corinthians", "second corinthians",
+"galaytiens", "epheesions", "philippians", "colossions",
+"first thessalonians", "second thessalonians",
+"first timithy", "second timithy", "tightis",
+"phighleamen", "heebrews", "james",
+"first peater", "second peater",
+"first john", "second john", "third john", "jude",
+"rehvalations"},
+"chapter", "verse", "verses",
+{0,
+"web site", "telnet server", "R login server", "mail server",
+"F T P site", "goapher server"},
+"a location under", "a file under", "a web page under",
+{"site", "at", "from", "to", "on", "visit", "is", 0},
+{"alpha", "brohvo", "charlie", "delta", "echo",
+"foxtrot", "gawlf", "hotell", "india", "juleyet",
+"killo", "liema", "mike", "noavember", "oscar",
+"popa", "kebeck", "romeo", "seeara", "tango",
+"uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
+
+},{ /* Portuguese */
+
+// 2 letter words
+0,
+// 3 letter words
+{0},
+// contractions, none in this language
+{0},
+{"vinte", "trinta", "quarenta", "cincoenta", "sessenta", "setenta",
+"oitenta", "noventa"},
+"cem", "mil", "milhão", "bilhão", "trilhão",
+{"mil", "milhão", "bilhão", "trilhão", 0},
+"centésimo",
+{"0", /* I haven't found a good portable word for zero */
+"um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"},
+"zero",
+{"dez", "onze", "doze", "treze", "catorze",
+"quinze", "dezesseis", "dezessete", "dezoito", "dezenove"},
+{"zero-ésimo", "primeiro", "segundo", "terceiro", "quarto",
+"quinto", "sexto", "sétimo", "oitavo", "nono",
+"décimo", "undécimo", "duodécimo", "décimo-terceiro", "décimo-quarto",
+"décimo-quinto", "décimo-sexto", "décimo-sétimo", "décimo-oitavo",
+"décimo-nono"},
+{"vigésimo", "trigésimo", "quadragésimo", "quinquagésimo",
+"sexagésimo", "septuagésimo", "octogésimo", "nonuagésimo"},
+"hoje", "ontem", "amanhã",
+{"Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira",
+"Quinta-Feita", "Sexta-Feira", "Sábado"},
+"meio-dia", "meia-noite", "horas",
+"e", "ou",
+"cap ",
+"código",
+"meio",
+"à", "quadrado", "cubo",
+"hífen", "dois pontos", "exclamação", "menos", "real", "reais",
+"centavo", "centavos",
+"isto é,", "por exemplo,",
+"o", "comprimento", "por",
+"ponto", "ponto", "arroba", "para", "por",
+"barra", "número", "números",
+"menor", "maior", "igual", "ou igual a",
+{"janeiro", "fevereiro", "março",
+"abril", "maio", "junho",
+"julho", "agosto", "setembro",
+"outubro", "novembro", "dezembro"},
+{0,
+// Don't know what to do with us time zones in other countries.
+"","","","","","","","","",
+"","",
+"grenich mean time", "universal time", "universal time",
+0},
+{"sala", "suite", "apartamento", "apê",
+"depto", "departamento", "caixa", "caixa postal",
+"parte", "bloco", "local", "caixa",
+"carro", "vôo", "número",
+0},
+{0},
+{0},
+{0},
+", código de área", "extensão",
+{0,
+"ahlebama", "alaska", "arizoana", "arkansaw",
+"californya", "colurrado", "connetiket", "dellawair",
+"floridda", "jorja", "hohwighey", "ighdaho",
+"illinoy", "indeeana", "ighowa", "kansis",
+"kintucky", "looeeseeana", "main", "maralend",
+"massichusitts", "michigan", "minnassoada", "mississippy",
+"missoory", "mohntana", "nubraska", "nuvvada",
+"new hampsher", "new jerzy", "new mexico", "new york",
+"north carolighna", "north deckoada", "oahigho", "oakla hoama",
+"oragohn", "pensle vainya", "rode ighlend", "south carolighna",
+"south deckoada", "tennessee", "texis", "utaw",
+"vermont", "verginya", "washington", "wisconsen",
+"west verginya", "wyoming", "D C", "porta reeko",
+"vergin ighlends"},
+{0,
+"gênesis", "êxodo", "levítico", "números", "deuteronômio",
+"josué", "juizes", "rute", "primeiro Samuel", "segundo Samuel",
+"primeiro reis", "segundo reis", "primeiro crônicas", "segundo crônicas",
+"esdras", "Neemias", "ester", "jó", "salmos", "provérbios",
+"eclesiastes", "Salomão", "Isaías", "Jeremias",
+"lamentações", "Ezequiel", "Daniel", "Oséias", "Joel",
+"Amós", "Abdias", "Jonas", "Miquéias", "Naum", "Habacuc",
+"Sofonias", "Ageu", "Zacarias", "Malaquias",
+"Mateus", "Marcos", "Lucas", "João", "Atos", "Romanos",
+"primeiro Coríntios", "segundo Coríntios",
+"gálatas", "efésios", "filipenses", "colossenses",
+"primeiro tessalonicenses", "segundo tessalonicenses",
+"primeiro timóteo", "segundo timóteo", "Tito",
+"filêmon", "hebreus", "Tiago",
+"primeiro Pedro", "segundo Pedro",
+"primeiro João", "segundo João", "terceiro João", "Judas",
+"apocalipse"},
+/* other books...
+"Tobias", "Judite",
+"primeiro Macabeus", "segundo Macabeus",
+"Cântico dos Cânticos",
+"Sabedoria", "Eclesiástico",
+"Baruc",
+*/
+"capítulo", "verso", "versos",
+{0,
+"sítio na web", "servidor telnet", "servidor R loguin", "servidor de correio",
+"sítio F T P", "servidor gófer"},
+"local em", "arquivo em", "página web em",
+{"sítio", "em", "de", "para", "em", "visitar", "é", 0},
+{"alfa", "bravo", "carlos", "delta", "eco",
+"fox", "golfe", "hotel", "índia", "julieta",
+"kilo", "lima", "maique", "novembro", "oscar",
+"papa", "quebeque", "romeu", "serra", "tango",
+"uniforme", "vítor", "wisque", "x raio", "yanque", "zulu"},
+
+},{ /* French */
 
 /* not yet implemented */
-{0}
+0,
 
 }};
 
@@ -247,20 +593,20 @@ int
 setupTTS(void)
 {
 const int room = 400;
-tp_in->buf = malloc(room);
+tp_in->buf = malloc(room * sizeof(unsigned int));
 tp_in->offset = malloc(room * sizeof(acs_ofs_type));
-tp_out->buf = malloc(room);
+tp_out->buf = malloc(room * sizeof(unsigned int));
 tp_out->offset = malloc(room * sizeof(acs_ofs_type));
 if(!tp_in->buf || !tp_in->offset || !tp_out->buf || !tp_out->offset)
 return -1;
 tp_in->room = room;
 tp_out->room = room;
 
-	ow = outwords + ACS_LANG_EN; /* that's all we have for now */
+	ow = outwords + acs_lang;
 	articles = ow->articles;
 	andWord = ow->andWord;
 
-sortReservedWords();
+//  sortReservedWords();
 
 return 0;
 } /* setupTTS */
@@ -275,29 +621,30 @@ return 0;
  * thus making it clear whether it is m or n. */
 void speakChar(unsigned int c, int sayit, int bellsound, int asword)
 {
-	short i;
+	short i, l;
 	const char *t;
 	static char ctrlstr[] = "controal x";
+char hexbuf[16];
 
 	if(c == '\7') {
 		if(bellsound) { acs_bell(); return; }
-		t = "bell";
+		t = acs_getpunc(c);
 		goto copy_t;
 	}
 
 	if(c == '\r') {
-		t = "return";
+		t = acs_getpunc(c);
 		goto copy_t;
 	}
 
 	if(c == '\n') {
 		if(bellsound) { acs_cr(); return; }
-		t = "line";
+		t = acs_getpunc(c);
 		goto copy_t;
 	}
 
 	if(c == '\t') {
-		t = "tab";
+		t = acs_getpunc(c);
 		goto copy_t;
 	}
 
@@ -315,38 +662,35 @@ top:
 t = (char*)acs_getpunc(c);
 if(t) goto copy_t;
 
-if(c >= 256) {
-/* We are past getpunc(), guess we don't know how to say this unicode. */
-c = '?';
-goto top;
-}
-
-		if(!isalnum(c)) {
-			static char nonascii[] = "bite x x";
-			static const char almostHex[] = "0123456789xqcdlf";
-			nonascii[5] = almostHex[c>>4];
-			nonascii[7] = almostHex[c&15];
-			t =  nonascii;
-		goto copy_t;
-	}
-
-/* now a letter or digit */
-if(isalpha(c) && asword == 2) {
-c = tolower(c);
+if(c < 0x80 && isalpha(c) && asword == 2) {
+c |= 0x20;
 t = ow->natoWords[c-'a'];
 goto copy_t;
 }
 
+if(acs_isalnum(c)) {
 	if(sayit) {
-if(isupper(c) && asword == 1) {
-char capbuf[8];
-c = tolower(c);
-sprintf(capbuf, "cap %c", c);
-acs_say_string(capbuf);
-} else {
+if(acs_isupper(c) && asword == 1)
+acs_say_string_n(ow->capWord);
+c = acs_tolower(c);
 acs_say_char(c);
 }
+// alphanum without sayit, you shouldn't be here.
+return;
 }
+
+// We are past getpunc(), guess we don't know how to say this unicode.
+// Just say it in hex.
+sprintf(hexbuf, "%x", c);
+strcpy(shortPhrase, ow->unicodeWord);
+l = strlen(shortPhrase);
+for(i=0; hexbuf[i]; ++i) {
+shortPhrase[l++] = ' ';
+shortPhrase[l++] = hexbuf[i];
+}
+shortPhrase[l] = 0;
+			t =  shortPhrase;
+		goto copy_t;
 } /* speakChar */
 
 
@@ -370,14 +714,14 @@ void textBufSwitch(void)
 	tp_out->len = 1;
 } /* textBufSwitch */
 
-void carryOffsetForward(const char *s)
+void carryOffsetForward(const unsigned int *s)
 {
 	acs_ofs_type offset = tp_in->offset[s - tp_in->buf];
 	tp_out->offset[tp_out->len] = offset;
 } /* carryOffsetForward */
 
 /* There's always room for the last zero */
-void textbufClose(const char *s, int overflow)
+void textbufClose(const unsigned int *s, int overflow)
 {
 	if(overflow) {
 		/* Back up to the start of this token. */
@@ -389,24 +733,6 @@ void textbufClose(const char *s, int overflow)
 	tp_out->buf[tp_out->len] = 0;
 } /* textbufClose */
 
-
-/* isvowel, kinda like isalpha etc. */
-int isvowel(char c)
-{
-c = tolower(c);
-if(c == 'a' || c == 'e' || c == 'i' ||
-c == 'o' || c == 'u' || c == 'y')
-return 1;
-return 0;
-} /* isvowel */
-
-/* case_different, one must be upper and the other must be lower */
-int case_different(char x, char y)
-{
-if(isupper(x) && islower(y)) return 1;
-if(isupper(y) && islower(x)) return 1;
-return 0;
-} /* case_different */
 
 /*********************************************************************
 Keep track of the current date.
@@ -440,30 +766,19 @@ static void time_checkpoint(void)
 /*********************************************************************
 Check to see whether a word is contained in a list of words.
 This is a case insensitive search.
-If <s_len> is 0, we ask whether the candidate word
+If s_len> is 0, we ask whether the candidate word
 has any of the strings as a left prefix.
 Returns the index of the matching string,
 or -1 if there is no match.
 *********************************************************************/
 
-int isSubword(const char *s, const char *t)
-{
-	int n = 0;
-	while(*s) {
-		if(ci_cmp(*s, *t)) return -1;
-		if(*s != *t && !isalpha(*s)) return -1;
-		++s, ++t, ++n;
-	}
-	return n;
-} /* isSubword */
-
-int wordInList(const char * const *list, const char *s, int s_len)
+int wordInList(const char * const *list, const unsigned int *s, int s_len)
 {
 	const char *x;
 	int i, len;
 
 	for(i=0; (x = *list); ++list, ++i) {
-		if((len = isSubword(x, s)) < 0) continue;
+		if((len = acs_substring_mix(x, s)) < 0) continue;
 		if(!s_len || s_len == len) return i;
 	} /* loop over words  in list */
 
@@ -479,12 +794,12 @@ They all return 1 if we run out of buffer.
 
 static int roomCheck(int n)
 {
-	char *buf;
+	unsigned int *buf;
 	acs_ofs_type *ofs;
 	int room;
 	if(tp_out->len + n < tp_out->room) return 0;
 	room = tp_out->room/3*4;
-	buf = realloc(tp_out->buf, room);
+	buf = realloc(tp_out->buf, room * sizeof(unsigned int));
 	if(!buf) return 1;
 	ofs = realloc(tp_out->offset, room*sizeof(acs_ofs_type));
 	if(!ofs) return 1;
@@ -494,7 +809,7 @@ tp_out->room = room;
 	return 0;
 } /* roomCheck */
 
-int appendChar(char c)
+int appendChar(unsigned int c)
 {
 	if(roomCheck(1)) return 1;
 	tp_out->buf[tp_out->len++] = c;
@@ -502,7 +817,7 @@ int appendChar(char c)
 } /* appendChar */
 
 /* append an isolated char or digit */
-static int appendIchar(char c)
+static int appendIchar(unsigned int c)
 {
 	if(roomCheck(2)) return 1;
 	tp_out->buf[tp_out->len++] = c;
@@ -510,13 +825,12 @@ static int appendIchar(char c)
 	return 0;
 } /* appendIchar */
 
-/* This routine assumes we are dealing with bytes, not 16-bit unicodes. */
-/* It also assumes any letters in the string are lower case. */
+/* Input is lower case utf8, output is the unicode buffer. */
 int appendString(const char *s)
 {
 	int n = strlen(s);
 	if(roomCheck(n+1)) return 1;
-	strcpy((tp_out->buf + tp_out->len), s);
+	n = acs_utf82uni(s, tp_out->buf + tp_out->len);
 	tp_out->len += n;
 	tp_out->buf[tp_out->len++] = ' ';
 	return 0;
@@ -524,22 +838,20 @@ int appendString(const char *s)
 
 static int appendIdigit(int n)
 {
-	return (tp_digitWords ?
-	appendString(ow->idigits[n]) :
-	appendIchar('0'+n));
+	return (ow->idigits[n] ?
+appendString(ow->idigits[n]) :
+appendIchar('0'+n));
 } /* appendIdigit */
 
 /* Speak a string of digits.
- * Should we put spaces between the digits?  Depends on the synthesizer.
- * It would probably be better, i.e. more portable,
- * to read them as words -- so that's what we do. */
-static int appendDigitString(const char *s, int n)
+In espeakup the string reads faster and smoother if it is in words,
+so that's what we do. */
+static int appendDigitString(const unsigned int *s, int n)
 {
-	char c;
+	unsigned int c;
 	while(n--) {
 		c = *s++;
 		if(appendIdigit(c-'0')) return 1;
-//		if(n && !tp_digitWords) appendBackup();
 	}
 	return 0;
 } /* appendDigitString */
@@ -548,8 +860,8 @@ void lastUncomma(void)
 {
 	int len = tp_out->len;
 	acs_ofs_type offset = tp_out->offset[len];
-	char *s = tp_out->buf + len - 1;
-	char c = *s;
+	unsigned int *s = tp_out->buf + len - 1;
+	unsigned int c = *s;
 	while(c == ' ') --len, c = *--s;
 	if(c != ',') return;
 	--len;
@@ -564,15 +876,31 @@ static int appendAcronString(const char *s)
 	if(roomCheck(2*n)) return 1;
 	while(n--) {
 		c = *s++;
-		/* we assume c is a letter */
-		if(tp_acronUpper) c = toupper(c);
-		else c = tolower(c);
+		/* we assume c is an ascii letter */
+		if(tp_acronUpper) c &= 0xdf;
+		else c |= 0x20;
 		tp_out->buf[tp_out->len++] = c;
-		c = n ? tp_acronDelim : ' ';
+		c = (n ? tp_acronDelim : ' ');
 		tp_out->buf[tp_out->len++] = c;
 	}
 	return 0;
 } /* appendAcronString */
+
+static int appendAcronCodes(const unsigned int *s, int n)
+{
+	unsigned int c;
+	if(roomCheck(2*n)) return 1;
+	while(n--) {
+		c = *s++;
+		/* we assume c is alpha */
+		if(tp_acronUpper) c = acs_toupper(c);
+		else c = acs_tolower(c);
+		tp_out->buf[tp_out->len++] = c;
+		c = (n ? tp_acronDelim : ' ');
+		tp_out->buf[tp_out->len++] = c;
+	}
+	return 0;
+} /* appendAcronCodes */
 
 /* Read a natural number, up to 3 digits. */
 /* The dohundred parameter indicates 2 hundred 3 or 2 oh 3. */
@@ -582,24 +910,38 @@ static int append3num(int n, int dohundred, int zero)
 	const char *q;
 	int rc = 0;
 
-	if(!n && zero) return appendIdigit(0);
+	if(!n) {
+		if(zero) return appendIdigit(0);
+		return 0;
+	}
 
 	if(n >= 100) {
 		rc |= appendIdigit(n/100);
 		n %= 100;
 		if(!n) dohundred = 1;
+// Don't think there is anything like 2 oh 3 in languages other than english.
+		if(acs_lang != ACS_LANG_EN) dohundred = 1;
 		if(dohundred) rc |= appendString(ow->hundredWord); 
 		else if(n < 10) rc |= appendString(ow->ohWord);
+		if(!n) return rc;
 	} /* hundreds */
 
-	if(n >= 10) {
-		if(n < 20) q = ow->teens[n-10];
-		else q = ow->decades[n/10 - 2];
+	if(n < 10) return appendString(ow->idigits[n]);
+	if(n < 20) return appendString(ow->teens[n-10]);
+
+		q = ow->decades[n/10 - 2];
+		n %= 10;
+		if(!n) return appendString(q);
+
+if(acs_lang == ACS_LANG_DE) {
+rc |= appendString(ow->idigits[n]);
+		rc |= appendString(ow->andWord);
 		rc |= appendString(q);
+} else {
+		rc |= appendString(q);
+rc |= appendString(ow->idigits[n]);
 	}
 
-	if(n%10 && (n < 10 || n > 20))
-		rc |= appendIdigit(n%10);
 	return rc;
 } /* append3num */
 
@@ -628,6 +970,19 @@ static int appendYear(int y)
 		rc |= append3num(y, 0, 0);
 		return rc;
 	} /* in the year 2007 */
+
+// I don't think 2525 reads right in German 5 and 20 5 and 20
+if(y >= 2000 && acs_lang == ACS_LANG_DE) {
+unsigned int yd[4];
+yd[0] = y / 1000 + '0';
+y%= 1000;
+yd[1] = y / 100 + '0';
+y%= 100;
+yd[2] = y / 10 + '0';
+y%= 10;
+yd[3] = y + '0';
+return appendDigitString(yd, 4);
+}
 
 	rc |= append3num(y/100, 0, 0); /* century */
 	y %= 100;
@@ -848,20 +1203,23 @@ static int appendFraction(int num, int den, int preand)
 	return rc;
 } /* appendFraction */
 
-int alphaLength(const char *s)
+int alphaLength(const unsigned int *s)
 {
 	int len = 0;
-	while(isalpha(*s)) ++s, ++len;
+	while(acs_isalpha(*s)) ++s, ++len;
 	return len;
 } /* alphaLength */
 
-int atoiLength(const char *s, int len)
+static const unsigned int *atoi_s;
+int atoiLength(const unsigned int *s, int len)
 {
 	int n = 0;
 	while(len--) {
+		if(!acs_isdigit(*s)) break;
 		n = 10*n + *s - '0';
 		++s;
 	}
+	atoi_s = s;
 	return n;
 } /* atoiLength */
 
@@ -878,32 +1236,36 @@ int atoiLength(const char *s, int len)
  * Zeroflag indicates 0 dollars.
  * Oneflag indicates 1 dollar.
  * If the number of cents is negative, cents were not specified. */
-static int appendMoney(int zeroflag, int oneflag, int cents, const char *q)
+static int appendMoney(int zeroflag, int oneflag, int cents, const unsigned int *q)
 {
 	int rc = 0;
 	int pluralflag = 1;
 	int j, len;
-	char c;
-	const char *s = q;
+	unsigned int c;
+	const unsigned int *s = q;
 
 	/* Let's dive into the hard part;
-	 * figure out if $5 is five dollars. */
+	 * figure out if $5 is five dollars.
+	 * Actually it's too hard, especially in many languages. */
+#if 0
 	if(*q == ' ') ++q;
-	if(isalpha(*q)) {
+	if(acs_isalpha(*q)) {
 		/* back up to $ */
 		for(; *s != '$'; --s)  ;
 		c = *--s;
 		if(c == ' ') c = *--s;
 		if(c == 0) c = ' ';
 		j = -1;
+if(c < 0x80) {
 		if(strchr(".!?,:;", (char)c)) j = 2;
 		else if(tolower(c) == 's' && s[-1] == '\'') j = 2;
 		else if(isalpha(c)) {
 			/* back up and check the word */
 			len = 1;
-			while(isalpha(s[-1])) --s, ++len;
+			while(acs_isalpha(s[-1])) --s, ++len;
 			j = wordInList(ow->articles, s, len);
 		} /* prior word */
+}
 		if(j >= 0) {
 			pluralflag = 0;
 			if(j > 1) {
@@ -912,6 +1274,7 @@ static int appendMoney(int zeroflag, int oneflag, int cents, const char *q)
 			} /* preceding article is not "a" or "an" */
 		} /* the $5 something */
 	} /* word follows money */
+#endif
 
 	if(zeroflag && cents <= 0)
 		rc |= appendIdigit(0);
@@ -937,30 +1300,17 @@ We need to decide whether a word is a native word
 or an acronym, which should be read letter by letter.
 Begin by storing the 2 and 3 letter words in tables.
 These are the words that are "pronunceable", in the native language.
-Needless to say, these will be modified
-as we support other languages.
-*********************************************************************/
-
-static const char realWords2[] =
-"adahalamanasatauawaxhalamapaedehelemenbedehemereweyeidifinisithipi\
-ofohonorowoxozcodogohojolonosotouhumunupusbymy";
-
-/* is a 2-letter word native? */
-static int isWord2(const char *s)
-{
-	char c1 = tolower(*s);
-	char c2 = tolower(s[1]);
-
-	for(s = realWords2; *s; s+=2) {
-		if(*s == c1 && s[1] == c2) return 1;
-	}
-
-	return 0;
-} /* isWord2 */
-
-
-/*********************************************************************
-Here come the 3 letter words.
+These are in the outward table real2 and real3.
+I downshift the letters to english, because the accents don't change
+the plausibility of that sequence of letters being pronuncible.
+Thus the real words in the table are ascii,
+even if they aren't in the language itself.
+Thus für German would be in the table as fur.
+The 3 letter words have codes on when they might be acronyms.
+> appended to a word means the word is spelled only when it is in upper case.
+If an ^ is appended, we also require a context
+of lower case words.
+For example, "The ERA almost passed in the Reagan era."
 Note, some of these aren't words at all,
 but they should, nonetheless, be pronounced, rather than spelled.
 Ron and Tim are perfectly good names.
@@ -968,161 +1318,42 @@ ROM and SIM are well-known computer acronyms.
 TAM is an acronym that I never heard of, but if it comes up
 in your line of work, I'm betting you will pronounce it,
 rather than saying t.a.m.
-
-The following properties lead us to spell out acronyms:
-1. Negative conotations on the word, such as hor or fuk.
-2. Word is difficult to pronounce, such as fbi or cia.
-3. The word would be a misspelled version of a common word, such as los or lac.
-
-The following properties lead us to pronounce the acronym:
-1. The word is easy to pronounce.
-2. The acronym contains awkward letters such as h and w.
-3. The acronym contains many letters.
-
-In this table, a > appended to a word means the word is spelled
-only when it is in upper case.
-If an ^ is appended, we also require a context
-of lower case words.
-For example, "The ERA almost passed in the Reagan era."
 *********************************************************************/
 
-/* Map modified letters back down to their basic lettters. */
-	static char const charDowngrade[256+1] =
-	"                "
-	"                "
-	"                "
-	"                "
-	" abcdefghijklmno"
-	"pqrstuvwxyz     "
-	" abcdefghijklmno"
-	"pqrstuvwxyz     "
-	"          s     "
-	"          s    y"
-	"                "
-	"                "
-	"aaaaaaa eeeeiiii"
-	"dnooooo ouuuuy s"
-	"aaaaaaa eeeeiiii"
-	" nooooo ouuuuy s";
-
-static const char *const realWords3[] = { "\
-abe abs>ace ack^act ada>add ado^ads^adz^\
-aft age ago aha>aid ail>aim air ala^ale>\
-alf>all alm>alo>alp alt amo^amp amy ana>\
-and ani>ann ant any ape app^apt^arc are \
-arg>ark arm art ase>ash ask ass ast>ate \
-aud>aux ave>awe^awk awl^axe aye aze>azy>", "\
-bac>bad baf>bag bah>bak bal>bam ban bar \
-bas bat bay bec>bed bee beg bek>bel>ben \
-ber^bes^bet bib bic bid bif^big bik>bil>\
-bin bio bis>bit bla>bly boa bob boc^boe>\
-bog^bok>bom>bon^boo bop>bor^bow box boy \
-bra^bry>btw^bub>bud bug bum bun bur bus \
-but buy bye ", "\
-cab cad caf cal cam can cap car cas cat \
-caw>cel cen cob cod cog com con coo cop \
-cor cot cow coy cry cub cud^cum>cup cus \
-cut cuz^", "\
-dab dad dam dan dat>dax^day deb dec ded>\
-dee>def>del den deo>det dev dew dib did \
-die dig dim din dip dis>dob>doc>doe>dog \
-dom>don dos dot dry dub>dud^due dug duh>\
-dum>dun duo^dye ", "\
-eak>eal>ear eat ebb ebs>eck>ect>eek^eel^\
-eep>eke^egg ego elf>elk>elm elp>els>elt>ema>\
-emy end eon^era^erg>esh>esk>est>etc eth>\
-eve evi>ewe ext>eye ", "\
-fab fad fag^fan far fat fax fay feb fed \
-fee fer few fez fib fie>fig fin fit fix \
-fiz flo flu fly foe fog foo for fox fro \
-fry fud^fug>fun fur fus fyi ", "\
-gab gad gaf>gag gak>gal gam>gan>gap gar \
-gas gat>gay gee>gem gen geo get gig^gin \
-gip^git>gnu gob god gon>goo gor got gov \
-guf>gum gun gus gut guy gym gyp>", "\
-hab hac had haf>hag hak hal ham han>hap \
-har>has hat haw>hay hed hee>hem hen her \
-hew>hex hey hic hid him hin>hip his hit \
-hob hoc hoe hog hon hoo hop hor^hot how \
-hub hud hue^hug hum hun hut hyp>", "\
-ian>ice ich>ick>icy ids>ied>ier>iff>ike \
-ilk>ill ime>imp inc^ine>ink inn ins>int \
-ion ips>ire>irk>ise>ish>isk>iso ist>ite>\
-ith>its ity>ive>ivy ize>", "\
-jab jac jag>jam jan jap jar jaw jay jed \
-jem jen jet jew jib jif jig jim jin jip \
-job joc joe jog jon jot joy jud jug jut ", "\
-kam kan kap kar kat kay ked^keg ken key \
-kid kim kin kip kit kob kod kon kop kub \
-kut ", "\
-lab lac>lad lag^lam lan>lap law lax lay \
-lea led^lee leg lei>lem len>les>let lew^\
-lex lib lid lie lim lin lip lis>lit liv>\
-liz lob^loc log lop^los^lot lou^lox low \
-lug lux>lyn ", "\
-mac mad mag mak mam^man map mar^mas>mat \
-max maw may med meg mel men mes>met mew>\
-mex mid mig min mip mir^mis^mit mix mob \
-mod mom mop mos>mow mox>muc>mud muf>mug \
-mum mus>mut mux ", "\
-nab nad>nag nak>nan>nap nas>nay ned nel \
-neo>net new nip nit nod non nop nor nos>\
-not nov>now nox nub nuc>nuk>num nun nut ", "\
-oaf>oak oam>oar oat obe>obs>ock>odd ode^\
-ods>off oft oge>ohm oil ola>old ole>oli^\
-ome>one ong>onk>ons>oon>oop>ops opt ora \
-orb ore org ork>orn>orr>ors>ort>ose>osh>\
-ost>ote>oth>oul>our out ova owe owl own \
-ows>", "\
-pac pad pak pal pam pan par pas>pat paw \
-pay pea peb ped>peg pek pel pen pep per \
-pet pew phi pic pie pig pik pil pin pip>\
-pit ply pod poe poo pop pot pow>pox poy \
-pre pro pry pub pug pun pup pur put ", "\
-que quo quy ", "\
-rac rad rag rak ram ran rap rat raw ray \
-raz red rem reo rep rex rev^rew rib rid \
-rif>rig ril>rim rin>rip ris>rit>rob roc>\
-rod rok>rom ron rop rot row roy roz rub \
-rue rug rum run rut rye ", "\
-sac>sad sag sal sam san>sap sar>sas>sat \
-saw sax say sea sco sed see sel>sep>set \
-sew sex sha she shy sic>sid>sil sim sin \
-sip sir sis>sit six ski sky sly sob soc \
-sod sog son sop^sot>sow sox soy spa spy \
-sty sub sue sum sun sup^syn ", "\
-tab tac tad^tag tak tal>tam tan tap tar \
-tat>tax taz>tea ted tee tel ten tes>tex \
-the thy tib>tic tie tif tik>til tim tin \
-tip tis^tiz>toc tod>toe tom ton too top \
-tor>tos>tot tow tox>toy try tub tug tum \
-tun tut tux two ", "\
-ugh^uma>una uni uno ups>urn use ush>", "\
-vac vad val>van var>vat vax vet vex via^\
-vic vie vik vim vix voc vol von vow vox ", "\
-wac wad wag wam wap war was wax wav>way \
-web wed wee^wer>wet who^why wic wig win \
-wip wix woe^wok^won woo wop>wow wry ", "\
-", "\
-yac yak yam yan>yap yaw yee yen yes yet \
-yon yot you yuk yum yup ", "\
-zac zag zam zak zan zap zar zed zen zig \
-zip zit>zoo "
-};
-
-/* is a 3-letter word native? */
-static int isWord3(const char *w)
+/* is a 2-letter word native? */
+static int isWord2(const unsigned int *s)
 {
-	const char *s = w;
-	char c1 = tolower(s[0]);
-	char c2 = tolower(s[1]);
-	char c3 = tolower(s[2]);
-	int lowbit = islower(s[0]) | islower(s[1]) | islower(s[2]);
-	short i;
+	char c1 = acs_unaccent(s[0]);
+	char c2 = acs_unaccent(s[1]);
+const char *w = ow->real2;
 
-	for(s = realWords3[charDowngrade[(unsigned char)c1]-'a']; *s; s+=4) {
-		if(s[1] != c2) continue;
-		if(s[2] != c3) continue;
+if(!w) return 1; // nothing to check against
+
+	for(; *w; w+=2)
+		if(w[0] == c1 && w[1] == c2) return 1;
+
+	return 0;
+} /* isWord2 */
+
+
+static int isWord3(const unsigned int *s)
+{
+unsigned int c0;
+	char c1 = acs_unaccent(s[0]);
+	char c2 = acs_unaccent(s[1]);
+	char c3 = acs_unaccent(s[2]);
+	int lowbit = acs_islower(s[0]) | acs_islower(s[1]) | acs_islower(s[2]);
+	short i;
+const char *w;
+
+if(c1 == ' ') return 0; // should not happen
+
+w = ow->real3[(c1|0x20)-'a'];
+if(!w) return -1; // nothing to check against
+
+	for(; *w; w+=4) {
+		if(w[1] != c2) continue;
+		if(w[2] != c3) continue;
 
 		/* we've got the right 3 letters */
 		c1 = s[3];
@@ -1131,71 +1362,32 @@ static int isWord3(const char *w)
 		if(c1 == '>') return 0;
 		/* check for lower case context */
 		for(i=0; i<10; ++i) {
-			c1 = *--w;
-			if(!c1) break;
-			if(islower(c1)) return 0;
-			if(!strchr(" \t.,;:-", (char)c1)) break;
+			c0 = *--s;
+			if(!c0) break;
+if(acs_isalpha(c0) && acs_islower(c0))
+return 0;
 		}
+
 		return 1;
 	} /* loop looking for this 3-letter word */
 
 	return 0;
 } /* isWord3 */
 
-
-/*********************************************************************
-This table contains the initial 3/4 letter consonent clusters,
-in the native language, or in common foreign names such as Schroedinger.
-*********************************************************************/
-
-static const char * const icc3[] =  {
-	"chl","chr",
-	"phl","phr",
-	"sch","scl","scr",
-	"shr","shw","sph","spl","spr","str",
-	"thr","thw",
-0};
-
-static const char * const icc4[] =  {
-	"schl","schr","schw",
-0};
-
-/* Words with apostrophes in them.
- * This list doesn't include 'll words, because the time'll come when
- * you'll realize that almost any word'll take this ending.
- * The 'll ending is stripped off before we analyze the word.
- * Similarly for 's, which usually denotes possession.
- * Thus we don't have to include she's, he's, etc. */
-static const char * const apos_words[] = {
-	"isn't", "wasn't", "hasn't", "didn't",
-	"hadn't", "i've", "you've", "we've", "they've",
-	"who've", "who'd", "who're",
-	"how've", "how'd", "how're",
-	"doesn't", "haven't", "weren't", "mustn't",
-	"shouldn't", "couldn't", "wouldn't", "don't",
-	"aren't", "ain't", "oughtn't", "mightn't",
-	"shan't", "i'm", "can't", "won't",
-	"i'd", "you'd", "he'd", "she'd",
-	"they'd", "we'd", "it'd",
-	"would've", "should've", "could've", "must've",
-	"you're", "we're", "they're",
-0};
-
-
 /*********************************************************************
 This 32x32 matrix records the reasonable letter pairs in the native language.
 Bit 4 means the pair can start a word.
 Bit 2 means the pair can appear in the middle of a word.
 Bit 1 means the pair can end a word.
-For now, the transitionValue() function normalizes
+The transitionValue() function normalizes
 characters by removing umlauts and accent marks.
 In other words, a often appears between m and d iff
 a umlaut often appears between m and d, as in madchen.
 The umlauted letter is treated just like the letter.
-This is only an approximation, and it breaks down at the end of words,
-where umlauted vowels and n tilde don't appear.
-But it will do for now.
-This must be carefully reviewed for each language.
+This is only an approximation, but I think it's good enough.
+This should be carefully reviewed for each language.
+For now I'm assuming one transition fits all,
+at least for western languages.
 *********************************************************************/
 
 static const unsigned char letterPairs[26][32] = {
@@ -1227,10 +1419,8 @@ static const unsigned char letterPairs[26][32] = {
 	{7,0,0,0,7,0,0,0,6,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,7,3},
 };
 
-static unsigned char transitionValue(char x, char y)
+static int transitionValue(char x, char y)
 {
-	x = charDowngrade[(unsigned char)x];
-	y = charDowngrade[(unsigned char)y];
 	/* paranoia */
 	if(x == ' ' || y == ' ') return 0;
 	return letterPairs[x-'a'][y-'a'];
@@ -1243,11 +1433,11 @@ This is used to analyze login@domain.  For instance,
 pronounce mjordan@basketbal.com as m jordan, since mj doesn't start a word.
 *********************************************************************/
 
-static int leadSequence(const char *s, int n)
+static int leadSequence(const unsigned int *s, int n)
 {
-	char c1 = *s;
-	char c2 = s[1];
-	char c3 = s[2];
+	char c1 = acs_unaccent(s[0]);
+	char c2 = acs_unaccent(s[1]);
+	char c3 = acs_unaccent(s[2]);
 
 	if(!(transitionValue(c1, c2)&4)) return 0;
 	if(n == 3 && !(transitionValue(c2, c3)&2)) return 0;
@@ -1259,8 +1449,8 @@ static int leadSequence(const char *s, int n)
 Analyze a string of letters and apostrophes.
 Is it a native word?
 The string may have other letters following it.
-This happens when we analyze runTow->ogetherWords.
-We specify its length, rather than assuming it is null terminated.
+This happens when we analyze runTogetherWords.
+We specify the length, rather than assuming it is null terminated.
 We try to analyze the word no matter its length --
 but the calling function will not acronize any word longer than 6 letters.
 Nobody wants to hear that many letters in a row.
@@ -1272,33 +1462,41 @@ Longer words use the transition matrix above.
 This has lots of English assumptions in it.
 *********************************************************************/
 
-static int isPronounceable(const char *s, int len)
+static const char *icc3[] = {
+"chl","chr","phl","phr",
+"sch","scl","scr","shr","shw","sph","spl","spr","str",
+"thr","thw",0};
+
+static const char *icc4[] = {
+"schl","schr","schw",0};
+
+static int isPronounceable(const unsigned int *s, int len)
 {
 	int i, cnt;
 	char c1, c2, c3;
-	const char *s0;
 
 	/* check for words with apostrophes in them */
 	c1 = c2 = 0;
 	for(i=1; i<len; ++i)
-		if(s[i] == '\'') { ++c1, c2 = i; }
+		if(acs_downshift(s[i]) == '\'')
+++c1, c2 = i;
 	if(!c1) goto no_apos;
 	if(c1 > 1) return 0;
 	i = c2;
 	if(i == len-2 &&
-	tolower(s[len-1]) == 's') {
+	acs_tolower(s[len-1]) == 's') {
 		/* analyze the word without its trailing 's */
 		len -= 2;
 		goto no_apos;
 	}
 	if(i == len-3 &&
-	tolower(s[len-1]) == 'l' &&
-	tolower(s[len-2]) == 'l') {
+	acs_tolower(s[len-1]) == 'l' &&
+	acs_tolower(s[len-2]) == 'l') {
 		/* analyze the word without its trailing 'll */
 		len -= 3;
 		goto no_apos;
 	}
-	if(i == 1 && tolower(s[0]) == 'o') {
+	if(i == 1 && acs_tolower(s[0]) == 'o') {
 		/* analyze the word without its leading o' */
 		len -= 2;
 		s += 2;
@@ -1306,106 +1504,67 @@ static int isPronounceable(const char *s, int len)
 	}
 
 	/* word must be in the list to be pronunceable */
-return wordInList(apos_words, s, len) >= 0;
+return wordInList(ow->contractions, s, len) >= 0;
+
 	no_apos:
-
-	s0 = s; /* save */
 	if(len == 1) return 1;
-
 	if(len == 2) return isWord2(s);
 
 	/* Simple vowel check */
 	c1 = 0;
 	for(i=cnt=0; i<len; ++i) {
-		if(!isvowel(s[i])) continue;
+		if(!acs_isvowel(s[i])) continue;
 		if(!cnt) c1 = i;
 		++cnt;
 	}
 	if(!cnt) return 0; /* no vowels */
 
 	/* If it's a name, try to say it anyways */
-	if(isupper(s[0]) && islower(s[1])) {
-		if((len == 3 && islower(s[2])) ||
-		(len > 3 && islower(s[3]))) return 1; /* name */
+	if(acs_isupper(s[0]) && acs_islower(s[1])) {
+		if((len == 3 && acs_islower(s[2])) ||
+		(len > 3 && acs_islower(s[3]))) return 1; /* name */
 	} /* upper lower */
 
-	if(len == 3) return isWord3(s);
-
-	/* Some special checks on 4 letter words */
-	/* This is very English. */
-	if(len == 4) {
-		if(c1 == 3) return 0; /* ends in vowel */
-
-		c2 = tolower(s[2]);
-		c3 = tolower(s[0]);
-
-		if(!isvowel(c2)) {
-			if(tolower(s[3]) == 's') {
-				if(strchr("hjvxz", (char)c2)) return 0;
-				if(c2 == 's') {
-					if((c3 == 'y' || c3 == 'w') &&
-					tolower(s[1]) == 'e')
-						return 1;
-					if(isvowel(c3)) return 0;
-					if(c3 >= 'v') return 0;
-					goto analyze;
-				} /* ??ss */
-				if(!isWord3(s)) return 0;
-				goto analyze;
-			} /* ???s */
-
-			if(c2 == tolower(s[3]) && 
-			strchr("cflmnprt", (char)c2) &&
-			isvowel(s[1])) {
-				if(c3 == c2) return 1;
-				if(tolower(s[1]) == 'y') {
-					if(c3 == 'y') return 0;
-					if(strchr("lmnr", (char)c2)) return 1;
-					goto analyze;
-				} /* ?ynn */
-				if(strchr("bcdfghjklmnprstvwy", (char)c3)) return 1;
-				goto analyze;
-			} /* ends in vowle double (glide or unvoiced stop) */
-		} /* third letter is consonent */
-	} /* word has length 4 */
+	if(len == 3) {
+i = isWord3(s);
+if(i >= 0) return i;
+}
 
 	/* are there too many leading consonents? */
 	/* We'll cut you some slack on McGruff. */
-	if(tolower(*s) == 'm' && tolower(s[1]) == 'c')
+	if(acs_tolower(*s) == 'm' && acs_tolower(s[1]) == 'c')
 		c1 -= 2, s += 2;
+// can't start with 5 consonents.
 	if(c1 > 4) return 0;
 	if(c1 > 2) {
 		if(wordInList(c1 == 3 ? icc3 : icc4, s, 0) < 0) return 0;
 
 		/* special case, lots of consonents and only one vowel. */
-		if(isSubword((char*)"strength", s) > 0) return 1;
+		if(acs_substring_mix((char*)"strength", s) > 0) return 1;
 	}
 
 	if(cnt*3 + 5 < len) return 0; /* not enough vowels */
 	if(cnt == len) return 0; /* all vowels */
 
-	analyze:
 	/* count the invalid transitions */
-	s = s0; /* restore from McGruff */
 	cnt = 0;
-	c1 = tolower(*s);
-	++s;
-	c2 = tolower(*s);
+	c1 = acs_unaccent(*s);
+	c2 = acs_unaccent(*++s);
 	i = 3;
 	/* Allow Mc at the start of a longer word. */
 	if(c1 == 'm' && c2 == 'c' && len >= 5) {
-	c1 = *++s;
-	c2 = *++s;
+	c1 = acs_unaccent(*++s);
+	c2 = acs_unaccent(*++s);
 		i += 2;
 	}
 	if(!(transitionValue(c1, c2)&4)) ++cnt;
 	for(++s; i<len; ++i, ++s) {
 		c1 = c2;
-		c2 = *s;
+		c2 = acs_unaccent(*s);
 		if(!(transitionValue(c1, c2)&2)) ++cnt;
 	}
 	c1 = c2;
-	c2 = *s;
+	c2 = acs_unaccent(*s);
 	if(!(transitionValue(c1, c2)&1)) {
 		++cnt;
 		if(len == 4) return 0;
@@ -1422,14 +1581,14 @@ Return 1 on overflow.
 Pass back the updated pointer, just after the second code delimiter.
 *********************************************************************/
 
-static int expandCode(const char **sp)
+static int expandCode(const unsigned int **sp)
 {
-	const char *start = *sp;
-	const char *end;
-	const char *t;
+	const unsigned int *start = *sp;
+	const unsigned int *end;
+	const unsigned int *t;
 	char code = *++start;
 	char badcode[12];
-	char c;
+	unsigned int c;
 	int m, d, y; /* for a date */
 	int i;
 	int zone; /* time zone encoded */
@@ -1444,43 +1603,17 @@ static int expandCode(const char **sp)
 		c = *start++;
 		if(c == ' ') c = 0;
 		if(c == '\n') c = SP_MARK;
-		speakChar((unsigned char)c, 0, 0, 0);
+		speakChar(c, 0, 0, 0);
 		if(appendString(shortPhrase)) goto overflow;
 		if(appendString(ow->lengthWord)) goto overflow;
-		if(append6num(strtol(start, 0, 10))) goto overflow;
-		break;
-
-	case SP_LI: /* list item */
-		if(start == end) break; /* bullet list, don't say anything */
-		c = *start;
-		if(isalpha(c)) {
-			if(appendIchar(c)) goto overflow;
-			t = start + 1;
-		} else {
-			m = strtol((char*)start, (char**)&t, 10);
-			d = t - start;
-			if(d > 4 || c == '0') {
-				if(appendDigitString(start, d)) goto overflow;
-			} else {
-				if(appendYear(m)) goto overflow;
-			}
-		} /* letter or number */
-		/* next character is comma or period, */
-		/* for quick list items or listed paragraphs. */
-		c = *t;
-		if(!tp_readLiteral) {
-			if(appendIchar(*t)) goto overflow;
-		} else {
-			speakChar((unsigned char)c, 0, 0, 0);
-				if(appendString(shortPhrase)) goto overflow;
-		}
+		if(append6num(atoiLength(start, -1))) goto overflow;
 		break;
 
 	case SP_DATE:
 		m = *start++ - 'A';
 		d = *start++ - 'A';
 		y = 0;
-		if(isdigit(*start)) {
+		if(acs_isdigit(*start)) {
 			y = atoiLength(start, 4);
 			start += 4;
 		}
@@ -1488,7 +1621,7 @@ static int expandCode(const char **sp)
 		if(start < end) zone = *start - 'A';
 		if(appendDate(m, d, y, zone)) goto overflow;
 		t = end+1;
-		if(isspace(*t)) ++t;
+		if(acs_isspace(*t)) ++t;
 		if(*t == SP_MARK &&
 		t[1] == SP_TIME &&
 		appendString(ow->atWord)) goto overflow;
@@ -1534,13 +1667,6 @@ static int expandCode(const char **sp)
 		} /* extension */
 		break;
 
-	case SP_EMOT: /* emoticon */
-		if(appendString(ow->emotPhrase[*start - 'A']))
-			goto overflow;
-			if(!tp_readLiteral && *start == 'D' &&
-			appendIchar('!')) goto overflow;
-		break;
-
 	case SP_FRAC:
 		/* numerator and denominator */
 		m = *start++ - 'A';
@@ -1566,7 +1692,7 @@ static int expandCode(const char **sp)
 		d -= 'A';
 		if(appendString(ow->weekdays[d])) goto overflow;
 		t = end+1;
-		if(isspace(*t)) ++t;
+		if(acs_isspace(*t)) ++t;
 		if(*t == SP_MARK &&
 		t[1] == SP_DATE)
 			tp_out->buf[tp_out->len-1] = ',';
@@ -1609,9 +1735,9 @@ static int expandCode(const char **sp)
 			zone = 0;
 			t = start - 3;
 			c = *t;
-			if(isspace(c)) c = *--t;
+			if(acs_isspace(c)) c = *--t;
 			i = 0;
-			while(isalpha(c)) c = *--t, ++i;
+			while(acs_isalpha(c)) c = *--t, ++i;
 			if(i && wordInList(ow->flowInto, t+1, i) >= 0) zone = 1;
 			if(!zone && appendIchar(',')) goto overflow;
 		}
@@ -1655,28 +1781,28 @@ Return 1 on overflow.
 Pass back the updated pointer, just after the input token.
 *********************************************************************/
 
-static int expandAlphaNumeric(char **sp)
+static int expandAlphaNumeric(unsigned int **sp)
 {
-	char c, d, e, f;
-	char *start = *sp, *end; /* bracket the token */
-	char *q;
-	const char *ur; /* user replacement */
-	char *casecut = 0, *comma = 0, *apos = 0;
+	unsigned int c, d, e, f;
+	unsigned int *start = *sp, *end; /* bracket the token */
+	unsigned int *q;
+	const unsigned int *ur; /* user replacement */
+	unsigned int *casecut = 0, *comma = 0, *apos = 0;
 	int i, j, value;
 	int zeroflag, oneflag, hundredflag;
 	int rc;
 
 	e = 0; /* quiet gcc */
 
-	c = tolower(*start);
-	if(isalpha(c)) goto alphaToken;
+	c = *start;
+	if(acs_isalpha(c)) goto alphaToken;
 
 	/* Check for 1st 2nd etc. */
 	d = start[-1];
 	e = start[1];
 	end = start + 1;
 	i = c - '0';
-	if(isdigit(e)) {
+	if(acs_isdigit(e)) {
 		i = 10*i + e-'0';
 		e = *++end;
 	}
@@ -1684,10 +1810,10 @@ static int expandAlphaNumeric(char **sp)
 		i = 10*i + e-'0';
 		e = *++end;
 	}
-	if(isalpha(e) && isalpha(end[1]) &&
-	!isalnum(end[2])) {
-		e = tolower(e);
-		f = tolower(end[1]);
+	if(acs_isalpha(e) && acs_isalpha(end[1]) &&
+	!acs_isalnum(end[2])) {
+		e = acs_tolower(e);
+		f = acs_tolower(end[1]);
 		if((e == 's' && f == 't') ||
 		(e == 'n' && f == 'd') ||
 		(e == 'r' && f == 'd') ||
@@ -1706,14 +1832,14 @@ if(			(g == '0' && e == 't') ||
 	} /* 1 or 2 or 3 digits followed by 2 letters */
 
 	/* find the start and end of this number */
-	if(d == ',' || d == '.' || isalpha(d) ||
+	if(d == ',' || d == '.' || acs_isalpha(d) ||
 	tp_oneSymbol) comma = start;
-	if(d == '-' && isalnum(start[-2])) comma = start;
+	if(d == '-' && acs_isalnum(start[-2])) comma = start;
 	if(c == '0') comma = start;
 	for(end=start+1; (e = *end); ++end) {
-		if(isdigit(e)) continue;
+		if(acs_isdigit(e)) continue;
 		if(e != ',') break;
-		if(!isdigit(end[1])) break;
+		if(!acs_isdigit(end[1])) break;
 		if(comma == start) continue;
 		if(!comma) { /* first comma */
 			comma = end;
@@ -1727,8 +1853,8 @@ if(			(g == '0' && e == 't') ||
 	if(comma && end - comma != 4) comma = start;
 
 	if(comma && comma > start) {
-		if(isalpha(e)) comma = start;
-		if(e == '-' && isalnum(end[1])) comma = start;
+		if(acs_isalpha(e)) comma = start;
+		if(e == '-' && acs_isalnum(end[1])) comma = start;
 		if(end - start > 19) comma = start; /* I don't do trillions */
 		/* int foo[] = {237,485,193,221}; */
 		if(tp_readLiteral && end - start > 7) comma = start;
@@ -1770,9 +1896,9 @@ if(			(g == '0' && e == 't') ||
 	/* read 19980502, when part of a filename. */
 	if(end-start == 8 && start[6] <= '3' && start[4] <= '1' &&
 	((start[0] == '1' && start[1] == '9') || (start[0] == '2' && start[1] == '0'))) {
-		if(isalpha(d) || isalpha(e) ||
-		(d == '.' && isalnum(start[-2])) ||
-		(e == '.' && isalnum(end[1]))) {
+		if(acs_isalpha(d) || acs_isalpha(e) ||
+		(d == '.' && acs_isalnum(start[-2])) ||
+		(e == '.' && acs_isalnum(end[1]))) {
 			i = atoiLength(start, 4);
 			if(appendYear(i)) goto overflow;
 			i = atoiLength(start+4, 2);
@@ -1793,10 +1919,10 @@ if(			(g == '0' && e == 't') ||
 	/* read digits after the decimal point */
 	if(d == '.') {
 		/* Unless we are in the mids of 192.168.9.3 */
-		if(e == '.' && isdigit(end[1])) goto copynumber;
+		if(e == '.' && acs_isdigit(end[1])) goto copynumber;
 		q = start-2;
-		if(!isdigit(*q)) goto copydigits;
-		do { --q; } while(isdigit(*q));
+		if(!acs_isdigit(*q)) goto copydigits;
+		do { --q; } while(acs_isdigit(*q));
 		if(*q != '.') goto copydigits;
 copynumber:
 		value = atoiLength(start, end-start);
@@ -1807,25 +1933,25 @@ copynumber:
 
 	/* read digits before the decimal point */
 	if(e == '.' && d != '$') {
-		if(isdigit(end[1])) goto copynumber;
+		if(acs_isdigit(end[1])) goto copynumber;
 	}
 
 	/* speak digits in coded numbers, such as social security 374-81-6339.
 	 * We assume English text, rather than a mathematical formula
 	 * such as 374-82-7487 = -7195. */
 	if(d == '-' && e == '-') goto copydigits;
-	if(d == '-' && isdigit(start[-2])) {
+	if(d == '-' && acs_isdigit(start[-2])) {
 		q = start-3;
-		while(isalnum(*q)) {
-			if(isalpha(*q)) goto copydigits;
+		while(acs_isalnum(*q)) {
+			if(acs_isalpha(*q)) goto copydigits;
 			--q;
 		}
 		if(*q == '-') goto copydigits;
 	}
-	if(e == '-' && isdigit(end[1])) {
+	if(e == '-' && acs_isdigit(end[1])) {
 		q = end+2;
-		while(isalnum(*q)) {
-			if(isalpha(*q)) goto copydigits;
+		while(acs_isalnum(*q)) {
+			if(acs_isalpha(*q)) goto copydigits;
 			++q;
 		}
 		if(*q == '-') goto copydigits;
@@ -1850,18 +1976,18 @@ copynumber:
 		if(d == '$') { hundredflag = 1; goto past3; }
 		if(d == '-' || d == '#') goto past3;
 		if(e == '-' || e == '\'') goto past3;
-		if(isalpha(d) || isalpha(e)) goto past3;
-		if(isspace(d) && isalpha(start[-2])) {
+		if(acs_isalpha(d) || acs_isalpha(e)) goto past3;
+		if(acs_isspace(d) && acs_isalpha(start[-2])) {
 			hundredflag = 1;
 			/* Unless we find a keyword like room 302 */
 			q = start-2;
 			i = 0;
-			do --q, ++i; while(isalpha(*q));
+			do --q, ++i; while(acs_isalpha(*q));
 			if(wordInList(ow->nohundred, ++q, i) >= 0)
 				hundredflag = 0;
 			goto past3;
 		}
-		if(isspace(e) && isalpha(end[1])) {
+		if(acs_isspace(e) && acs_isalpha(end[1])) {
 			hundredflag = 1;
 		}
 	} /* three digits */
@@ -1871,19 +1997,10 @@ past3:
 	if(d == '$' && !tp_oneSymbol) {
 		if(!tp_readLiteral) goto money;
 		if(end-start == 3) goto money;
-		if(e == '.' && isdigit(end[1])) goto money;
+		if(e == '.' && acs_isdigit(end[1])) goto money;
 		/* read $3 as dollar three, a positional parameter */
 	}
 	if(zeroflag && appendIdigit(0)) goto overflow;
-
-	/* check for 4x4 -> four by four */
-	if(tolower(e) == 'x' && c != '0') {
-		if(isdigit(end[1]) && end[1] != '0') {
-			if(appendString(ow->byWord)) goto overflow;
-			++end;
-			goto success;
-		} /* number x number */
-	} /* nonzero number, followed by x */
 
 	appendBackup();
 	goto possessive;
@@ -1905,21 +2022,21 @@ money:
 		q = end;
 		if(*q == '.') {
 			++q;
-			if(isdigit(*q)) i = *q++ - '0';
-			if(isdigit(*q)) i = 10*i + *q++ - '0';
+			if(acs_isdigit(*q)) i = *q++ - '0';
+			if(acs_isdigit(*q)) i = 10*i + *q++ - '0';
 		} /* .xx after the number */
 		e = *q;
 		if(e == '\n' || e == ' ' || e == '-')
 			e = *++q;
-		if(isalpha(e)) {
+		if(acs_isalpha(e)) {
 			/* look for the word million */
 			j = alphaLength(q);
 			/* This is rather unusual; we use bigNumber[]
 			 * for both input and output. */
 			if(j > 1) {
 				moneySuffix = wordInList( ow->bigNumbers, q, j);
-			} else if(!isalnum(q[1])) {
-				e = toupper(e);
+			} else if(!acs_isalnum(q[1])) {
+				e = acs_toupper(e);
 				if(e == 'K') moneySuffix = 0;
 				if(e == 'M') moneySuffix = 1;
 				if(e == 'B') moneySuffix = 2;
@@ -1945,8 +2062,8 @@ money:
 	/* determine how many cents are present */
 	i = -1;
 	if(*end == '.' &&
-	isdigit(end[1]) && isdigit(end[2]) &&
-	!isdigit(end[3])) {
+	acs_isdigit(end[1]) && acs_isdigit(end[2]) &&
+	!acs_isdigit(end[3])) {
 		i = atoiLength(end+1, 2);
 	end += 3;
 	} /* .xx follows */
@@ -1954,14 +2071,15 @@ money:
 	goto success;
 
 alphaToken:
+	c = acs_tolower(c);
 	/* Special case, PH.D.
 	 * In this and the next section, we assume a prior phase
 	 * has stripped off the last period, unless this word really
 	 * marks the end of the sentence.
 	 * Thus we compare with "Ph.d", without the last period. */
 	if(c == 'p' &&
-	isSubword((char*)"ph.d", start) > 0 &&
-	!isalnum(start[4])) {
+	acs_substring_mix((char*)"ph.d", start) > 0 &&
+	!acs_isalnum(start[4])) {
 		if(appendAcronString((char*)"phd")) goto overflow;
 		end = start + 4;
 		goto success;
@@ -1969,13 +2087,13 @@ alphaToken:
 
 	/* check for U.S.A etc */
 	end = start;
-	while(end[1] == '.' && isalpha(end[2]))
+	while(end[1] == '.' && acs_isalpha(end[2]))
 		end += 2;
-	if(end - start >= 2 && !isalnum(end[1])) {
-		if(!tp_readLiteral || end - start > 2 || isupper(*start)) {
+	if(end - start >= 2 && !acs_isalnum(end[1])) {
+		if(!tp_readLiteral || end - start > 2 || acs_isupper(*start)) {
 			++end;
 			/* check for e.g. and i.e. */
-			d = tolower(start[2]);
+			d = acs_tolower(start[2]);
 			if(c == 'e' && d == 'g') {
 				if(appendString(ow->egWord)) goto overflow;
 				goto success;
@@ -1987,8 +2105,8 @@ alphaToken:
 			/* speak each letter */
 			for(; start < end; start+=2) {
 				c = *start;
-				if(tp_acronUpper) c = toupper(c);
-				else c = tolower(c);
+				if(tp_acronUpper) c = acs_toupper(c);
+				else c = acs_tolower(c);
 				if(appendIchar(c)) goto overflow;
 				if(start < end-1) tp_out->buf[tp_out->len-1] = tp_acronDelim;
 			}
@@ -2001,26 +2119,26 @@ alphaToken:
 	f = c = *start;
 	d = start[-1];
 	for(end=start+1; (e = *end); ++end, f=e) {
-		if(isalpha(e)) {
-			if(case_different(e, f) && !casecut && isalpha(f)) {
-				if(isupper(e)) {
+		if(acs_isalpha(e)) {
+			if(case_different(e, f) && !casecut && acs_isalpha(f)) {
+				if(acs_isupper(e)) {
 					casecut = end;
 					/* Don't use casecut for McDonalds. */
 					if(end == start+2 &&
-					tolower(start[0]) == 'm' && start[1] == 'c')
+					acs_tolower(start[0]) == 'm' && start[1] == 'c')
 						casecut = 0;
 				} else if(end-start >= 2) {
 					casecut = end-1;
 					/* Again, some McDonalds code */
 					if(end-start == 3 &&
-					tolower(start[0]) == 'm' &&
+					acs_tolower(start[0]) == 'm' &&
 					start[1] == 'c')
 						casecut = 0;
 				}
-			} /* letters have diferent case */
+			} /* letters have different case */
 			continue;
 		} /* another letter */
-		if(e == '\'') {
+		if(acs_downshift(e) == '\'') {
 			if(!apos) apos = end;
 			continue;
 		}
@@ -2028,12 +2146,12 @@ alphaToken:
 	} /* loop finding the end of the word */
 
 	/* strip out trailing apostrophes */
-	while(end[-1] == '\'') {
+	while(acs_downshift(end[-1]) == '\'') {
 		if(end-start >= 5 && !tp_readLiteral &&
-		tolower(end[-2]) == 'n' &&
-		tolower(end[-3]) == 'i') {
+		acs_tolower(end[-2]) == 'n' &&
+		acs_tolower(end[-3]) == 'i') {
 			f = 'G';
-			if(islower(end[-2])) f = 'g';
+			if(acs_islower(end[-2])) f = 'g';
 			end[-1] = f;
 			break;
 		} else {
@@ -2044,33 +2162,35 @@ alphaToken:
 
 	/* Strip off 's */
 	/* The possessive code will put it back on after translation. */
-	if(end-start > 2 && tolower(end[-1]) == 's' && end[-2] == '\'') {
+	if(end-start > 2 && acs_tolower(end[-1]) == 's' && acs_downshift(end[-2]) == '\'') {
 		end -= 2, e = '\'';
 		if(apos == end) apos = 0;
 	}
-	if(end-start > 3 && end[-3] == '\'' &&
-	tolower(end[-1]) == 'l' && end[-1] == end[-2]) {
+	if(end-start > 3 && acs_downshift(end[-3]) == '\'' &&
+	acs_tolower(end[-1]) == 'l' && end[-1] == end[-2]) {
 		end -= 3, e = '\'';
 		if(apos == end) apos = 0;
 	}
 
 	/* check for plural acronym, as in PCs, and back over the final s */
-	if(casecut == end-2 && end[-1] == 's' && isupper(end[-3]))
+	if(casecut == end-2 && end[-1] == 's' && acs_isupper(end[-3]))
 	--end, casecut = 0;
 
 	/* special code for 401Ks */
-	if(isdigit(d) && end-start == 2 &&
-	isupper(c) && start[1] == 's')
+	if(acs_isdigit(d) && end-start == 2 &&
+	acs_isupper(c) && start[1] == 's')
 		--end;
 
 	/* Check the entire word, and then the first piece of the
 	 * runTow->ogetherWord.  Thus readingRainbow will be
 	 * transmuted into reeding rainbow, via read -> reed. */
 	while(1) {
-		ur = acs_replace_iso(start, end-start);
+		ur = acs_replace(start, end-start);
 		if(ur) {
-			if(appendString(ur)) goto overflow;
-			appendBackup();
+			j = acs_unilen(ur);
+			if(roomCheck(j)) goto overflow;
+			memcpy(tp_out->buf + tp_out->len, ur, j*sizeof(unsigned int));
+			tp_out->len += j;
 			goto possessive;
 		} /* user replaced the entire word */
 		if(!casecut) break;
@@ -2083,20 +2203,20 @@ alphaToken:
 	if(apos) { /* interior apostrophe */
 		/* If it's not a native word, or it has yet more apostrophes
 		 * around it, read each component. */
-		if(d == '\'' || e == '\'' ||
+		if(acs_downshift(d) == '\'' || acs_downshift(d) == '\'' ||
 		!isPronounceable(start, end-start))
 			end = apos, apos = 0, e = '\'';
 	} /* interior apostrophe */
 
 	/* str76at  s t r 7 6 a t */
-	if(isdigit(d) && end-start < 3) goto acronym;
+	if(acs_isdigit(d) && end-start < 3) goto acronym;
 
 	/* A word cannot be too long */
 	if(end - start > WORDLEN)
 		end = start + WORDLEN, e = *end;
 
 	/* Check for mjordan@domain.com. */
-	if(e == '@' && end - start >= 4 && isalpha(end[1])) {
+	if(e == '@' && end - start >= 4 && acs_isalpha(end[1])) {
 		char leadLetters[3];
 		leadLetters[0] = 0;
 		if(!leadSequence(start, end-start)) {
@@ -2124,15 +2244,13 @@ alphaToken:
 	/* in a hyphenated word such as dis-obedient, the dis doesn't
 	 * look like a valid English word, so it gets acronized.
 	 * Check for this here, and jump to copyword. */
-	if(e == '-' && i <= 3 && i > 1 && isalpha(end[1])) {
+	if(acs_downshift(e) == '-' && i <= 3 && i > 1 && acs_isalpha(end[1])) {
 		if(leadSequence(start, i))
 			goto copyword;
 	}
 
 acronym:
-	*end = 0;
-	rc = appendAcronString(start);
-	*end = e;
+	rc = appendAcronCodes(start, end-start);
 	if(rc) goto overflow;
 	appendBackup();
 	goto possessive;
@@ -2140,27 +2258,28 @@ acronym:
 copyword:
 	/* copy a word into the buffer, shiftint to lower case */
 	for(; start<end; ++start) {
-		c = tolower(*start);
+		c = *start;
+		if(acs_isalpha(c)) c = acs_tolower(c);
 		if(appendChar(c)) goto overflow;
 	}
 
 possessive:
 	/* check for lower s after an acronym,
 	 * as in plural PCs. */
-	if(e == 's' && !isalnum(end[1]) &&
-	isalpha(end[-1])) {
+	if(e == 's' && !acs_isalnum(end[1]) &&
+	acs_isalpha(end[-1])) {
 		++end;
 		if(appendString("'s")) goto overflow;
 		goto success;
 	}
 
 	/* check for 's or 'll */
-	if(e == '\'' && tolower(end[1]) == 's' && !isalnum(end[2])) {
+	if(acs_downshift(e) == '\'' && acs_tolower(end[1]) == 's' && !acs_isalnum(end[2])) {
 		end += 2;
 		if(appendString("'s")) goto overflow;
 		goto success;
 	}
-	if(e == '\'' && tolower(end[1]) == 'l' && end[1] == end[2] && !isalnum(end[3])) {
+	if(acs_downshift(e) == '\'' && acs_tolower(end[1]) == 'l' && end[1] == end[2] && !acs_isalnum(end[3])) {
 		end += 3;
 		if(appendString("'ll")) goto overflow;
 		goto success;
@@ -2192,12 +2311,12 @@ Pass back the updated pointer, just after the punctuation mark,
 or passed any additional characters that are swallowed.
 *********************************************************************/
 
-static int expandPunct(const char **sp)
+static int expandPunct(const unsigned int **sp)
 {
-	char c, d, e;
-	const char *s = *sp;
-	const char *end = s+1;
-	const char *t;
+	unsigned int c, d, e;
+	const unsigned int *s = *sp;
+	const unsigned int *end = s+1;
+	const unsigned int *t;
 	char spaceAround;
 	int len, leftnum, rightnum, leftcode, rightcode, leftlen, rightlen;
 
@@ -2207,9 +2326,9 @@ static int expandPunct(const char **sp)
 
 	if(tp_readLiteral) {
 		/* Here are the exceptions */
-		if(tp_oneSymbol || !strchr(".^$", (char)c)) {
+		if(tp_oneSymbol |c >= 0x80 || !strchr(".^$", (char)c)) {
 do_punct:
-			speakChar((unsigned char)c, 0, 0, 0);
+			speakChar(c, 0, 0, 0);
 				if(appendString(shortPhrase)) goto overflow;
 			goto success;
 		}
@@ -2217,7 +2336,7 @@ do_punct:
 
 	switch(c) {
 	case '(':
-		if(tolower(e) == 's' && s[2] == ')' && isalpha(d)) {
+		if(tolower(e) == 's' && s[2] == ')' && acs_isalpha(d)) {
 			/* fill out the form(s) */
 			appendBackup();
 			if(appendIchar('s')) goto overflow;
@@ -2226,33 +2345,33 @@ do_punct:
 		}
 
 	case '[': case '{':
-		if(isspace(d)) {
+		if(acs_isspace(d)) {
 			do_comma: if(appendIchar(',')) goto overflow;
 		}
 		break;
 
 	case ')': case ']': case '}':
-		if(isalnum(d) &&
-		s[-2] && strchr("([{", s[-2]))
+		if(acs_isalnum(d) &&
+		s[-2] && s[-2] < 0x80 && strchr("([{", s[-2]))
 			break; /* the other side of (s) */
 		if(d != ' ') goto do_comma;
 		break;
 
 	case '"':
-		if(isspace(d) && isalnum(e)) {
+		if(acs_isspace(d) && acs_isalnum(e)) {
 			/* Which do we hit first, space or quote? */
 			for(t=end; (c = *t); ++t) {
 				if(c == '"') break;
-				if(isspace(c)) break;
+				if(acs_isspace(c)) break;
 			}
-		if(isspace(c)) goto do_comma;
+		if(acs_isspace(c)) goto do_comma;
 		}
-		if(isalnum(d) && isspace(e)) {
+		if(acs_isalnum(d) && acs_isspace(e)) {
 			for(t=s-1; (c = *t); --t) {
 				if(c == '"') break;
-				if(isspace(c)) break;
+				if(acs_isspace(c)) break;
 			}
-			if(isspace(c)) goto do_comma;
+			if(acs_isspace(c)) goto do_comma;
 		}
 		break;
 
@@ -2261,21 +2380,21 @@ do_punct:
 		 * Strange as it may seem, some people use a single -
 		 * for a compressed period in a run-on sentence.
 		 * Turn word-I into word.I */
-		if(isalpha(d) && isalnum(e)) {
-			if(e == 'I' && isalpha(s[-2]) && isspace(s[2])) {
+		if(acs_isalpha(d) && acs_isalnum(e)) {
+			if(e == 'I' && acs_isalpha(s[-2]) && acs_isspace(s[2])) {
 				if(appendIchar('.')) goto overflow;
 			}
 			break;
 		}
 
 		/* Turn 10-year-old into 10 year old. */
-		if(isdigit(d) && isalpha(e)) break;
+		if(acs_isdigit(d) && acs_isalpha(e)) break;
 
 		/* -37 becomes minus 37 */
 		/* Same for -$37 and -x, but not -word. */
-		if(isspace(d) &&
-		(isalnum(e) || e == '$')) {
-			if(isalpha(e) && isalpha(end[1])) break;
+		if(acs_isspace(d) &&
+		(acs_isalnum(e) || e == '$')) {
+			if(acs_isalpha(e) && acs_isalpha(end[1])) break;
 			if(appendString(ow->minusWord)) goto overflow;
 			break;
 		}
@@ -2294,21 +2413,21 @@ do_punct:
 		}
 		leftnum = rightnum = -1;
 		leftlen = rightlen = 0; /* quiet gcc warning */
-		if(isdigit(e) && e != '0') {
+		if(acs_isdigit(e) && e != '0') {
 			for(len=1; len<6; ++len)
-				if(!isdigit(s[len])) break;
+				if(!acs_isdigit(s[len])) break;
 			rightlen = len;
 			if(len < 6) rightnum = atoiLength(s, len);
 			c = s[len];
-			if(isalpha(c) || c == '-') rightnum = -1;
+			if(acs_isalpha(c) || c == '-') rightnum = -1;
 		}
-		if(isdigit(d)) {
+		if(acs_isdigit(d)) {
 			for(len=1; len<6; ++len)
-				if(!isdigit(t[-len])) break;
+				if(!acs_isdigit(t[-len])) break;
 			leftlen = len;
 			if(len < 6) leftnum = atoiLength(t-len+1, len);
 			c = t[-len];
-			if(isalpha(c) || c == '-') rightnum = -1;
+			if(acs_isalpha(c) || c == '-') rightnum = -1;
 		}
 		if(leftcode == rightcode) {
 			if(leftcode == SP_WDAY) {
@@ -2343,7 +2462,7 @@ do_to_word:
 		(rightlen == leftlen ||
 		(spaceAround && rightlen == leftlen+1))) goto do_to_word;
 		if(spaceAround) goto do_comma;
-		if(!isdigit(e)) goto do_comma;
+		if(!acs_isdigit(e)) goto do_comma;
 		if(appendString(ow->dashWord)) goto overflow;
 		break;
 
@@ -2357,55 +2476,55 @@ do_to_word:
 		 * This duplicate logic is a bad design,
 		 * but right now I can't think of a better one.
 		 * First check for $.39 = 39 cents */
-		if(e == '.' && isdigit(end[1]) && isdigit(end[2]) &&
-		!isalnum(end[3])) {
+		if(e == '.' && acs_isdigit(end[1]) && acs_isdigit(end[2]) &&
+		!acs_isalnum(end[3])) {
 			if(appendMoney(1, 0,
 			atoiLength(end+1, 2), end+3)) goto overflow;
 			end += 3;
 			break;
 		}
 		if(!isdigit(e)) goto nomoney;
-		for(t=end+1; isdigit(*t); ++t)  ;
+		for(t=end+1; acs_isdigit(*t); ++t)  ;
 		len = t - end;
 		if(len > 4) goto nomoney;
 		if(len >= 3) break;
 		if(!tp_readLiteral) break;
-		if(*t == '.' && isdigit(t[1])) break;
+		if(*t == '.' && acs_isdigit(t[1])) break;
 		/* Check for comma formatting. */
 		if(*t != ',') goto nomoney;
-		for((s = ++t); isdigit(*t); ++t)  ;
+		for((s = ++t); acs_isdigit(*t); ++t)  ;
 		if(t-s != 3) goto nomoney;
 		if(*t != ',') break;
-		if(!isdigit(t[1])) break;
+		if(!acs_isdigit(t[1])) break;
 nomoney:
 		if(tp_readLiteral) goto do_punct;
 		break;
 
 	case '.':
 		/* turn . into dot or point */
-		if(isdigit(d) && isdigit(e)) {
+		if(acs_isdigit(d) && acs_isdigit(e)) {
 			/* Usually said as point. */
 			/* But not in web addresses like 192.168.10.3 */
-			for(t=end+1; isdigit(*t); ++t) ;
-			if(*t == '.' && isdigit(t[1])) goto do_dot;
-			for(t=s-2; isdigit(*t); --t) ;
-			if(*t == '.' && isdigit(t[-1])) goto do_dot;
+			for(t=end+1; acs_isdigit(*t); ++t) ;
+			if(*t == '.' && acs_isdigit(t[1])) goto do_dot;
+			for(t=s-2; acs_isdigit(*t); --t) ;
+			if(*t == '.' && acs_isdigit(t[-1])) goto do_dot;
 do_point:
 			if(appendString(ow->pointWord)) goto overflow;
 			break;
 		}
-		if(isalnum(d) && isalnum(e)) {
+		if(acs_isalnum(d) && acs_isalnum(e)) {
 do_dot:
 			if(appendString(ow->dotWord)) goto overflow;
 			break;
 		}
-		if(isdigit(e)) goto do_point;
+		if(acs_isdigit(e)) goto do_point;
 		if(tp_readLiteral) goto do_punct;
-		if(!e || isspace(e)) goto copychar;
+		if(!e || acs_isspace(e)) goto copychar;
 		break;
 
 	case ';':
-		if(isspace(e)) goto do_comma;
+		if(acs_isspace(e)) goto do_comma;
 		break;
 
 	case '<': case '>': 	case '=':
@@ -2414,7 +2533,7 @@ do_dot:
 		++s;
 		if(*s == '=') ++s;
 		if(*s == ' ') ++s;
-		if(isdigit(*t) || isdigit(*s) ||
+		if(acs_isdigit(*t) || acs_isdigit(*s) ||
 		(t[1] == ' ' && s[-1] == ' ')) {
 			const char *w = ow->equalsWord;
 			if(c == '<') w = ow->lessWord;
@@ -2428,51 +2547,51 @@ do_dot:
 		break;
 
 	case '%':
-		if(isdigit(d) && !isalnum(e)) {
+		if(acs_isdigit(d) && !acs_isalnum(e)) {
 			appendBackup();
 			goto copychar;
 		}
 		break;
 
 		case '@':
-		if(isalnum(d) && isalnum(e))
+		if(acs_isalnum(d) && acs_isalnum(e))
 			if(appendString(ow->atWord)) goto overflow;
 		break;
 
 		case '#':
-		if(isalnum(d)) break;
-		if(isdigit(e)) {
+		if(acs_isalnum(d)) break;
+		if(acs_isdigit(e)) {
 			if(appendString(ow->numberWord)) goto overflow;
 			break;
 		}
-		if((e == 's' && !isalnum(s[2])) ||
-		(e == '\'' && s[2] == 's' && !isalnum(s[3]))) {
+		if((e == 's' && !acs_isalnum(s[2])) ||
+		(acs_downshift(e) == '\'' && s[2] == 's' && !acs_isalnum(s[3]))) {
 			if(appendString(ow->numbersWord)) goto overflow;
 			++end;
-			if(e == '\'') ++end;
+			if(acs_downshift(e) == '\'') ++end;
 		}
 		break;
 
 	case '/':
 		/* this/that becomes this or that */
-		if(!isalpha(d)) goto do_slash;
-		if(!isalpha(e)) goto do_slash;
+		if(!acs_isalpha(d)) goto do_slash;
+		if(!acs_isalpha(e)) goto do_slash;
 		t = s-2;
 		s += 2;
 		leftnum = rightnum = 1;
-		while(isalpha(*t)) --t, ++leftnum;
-		while(isalpha(*s)) ++s, ++rightnum;
+		while(acs_isalpha(*t)) --t, ++leftnum;
+		while(acs_isalpha(*s)) ++s, ++rightnum;
 		if(leftnum == 1 && rightnum == 1) break; /* an A/B switch */
 		if(leftnum == 1 || rightnum == 1) goto do_slash;
 		d = *t, e = *s;
-		if(d && !strchr("\"( \t\n", d)) goto do_slash;
-		if(e && !strchr("\") \t\n.?!,;:", e)) goto do_slash;
-		if(e == '.' && s[1] && !isspace(s[1])) goto do_slash;
+		if(d && d < 0x80 && !strchr("\"( \t\n", d)) goto do_slash;
+		if(e && e < 0x80 && !strchr("\") \t\n.?!,;:", e)) goto do_slash;
+		if(e == '.' && s[1] && !acs_isspace(s[1])) goto do_slash;
 		/* move pointers to the start of the two words */
 		s -= rightnum;
 		++t;
 		/* and/or is already set */
-		if(rightnum == 2 && isSubword("or", s) == 2) break;
+		if(rightnum == 2 && acs_substring_mix("or", s) == 2) break;
 		if(wordInList(ow->slashOrPhrases, t, leftnum+rightnum+1) >= 0) {
 			if(appendString(ow->orWord)) goto overflow;
 			break;
@@ -2490,14 +2609,14 @@ do_slash:
 		break;
 
 	case '^': /* squared cubed etc */
-		if(!isalnum(d)) goto noexp;
-		if(!isdigit(e)) goto noexp;
+		if(!acs_isalnum(d)) goto noexp;
+		if(!acs_isdigit(e)) goto noexp;
 		if(e == '0') goto noexp;
 		rightnum = e - '0';
 		t = end+1;
 		e = *t;
-		if(isdigit(e)) rightnum = 10*rightnum + e - '0', e = *++t;
-		if(isdigit(e)) goto noexp;
+		if(acs_isdigit(e)) rightnum = 10*rightnum + e - '0', e = *++t;
+		if(acs_isdigit(e)) goto noexp;
 		end = t;
 		if(rightnum > 3 || rightnum < 2) {
 			if(appendString(ow->toTheWord)) goto overflow;
@@ -2515,23 +2634,23 @@ noexp:
 		break;
 
 case ':':
-		if(e == '/' || (isalpha(d) && !isalnum(s[-2]))) {
+		if(e == '/' || (acs_isalpha(d) && !acs_isalnum(s[-2]))) {
 			if(appendString(ow->colonWord)) goto overflow;
 			break;
 		}
-		if(isspace(e)) goto do_comma;
+		if(acs_isspace(e)) goto do_comma;
 		break;
 
 	case '&':
 		/* I hope TTS knows what to do with AT&T etc */
-		if(!isalnum(d)) break;
-		if(!isalnum(e)) break;
+		if(!acs_isalnum(d)) break;
+		if(!acs_isalnum(e)) break;
 		appendBackup();
 		goto copychar;
 
 	case '!':
 		if(d == ' ') break;
-		if(isalnum(d) && isalnum(e)) {
+		if(acs_isalnum(d) && acs_isalnum(e)) {
 			if(appendString(ow->bangWord)) goto overflow;
 		}
 		/* fall through */
@@ -2540,7 +2659,7 @@ case ':':
 	case '+':
 copychar:
 		if(appendIchar(c)) goto overflow;
-		if(c == '&' && isalnum(e)) appendBackup();
+		if(c == '&' && acs_isalnum(e)) appendBackup();
 	} /* switch */
 
 success:
@@ -2574,8 +2693,8 @@ See tc_textBufSwitch() near the top of this file.
 
 static void expandSentence(void)
 {
-	char *s;
-	char c;
+	unsigned int *s;
+	unsigned int c;
 	int overflowValue = 1;
 
 	s = tp_in->buf + 1;
@@ -2597,16 +2716,16 @@ passThrough:
 		if(c == '\n' && !tp_oneSymbol)goto passThrough;
 
 		if(c == SP_MARK) {
-			if(expandCode((const char **)&s)) goto overflow;
+			if(expandCode((const unsigned int **)&s)) goto overflow;
 			continue;
 		} /* coded construct */
 
-		if(isalnum(c)) {
+		if(acs_isalnum(c)) {
 			if(expandAlphaNumeric(&s)) goto overflow;
 			continue;
 		} /* word or number */
 
-		if(expandPunct((const char **)&s)) goto overflow;
+		if(expandPunct((const unsigned int **)&s)) goto overflow;
 		continue;
 
 nextchar:
@@ -2627,9 +2746,9 @@ and multiple consecutive commas.
 
 static void postCleanup(void)
 {
-	char *s, *t;
+	unsigned int *s, *t;
 	acs_ofs_type *u, *v;
-	char c, d, e;
+	unsigned int c, d, e;
 	char *w;
 	static const char squishable[] = ",;:.?!";
 	char presquish = 0, postsquish, insquish;
@@ -2643,7 +2762,7 @@ static void postCleanup(void)
 
 		if(ispunct(c)) {
 			if(d == ' ') d = *--t, --v;
-			if(isspace(d)) continue;
+			if(acs_isspace(d)) continue;
 			w = strchr(squishable, (char)c);
 			if(w) insquish = w - squishable + 1;
 		} /* punctuation */
@@ -2655,13 +2774,13 @@ static void postCleanup(void)
 		}
 
 		if(c == ' ') {
-			if(isspace(d)) continue;
-			if(isspace(e)) continue;
+			if(acs_isspace(d)) continue;
+			if(acs_isspace(e)) continue;
 			if(postsquish) continue;
 			goto add_c;
 		} /* space */
 
-		if(isspace(c)) presquish = 0;
+		if(acs_isspace(c)) presquish = 0;
 
 		if(presquish && insquish) {
 			if(insquish > presquish) {
@@ -2718,39 +2837,11 @@ void prepTTS(void)
 
 	if(!tp_oneSymbol) {
 		time_checkpoint();
-
-		/* Get rid of binary data */
 		ascify();
 		debugCheck('b', tp_in);
-
-#if 0
-		/* relinearize .signature block */
-/* This code was lost years ago. */
-		relinearize();
-		debugCheck('c', tp_in);
-#endif
-
-#if 0
-		/* compress whitespace */
-/* don't think we need this any more */
-		doWhitespace();
-		debugCheck('d', tp_in);
-#endif
-
-		/* remove garbage lines */
-		ungarbage();
-		debugCheck('e', tp_in);
-
-	/* Look for titles */
-		titles();
-		debugCheck('f', tp_in);
-
-		/* encode list items */
-		listItem();
-		debugCheck('g', tp_out);
-		textBufSwitch();
 	} /* tp_oneSymbol */
 
+#if 0
 	/* Encode constructs such as date and time.
 	 * There are some word replacements that can take place even when
 	 * reading symbol by symbol. */
@@ -2760,6 +2851,7 @@ void prepTTS(void)
 		debugCheck('h', tp_out);
 		textBufSwitch();
 	}
+#endif
 
 	/* translate everything to alphanum text */
 	expandSentence();
@@ -2771,19 +2863,18 @@ void prepTTS(void)
 } /* prepTTS */
 
 
-/* this is for debugging */
-/* does not deal with offsets */
-char *prepTTSmsg(const char *msg)
+unsigned int *prepTTSmsg(const char *msg)
 {
-int len = strlen(msg);
-int i;
+int i, len;
 
 /* I assume there is room for the message */
 tp_in->buf[0] = 0;
-strcpy(tp_in->buf+1, msg);
-tp_in->len = len+1;
+len = acs_utf82uni(msg, tp_in->buf+1);
+++len;
+tp_in->len = len;
+tp_in->buf[len] = 0;
 
-	for(i=1; i<=len+1; ++i)
+	for(i=1; i<=len; ++i)
 		tp_in->offset[i] = i;
 
 	prepTTS();

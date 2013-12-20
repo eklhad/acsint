@@ -378,9 +378,31 @@ if(l) write(acs_sy_fd1, s, l);
 ss_cr();
 } // acs_say_string
 
-void acs_say_indexed(const char *s, const acs_ofs_type *o, int mark)
+void acs_say_string_n(const char *s)
 {
-const char *t;
+int l = strlen(s);
+if(l) write(acs_sy_fd1, s, l);
+} // acs_say_string_n
+
+void acs_say_char(unsigned int c)
+{
+char *s = acs_getpunc(c);
+if(s) acs_say_string_n(s);
+else
+acs_write_mix(acs_sy_fd1, &c, 1);
+ss_cr();
+} // acs_say_char
+
+void acs_say_string_uc(const unsigned int *s)
+{
+int l = acs_unilen(s);
+if(l) acs_write_mix(acs_sy_fd1, s, l);
+ss_cr();
+} /* acs_say_string_uc */
+
+void acs_say_indexed(const unsigned int *s, const acs_ofs_type *o, int mark)
+{
+const unsigned int *t;
 char ibuf[30]; // index mark buffer
 const acs_ofs_type *o0 = o;
 
@@ -394,7 +416,7 @@ while(1) {
 if(*o && mark >= 0 && mark <= 100) { // mark here
 // have to send the prior word
 if(s > t)
-write(acs_sy_fd1, t, s-t);
+acs_write_mix(acs_sy_fd1, t, s-t);
 t = s;
 // set the index marker
 imark_loc[imark_end++] = *o;
@@ -435,7 +457,7 @@ if(!*s) break;
  * so there should be nothing else to send.
  * But just in case ... */
 if(s > t)
-write(acs_sy_fd1, t, s-t);
+acs_write_mix(acs_sy_fd1, t, s-t);
 
 ss_cr();
 acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);

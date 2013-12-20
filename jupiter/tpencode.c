@@ -2,7 +2,7 @@
 
 tpencode.c: Encode dates, times, etc for text preprocessing.
 
-Copyright (C) Karl Dahlke, 2011.
+Copyright (C) Karl Dahlke, 2014.
 This software may be freely distributed under the GPL, general public license,
 as articulated by the Free Software Foundation.
 *********************************************************************/
@@ -12,440 +12,39 @@ as articulated by the Free Software Foundation.
 
 /*********************************************************************
 Turn null into '\n'.
-
-Turn "\r\n"into "\n".
-
-Remove x^H, overstrike character.
-
 Turn nonspace control character or delete into space.
-
-When a nonascii character is found,
-look ahead 30 characters.
-If you encounter a significant number of binary characters,
-compress the mess out.
-Turn this binary block into a formfeed.
-If the binary character is isolated, leave it alone.
-
-Given a binary block, look ahead and back 30 characters.
-If you locate a line or paragraph boundary, compress
-everything up to that delimitor.
-
-Turn \134 into \
-134 is the octal code for \,
-and apparently some systems turn \ into \134.
-I have no idea if this can ever happen twice, giving \134134.
-Perhaps we should remove arbitrarily many instances of 134 after \ ??
+The name of this function is vestigial; now acting on unicodes,
+so we wouldn't want to ascify the buffer.
 *********************************************************************/
-
-#define BINARYHORIZON 30
 
 void ascify(void)
 {
-	char *s, *t, *q, *end_s;
-	acs_ofs_type *u, *v;
-	char  c, d;
-	int i, j;
-	char *lastbin = 0;
+	unsigned int *s, *end_s;
+	unsigned int  c;
 
-	s = t = tp_in->buf + 1;
+	s =tp_in->buf + 1;
 	end_s = tp_in->buf + tp_in->len;
-	u = v = tp_in->offset + 1;
 
-	for(; s < end_s; ++s, ++u) {
+	for(; s < end_s; ++s) {
 		c = *s;
-		if(c == '\r' && s[1] == '\n') ++s, ++u;
-
-		if(c == '\b') {
-			d = t[-1];
-			if(d && d != '\f' && d != '\n') --t, --v;
-			continue;
-		} /* backspace */
-
-		if(c == '\n' || c == '\f') {
-			/* Ratchet back to binary data. */
-			if(lastbin && t-lastbin < BINARYHORIZON) {
-				v -= (t-lastbin);
-				t = lastbin;
-				++t, ++v;
-				lastbin = 0;
-				continue;
-			} /* recent binary data */
-			lastbin = 0; /* too far back */
-			goto add_c;
-		} /* newline or formfeed */
-
-		if(c == 0) c = '\n'; /* let null look like newline */
+		if(c == 0) c = '\n'; //should never happen
 		if(c == '\t') goto add_c;
+		if(c == '\n') goto add_c;
 		if(c == '\7')goto add_c;
 		if(!tp_readLiteral) {
 			/* Treat delete or control character as space */
-			if(c == '\177') c = ' ';
+			if(c == 0x7f) c = ' ';
 			if(c < ' ') c = ' ';
 		}
 
-		if(c == '\\') {
-			if(s[1] == '1' && s[2] == '3' && s[3] == '4') {
-				*t++ = c;
-				*v++ = *u;
-				s += 3, u += 3;
-				continue;
-			}
-		}
-
-		if(c&0x80) { /* binary data */
-			/* if we saw more binary data recently, back up to that point. */
-			if(lastbin && t-lastbin < BINARYHORIZON) {
-				v -= (t-lastbin);
-				t = lastbin;
-				++t, ++v;
-				continue;
-			} /* recent binary data */
-			/* Look ahead for more binary data */
-			j = 0;
-			for(i=1, q=s+1; q<end_s && i<BINARYHORIZON; ++q, ++i)
-				if(*q&0x80) ++j;
-			if(i < 15) goto add_c; /* not enough bytes to evaluate */
-			if(j*5 <= i*2) goto add_c; /* not too many binary chars */
-			/* Oops, we've got binary data.
-			 * if we're close to a line or paragraph break,
-			 * back up to that point. */
-			for(i=0, q=t; i<BINARYHORIZON; ++i) {
-				d = *--q;
-				if(!d) break;
-				if(d == '\n' || d == '\f') break;
-			} /* loop looking back */
-			if(i == BINARYHORIZON) {
-				/* nothing back there */
-				lastbin = t;
-				if(lastbin == tp_in->buf+1) { --lastbin; continue; }
-				c = '\f';
-				goto add_c;
-			}
-			v -= (t-q);
-			t = q;
-			if(d) *t = '\f';
-			++t, ++v;
-			continue;
-		} /* found binary data */
-
 add_c:
 		if(c == SP_MARK) c = ' '; /* this one's reserved */
-		*t++ = c;
-		*v++ = *u;
+		*s = c;
 	} /* end loop over characters in the input message. */
-
-	/* Ratchet back to binary data. */
-	if(lastbin && t-lastbin < BINARYHORIZON) {
-		v -= (t-lastbin);
-		t = lastbin;
-		++t, ++v;
-	}
-
-	*t = 0; /* null terminate */
-	*v = *u;
-	tp_in->len = t - tp_in->buf;
 } /* ascify */
 
 
-/*********************************************************************
-Compress and codify whitespace.
-When finished, blank indicates single space,
-tab indicates many spaces or tabs,
-cr indicates any collection of whitespace
-that includes one cr or crlf,
-and formfeed indicates formfeed or a cr with another cr
-immediately before or after it.
-In other words, formfeed is a paragraph break.
-To support Unix and Dos,
-an isolated nl is treated as cr.
-Note that nl, tab, and formfeed, if present in the original
-text, are not read literally, even if tp_readLiteral is set.
-This is because these symbols are used to denote various forms of whitespace,
-in the codification process below, and, perhaps,
-in the mind of the author.
-Does he want you to think tab, or just a few spaces over.
-Either is a fair interpretation, and the latter is much easier,
-since we're turning multiple spaces into tab anyways.
-If you want to hear tab pronounced "control i",
-you need to step through the text symbol by symbol.
-Normally, formfeed and linefeed don't make it into the text anyways,
-unless you have set control-char-buffering mode,
-which is generally not done, except for debugging purposes.
-
-When text comes from a Unix source, adjacent formfeeds (paragraph breaks)
-are compressed into one.
-Not so when the text comes from the Linux kernel,
-because I want to hear a sound for each formfeed.
-After all, these formfeeds use to be (in all probability)
-adjacent returns, and I want to hear the sounds of each return.
-That tells me how many intervening blank lines.
-This routine performs some other transformations, as follows.
-
-Turn re-
-position into reposition.
-This is a word split across lines by an intelligent word processor,
-or a human concerned about pretty formatting.
-This has to be handled now, before we lose the spaces that might
-follow the hyphen, at the end of its line.
-
-Squeeze out space between two instances of a punctuation mark.
-Thus = = = = becomes ====.
-Don't remove spaces from quotes, as that screws up the sentence breakup:
-He said, "I like pizza."  "But I like prunes better."
-
-Any span of graphical (i.e. non alphanumeric) characters
-that includes two newlines, is replaced with formfeed.
-Since a line of all stars, or all dashes, or alternating equals signs and
-spaces, or even two hyphens, gives the appearance of a forced
-paragraph break, we may as well treat it as such here.
-
-Encode the common emoticons.
-Although most of the semantic encoding does not take place this early in the
-text processing, this routine already deals with graphics characters,
-and that's what emoticons are made of.
-If we don't check for :-) here, and it appears on a line by itself, it will be
-discarded; treated as a delimiting line of punctuations between paragraphs.
-Also, these icons are language independent, which is consistent with
-the theme of this routine.
-
-Remove space from either side of &
-Hopefully the synthesizer knows what to do with AT&T.
-
-Detect certain graphical codes for bullet lists.
-This is usually a leading star before some text.
-Turn the chars into 0xb7, a standard, concise, and unambiguous
-code for bullet.
-
-Compress 3 or more instances of a character down to 2, unless said character
-is a digit.  Wouldn't want to replace 77777 with 77.
-Turn exactly three into two if it looks like a typo inside a real word.
-This is not tooo unusual.
-
-If a line begins and ends with 3 or more instances of
-equals, hyphen, underscore, or star,
-treat that line as a title.
-Insert a paragraph break before and after the line.
-Among other things, this handles
------Original Message-----
-which is very common when mail contains forwarded mail.
-*********************************************************************/
-
-void doWhitespace(void)
-{
-	char *s, *t, *q;
-	acs_ofs_type *u, *v, of;
-	char c, d, e, f, emot;
-
-	s = t = tp_in->buf + 1;
-	u = v = tp_in->offset + 1;
-	for(; (c = *s); ++s, ++u) {
-retry:
-		d = t[-1];
-		if(!d) d = '\f';
-		e = s[1];
-		if(!e) e = '\f';
-		of = *u;
-
-		/* Check for hyphenated word */
-		if(c == ' ' && d == '-' && isalnum(t[-2]) &&
-		isalpha(e) && isalpha(s[2])) {
-			if(isalpha(t[-2])) --t, --v;
-			continue;
-		}
-
-		/* We only need space to separate words;
-		 * tabs to separate fields or sentences. */
-		if(c == ' ') {
-			if(d == ' ') { c = '\t'; goto back_add_c; }
-			if(isspace(d)) continue;
-			if(d == e && !isalnum(d) && d != '"') continue;
-			goto add_c;
-		} /* space */
-
-		if(c == '\t') {
-			if(d == ' ') goto back_add_c;
-			if(isspace(d)) continue;
-			goto add_c;
-		} /* tab */
-
-		if((c == '\n' || c == '\f') && !of) {
-			if(d == '\t') d = ' ';
-			if(d == ' ') --t, --v;
-			for(q=t-1; (e = *q); --q) {
-				if(isalnum(e)) goto add_c;
-				if(e&0x80) goto add_c;
-				if(e == '\f' || e == '\n') break;
-				if(e != ' ' && e != '\t' &&
-				tp_readLiteral) goto add_c;
-			}
-			/* Line is empty, or only contains graphics chars. */
-			/* Call it a paragraph break. */
-			c = '\f';
-			++q;
-			v -= (t-q);
-			t = q;
-			d = t[-1];
-			if(d == '\n') t[-1] = d = '\f';
-			if(!d || d == '\f') continue;
-			goto add_c;
-		} /* nl or formfeed */
-
-		if(c < ' ') {
-			/* some other control character */
-			if(tp_readLiteral) goto add_c;
-			if(c == '\7') goto add_c;
-			c = '\t';
-			goto retry;
-		} /* control character */
-
-		/* we could receive SP_REPEAT from the kernel */
-#ifdef __KERNEL__
-		if(c == SP_MARK) {
-			*t++ = c;
-			*v++ = of;
-			do {
-				++s, ++u;
-				*t++ = c = *s;
-				++v;
-			} while(c && c != SP_MARK);
-			continue;
-		}
-#endif
-
-		if(c == '&') {
-			if(d == ' ' && isalnum(t[-2]))
-				d = *--t, --v;
-			if(s[1] == ' ' && isalnum(s[2]))
-				++s, ++u;
-		} /* & */
-
-		if(tp_readLiteral) goto skip_encoding;
-		/* look for net emoticons */
-		if(d > ' ') goto no_emot;
-		/* An emoticon that leads the message, or even a paragraph, doesn't mean much.
-		 * It would only confuse the listener to begin by reading it. */
-		if(d == '\f') goto no_emot;
-		if(!strchr("8;:", (char)c)) goto no_emot;
-		emot = 0;
-		/* Check for the short emoticons, :( and :) */
-		q = s; /* suppress compiler warning */
-		if(c != '8' && (e == '(' || e == ')')) {
-			emot = (e == ')' ? 'B' : 'C');
-			if(emot == 'B' && c == ';') emot = 'A';
-			q = s+1;
-		} else if(e == '-' && (f = s[2])) {
-			static const char emotichars[] = "W)(ODb";
-			char *w;
-			if(f == 'o' || (f == '0' && c != '8')) f = 'O';
-			if(f == 'p') f = 'b';
-			if(f == ')' && c == ';') f = 'W';
-			if((w = strchr(emotichars, (char)f))) {
-				emot = w-emotichars + 'A';
-				q = s+2;
-			}
-		}
-		if(!emot) goto no_emot;
-		/* Needs to be an isolated token */
-		f = q[1];
-		if(f > ' ' && f != ',' && f != '.') goto no_emot;
-		/* Ok, add the encoded emoticon */
-		if(d == ' ' || d == '\t') --t, --v;
-		if(q-t < 3) goto no_emot; /* no room for the (larger) encoding */
-		*t++ = SP_MARK;
-		*t++ = SP_EMOT;
-		*t++ = emot;
-		*t++ = SP_MARK;
-		*v = of;
-		v += 4;
-		u += q-s;
-		s = q;
-		continue;
-no_emot:
-
-		/* Check for bullet list item */
-		if((c == '*' || c == '-') &&
-		(d == '\n' || d == '\f')) {
-			q = s+1;
-			if(e == '-' && e == c) ++q;
-			f = *q;
-			while(f == ' ' || f == '\t') f = *++q;
-			if(q > s+1 && isalnum(f)) {
-				/* Bullet list detected */
-				--q;
-				u += (q-s);
-				s = q;
-				*t++ = 0xb7;
-				*v++ = of;
-				continue;
-			} /* followup letter */
-		} /* lead star or hyphen */
-skip_encoding:
-
-		/* three symbols in a row */
-		if(c == d && c == t[-2]) {
-			/* check for misssion typo */
-			if(isalpha(c) &&
-			t[-3] != c && s[1] != c &&
-			((isalpha(s[1]) && isvowel(c)^isvowel(s[1])) ||
-			(isalpha(t[-3]) && isvowel(c)^isvowel(t[-3])))) {
-				/* watch out for roman viii or xiii */
-				if(isalpha(s[1])) continue;
-				if(!strchr("iIxXcC", (char)c)) continue;
-			}
-			if(tp_readLiteral) goto add_c;
-			if(isalnum(c)) goto add_c;
-			/* perhaps the string is longer */
-			if(e == c) continue;
-			if(e == ' ' && s[2] == c) continue;
-			if(!strchr(".-_=*#", (char)c)) continue;
-			/* Look ahead for '\n' */
-			for(q=s+1; (e = *q); ++q) {
-				if(e == '\r') e = '\n';
-				if(e == '\f') e = '\n';
-				if(e == '\n') break;
-				if(e == '\t') e = ' ';
-				if(e != ' ') break;
-			}
-			if(e == '\n' || !e) {
-				u += (q-s);
-				s = q;
-				of = *u;
-				t -= 2, v -= 2;
-				if(!e) break;
-				c = '\f';
-				goto retry;
-			} /* cr encountered forward */
-			d = t[-3];
-			if(d == '\n') t[-1] = d = '\f';
-			if(!d || d == '\f') t -= 2, v -= 2;
-			continue;
-		} /* third instance of c */
-
-			goto add_c;
-
-back_add_c:
-		--t, --v;
-add_c:
-		*t++ = c;
-		*v++ = of;
-	} /* end loop over characters in the text */
-
-	d = t[-1];
-	if(d == ' ' || d == '\t')
-		--t, --v;
-#ifndef __KERNEL__
-	if(d == '\n' || d == '\f')
-		--t, --v;
-#else
-	if(d == '\n') t[-1] = '\f';
-#endif
-
-	*t = 0; /* null terminate */
-	*v = *u;
-	tp_in->len = t - tp_in->buf;
-} /* doWhitespace */
-
-
+#if 0
 /*********************************************************************
 See if a line is an unreadable string
 of letters and/or digits, such as uuencoded data,
@@ -813,6 +412,98 @@ void titles(void)
 	} /* loop through the text */
 } /* titles */
 
+/*********************************************************************
+Encode list items.
+If literal mode is off, adjust either period or comma
+after the letter or number,
+depending on the size of the list item.
+*********************************************************************/
+
+void listItem(void)
+{
+	const char *s;
+	const char *t;
+	const char *start;
+	char c, d;
+	int endpunct;
+	char wordbuf[12];
+	int last_li = 0;
+	int overflowValue = 1;
+
+	wordbuf[0] = SP_MARK;
+	wordbuf[1] = SP_LI;
+	s = tp_in->buf + 1;
+
+	while((c = *s)) { /* another line */
+		endpunct = 0;
+		if(c == 0xb7) {
+			t = s+1;
+			wordbuf[2] = SP_MARK;
+			wordbuf[3] = 0;
+			goto encoded;
+		}
+
+		if(!isalnum(c)) goto copy;
+		t = s;
+		if(isalpha(c)) c = *++t;
+		else while(isdigit(c)) c = *++t;
+		if(t - s > 6) goto copy;
+		if(c != '.' && c != ':') goto copy;
+		c = *++t;
+		if(c && !isspace(c)) goto copy;
+		strncpy(wordbuf+2, (char*)s, t-s);
+		endpunct = 1 + t-s;
+		if(!tp_readLiteral) wordbuf[endpunct] = '.';
+		wordbuf[endpunct+1] = SP_MARK;
+		wordbuf[endpunct+2] = 0;
+
+/* This looks good, but we might be fooled by one of two constructs.
+I wrote a letter to John
+C. Calhoon, and he told me the answer to life was
+42.  I thought it was 54. */
+
+		if(t[-1] == ':') goto encoded;
+		d = s[-1];
+		if(!d) goto encoded;
+		if(d == '\f') goto encoded;
+		/* at this point, d should be \r */
+		if(!isalpha(s[-2])) goto encoded;
+		if(last_li) goto encoded;
+		endpunct = 0;
+		goto copy;
+
+encoded:
+		carryOffsetForward(s);
+		if(appendString(wordbuf)) goto overflow;
+		appendBackup();
+		s = t;
+
+copy:
+		start = s;
+		while((c = *s)) {
+			if(c == 0xb7) c = '.';
+			carryOffsetForward(s);
+			if(appendChar(c)) goto overflow;
+			++s;
+			if(c == '\f') break;
+			if(c == '\n') break;
+		} /* loop copying this line */
+
+		/* revert to comma for a short item */
+		if(endpunct && !tp_readLiteral &&
+		s - start <= 20)
+			tp_out->buf[tp_out->len - (s-start) - 2] = ',';
+
+		last_li = (endpunct > 0);
+		if(c == '\f') last_li = 0;
+	} /* loop over lines */
+
+	overflowValue = 0;
+
+overflow:
+	textbufClose(s, overflowValue);
+} /* listItem */
+
 
 /*********************************************************************
 The rest of the routines in this file encode various
@@ -830,7 +521,7 @@ other routines can simply look ahead for SP_TIME, and act accordingly.
 We can also write a simple time-rendering module to read times in English.
 When we adapt this system to Spanish,
 we can plug in a Spanish time-reader and go.
-The system should be much more language independent.
+The system should be more language independent.
 
 There are many small functions that support this encoding process,
 such as zoneCheck, which looks ahead and encodes the time zone.
@@ -856,8 +547,7 @@ Each entry is associated with a particular language.
 At sort time, most of these entries are culled,
 leaving only the entries that correspond with the setting of acs_lang.
 Thus you cannot switch between languages on the fly.
-We may "fix" this deficiency some day,
-but for now, it isn't a big inconvenience.
+That's ok, you can't change the language of espeak on the fly either.
 
 Some words are language independent, such as
 roman numbers, metric units, and the month/weekday abbreviations in computer
@@ -1567,9 +1257,6 @@ static int lineLength(const char *s, const char **begin_p, const char **end_p)
 		++begin_o;
 	}
 	diff = (int)end_o - (int)begin_o;
-#ifdef __KERNEL__
-	if(diff < 0) diff += CBUFSIZE;
-#endif
 	return diff;
 
 estimate:
@@ -1626,7 +1313,7 @@ int l, z1;
 
 	if(isspace(c) && c != '\f') c = *++s;
 	if(c == '(') { c = *++s; paren = 1; }
-	if(isSubword((char*)"gmt", s) > 0 &&
+	if(acs_substring_mix((char*)"gmt", s) > 0 &&
 	(s[3] == '+' || s[3] == '-')) {
 		gmt = 1;
 		s += 3;
@@ -2168,11 +1855,6 @@ q = s-2;
 				if(i >= 5 && i <= 6 && j >= 3) postzip = 1;
 			} /* subsequent token */
 
-#if 0
-printf("%s.%d,%d.%d.%d\n",
-r->word, r->abbrev, precomma, precity, postzip);
-#endif
-
 if(r->abbrev&4 && !(postzip|precomma)) precity = 0;
 			if(!(postzip|precity) && r->abbrev) continue;
 			if(precity&precomma) {
@@ -2659,98 +2341,6 @@ overflow:
 } /* encodeNumber */
 
 
-/*********************************************************************
-Encode list items.
-If literal mode is off, adjust either period or comma
-after the letter or number,
-depending on the size of the list item.
-*********************************************************************/
-
-void listItem(void)
-{
-	const char *s;
-	const char *t;
-	const char *start;
-	char c, d;
-	int endpunct;
-	char wordbuf[12];
-	int last_li = 0;
-	int overflowValue = 1;
-
-	wordbuf[0] = SP_MARK;
-	wordbuf[1] = SP_LI;
-	s = tp_in->buf + 1;
-
-	while((c = *s)) { /* another line */
-		endpunct = 0;
-		if(c == 0xb7) {
-			t = s+1;
-			wordbuf[2] = SP_MARK;
-			wordbuf[3] = 0;
-			goto encoded;
-		}
-
-		if(!isalnum(c)) goto copy;
-		t = s;
-		if(isalpha(c)) c = *++t;
-		else while(isdigit(c)) c = *++t;
-		if(t - s > 6) goto copy;
-		if(c != '.' && c != ':') goto copy;
-		c = *++t;
-		if(c && !isspace(c)) goto copy;
-		strncpy(wordbuf+2, (char*)s, t-s);
-		endpunct = 1 + t-s;
-		if(!tp_readLiteral) wordbuf[endpunct] = '.';
-		wordbuf[endpunct+1] = SP_MARK;
-		wordbuf[endpunct+2] = 0;
-
-/* This looks good, but we might be fooled by one of two constructs.
-I wrote a letter to John
-C. Calhoon, and he told me the answer to life was
-42.  I thought it was 54. */
-
-		if(t[-1] == ':') goto encoded;
-		d = s[-1];
-		if(!d) goto encoded;
-		if(d == '\f') goto encoded;
-		/* at this point, d should be \r */
-		if(!isalpha(s[-2])) goto encoded;
-		if(last_li) goto encoded;
-		endpunct = 0;
-		goto copy;
-
-encoded:
-		carryOffsetForward(s);
-		if(appendString(wordbuf)) goto overflow;
-		appendBackup();
-		s = t;
-
-copy:
-		start = s;
-		while((c = *s)) {
-			if(c == 0xb7) c = '.';
-			carryOffsetForward(s);
-			if(appendChar(c)) goto overflow;
-			++s;
-			if(c == '\f') break;
-			if(c == '\n') break;
-		} /* loop copying this line */
-
-		/* revert to comma for a short item */
-		if(endpunct && !tp_readLiteral &&
-		s - start <= 20)
-			tp_out->buf[tp_out->len - (s-start) - 2] = ',';
-
-		last_li = (endpunct > 0);
-		if(c == '\f') last_li = 0;
-	} /* loop over lines */
-
-	overflowValue = 0;
-
-overflow:
-	textbufClose(s, overflowValue);
-} /* listItem */
-
 
 /*********************************************************************
 Mark the end of a sentence, using nl (ASCII 10).
@@ -2771,7 +2361,6 @@ if(tp_readLiteral) return 0;
 	return appendChar('\n');
 } /* markSentence */
 
-#ifndef __KERNEL__
 static int markPhrase(void)
 {
 	char *t = tp_out->buf + tp_out->len - 1;
@@ -2782,7 +2371,6 @@ static int markPhrase(void)
 	if(strchr(".,!?;:", (char)c)) return 0;
 	return appendChar(',');
 } /* markPhrase */
-#endif
 
 
 /*********************************************************************
@@ -2833,7 +2421,7 @@ void doEncode(void)
 		if(!d) goto start_c;
 		if(isspace(d)) goto start_c;
 		/* P.S. always begins a sentence */
-		if(isSubword((char*)"p.s", s+1) > 0) {
+		if(acs_substring_mix((char*)"p.s", s+1) > 0) {
 			d = s[4];
 			if(d == '.') d = s[5];
 			if(!d || isspace(d)) {
@@ -2865,11 +2453,9 @@ void doEncode(void)
 		/* Check for list item. */
 		if(s[1] == SP_MARK && s[2] == SP_LI)
 			goto crSentence;
-#ifndef __KERNEL__
 		/* append a comma to each short line */
 		if(!tp_readLiteral && lp <= 42 &&
 		markPhrase()) goto overflow;
-#endif
 		goto start_c;
 crSentence:
 		if(markSentence()) goto overflow;
@@ -3075,3 +2661,4 @@ overflow:
 } /* doEncode */
 
 
+#endif

@@ -784,7 +784,9 @@ if(!culen) break;
 if(acs_debug) {
 for(j=0; j<culen; ++j) {
 d = * (int*) (inbuf + i + 4*j);
-if(d < ' ' || d >= 0x7f) d = '_';
+if(d < ' ' || d >= 0x7f)
+acs_log("<%x>", d);
+else
 acs_log("%c", d);
 }
 acs_log("\n");

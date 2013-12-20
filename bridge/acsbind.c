@@ -88,7 +88,7 @@ static unsigned int utf8_1(void)
 	return (c ? c : '?');
 } /* utf8_1 */
 
-/* These functions allocate; you need to free when done. */
+/* This function allocates; you need to free when done. */
 unsigned char *acs_uni2utf8(const unsigned int *ubuf)
 {
 	const unsigned int *t;
@@ -108,29 +108,39 @@ unsigned char *acs_uni2utf8(const unsigned int *ubuf)
 	return out;
 } /* uni2utf8 */
 
-unsigned int *acs_utf82uni(const unsigned char *ubuf)
+/* convert to utf8 then write to a file */
+void acs_write_mix(int fd, const unsigned int *s, int len)
 {
-	unsigned int *out;
-	int l = 0;
+static unsigned char buf[256];
+uni_p = buf;
+while(len--) {
+uni_1(*s++);
+if(uni_p - buf < 250) continue;
+write(fd, buf, uni_p - buf);
+uni_p = buf;
+}
+if(uni_p > buf)
+write(fd, buf, uni_p - buf);
+} /* acs_write-mix */
+
+/* dest has to have enough room */
+int acs_utf82uni(const unsigned char *ubuf, unsigned int *dest)
+{
+int l = 0;
 	uni_p = (unsigned char *)ubuf;
-	while(utf8_1()) ++l;
-	out = malloc((l+1) * sizeof(unsigned int));
-	if(!out) return 0;
-	l = 0;
-	uni_p = (unsigned char *)ubuf;
-	while(out[l] = utf8_1()) ++l;
-	return out;
+	while(*dest++ = utf8_1()) ++l;
+return l;
 } /* acs_utf82uni */
 
 int acs_isalpha(unsigned int c)
 {
-	if(c == (c&0x7f) && isalpha(c)) return 1;
+	if(c < 0x80 && isalpha(c)) return 1;
 
 	switch(acs_lang) {
 	case ACS_LANG_DE:
 		if(c == 0xdf) return 1;
 		c |= 0x20;
-		if(c == 0xe4 || c == 0xf4 || c == 0xf6) return 1;
+		if(c == 0xe4 || c == 0xfc || c == 0xf6) return 1;
 		break;
 
 	case ACS_LANG_PT:
@@ -151,11 +161,120 @@ int acs_isalpha(unsigned int c)
 	return 0;
 } /* acs_isalpha */
 
+int acs_isdigit(unsigned int c)
+{
+	return (c >= '0' && c <= '9');
+} /* acs_isdigit */
+
 int acs_isalnum(unsigned int c)
 {
-	if(c == (c&0x7f) && isalnum(c)) return 1;
-	return acs_isalpha(c);
+	return (acs_isalpha(c) || acs_isdigit(c));
 } /* acs_isalnum */
+
+int acs_isspace(unsigned int c)
+{
+	if(c < 0x80 && isspace(c)) return 1;
+	return 0;
+} /* acs_isspace */
+
+/* this assumes you already know it's alpha */
+int acs_isupper(unsigned int c)
+{
+if(c == 0xdf) return 0;
+if(c&0x20) return 0;
+return 1;
+} /* acs_isupper */
+
+/* this assumes you already know it's alpha */
+int acs_islower(unsigned int c)
+{
+if(c == 0xdf) return 1;
+if(c&0x20) return 1;
+return 0;
+} /* acs_isupper */
+
+/* this assumes you already know it's alpha */
+unsigned int acs_tolower(unsigned int c)
+{
+if(c == 0xdf) return c;
+return (c | 0x20);
+} /* acs_tolower */
+
+/* this assumes you already know it's alpha */
+unsigned int acs_toupper(unsigned int c)
+{
+// 0xdf works here
+return (c & ~0x20);
+} /* acs_toupper */
+
+/* this assumes you already know it's alpha */
+int acs_isvowel(unsigned int c)
+{
+c = acs_tolower(c);
+// english
+if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y')
+return 1;
+
+// latin 1
+if(c >= 0xc0 && c < 0x100) {
+static const unsigned char wv[] = {
+1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,
+1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,
+1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,
+1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,
+};
+return wv[c-0xc0];
+}
+
+// higher voweles not yet implemented
+return 0;
+} /* acs_isvowel */
+
+char acs_unaccent(unsigned int c)
+{
+	static const char down[256+1] =
+	"                "
+	"                "
+	"                "
+	"                "
+	" abcdefghijklmno"
+	"pqrstuvwxyz     "
+	" abcdefghijklmno"
+	"pqrstuvwxyz     "
+	"          s     "
+	"          s    y"
+	"                "
+	"                "
+	"aaaaaaa eeeeiiii"
+	"dnooooo ouuuuy s"
+	"aaaaaaa eeeeiiii"
+	" nooooo ouuuuy s";
+if(c >= 0x100) return ' ';
+return down[c];
+} /* acs_unaccent */
+
+int acs_substring_mix(const char *s, const unsigned int *t)
+{
+int n = 0;
+unsigned int c, d;
+uni_p = (unsigned char *)s;
+while(*uni_p) {
+c = utf8_1();
+d = *t++;
+// if c is a letter it is lower case by assumption.
+if(acs_isalpha(d)) d = acs_tolower(d);
+if(c != d) return -1;
+++n;
+}
+return n;
+} /* acs_substring_mix */
+
+int acs_unilen(const unsigned int *u)
+{
+	int i;
+	for(i=0; *u; ++i, ++u)  ;
+	return i;
+} /* acs_unilen */
 
 /* Turn a key code and a shift state into a modified key number. */
 
@@ -453,6 +572,51 @@ static const struct uc_name english_uc[] = {
 {0, 0}
 };
 
+static const struct uc_name german_uc[] = {
+{7, "glocke"},
+{8, "hinter"},
+{9, "tab"},
+{10, "neues"},
+{12, "formfeed"},
+{13, "return"},
+{27, "aus"},
+{' ', "space"},
+{'!', "bang"},
+{'"', "quote"},
+{'#', "numer"},
+{'$', "toller"},
+{'%', "percent"},
+{'&', "und"},
+{'\'', "apostrophe"},
+{'(', "links paren"},
+{')', "recht paren"},
+{'*', "star"},
+{'+', "plus"},
+{',', "comma"},
+{'-', "dash"},
+{'.', "punkt"},
+{'/', "slash"},
+{':', "colen"},
+{';', "semmycolen"},
+{'<', "less than"},
+{'=', "eequals"},
+{'>', "greater than"},
+{'?', "frage"},
+{'@', "at sign"},
+{'[', "links bracket"},
+{'\\', "backslash"},
+{']', "recht bracket"},
+{'^', "up airow"},
+{'_', "unter"},
+{'`', "backquote"},
+{'{', "links brace"},
+{'|', "pipe"},
+{'}', "recht brace"},
+{'~', "tilde"},
+{0x7f, "delete"},
+{0, 0}
+};
+
 static const struct uc_name portuguese_uc[] = {
 {7, "bipe"},
 {8, "beque speice"},
@@ -544,7 +708,7 @@ static const struct uc_name portuguese_uc[] = {
 static const struct uc_name *uc_names[] = {
 0,
 english_uc,
-english_uc, // should be german
+german_uc,
 portuguese_uc,
 };
 
@@ -591,15 +755,7 @@ static int lowerword(const char *w)
 		if(!acs_isalpha(uc)) return -1; // not a letter in your language
 		w = (char *)uni_p; // prior call pushes uni_p along
 		
-/* Within this routine, everything is assumed to be a letter.
- * We only need ask how to lower-case a letter.
- * In most cases we can just or in the bit 0x20.
- * This works for English, most western languages, even Greek.
- * So test for a couple exceptions, like ss in German, then or in 0x20. */
-
-		if(uc != 0xdf)
-			uc |= 0x20;
-		
+uc = acs_tolower(uc);
 // back to utf8
 		uni_p = (unsigned char *)lp;
 		uni_1(uc);
@@ -678,27 +834,14 @@ To be international, this is all done in unicode.
 
 static unsigned int rootword[WORDLEN+16];
 
-static int rootlen(void)
-{
-	int i;
-	for(i=0; rootword[i]; ++i)  ;
-	return i;
-} /* rootlen */
-
 static unsigned int *inline_uni(char *t)
 {
-unsigned int uc;
 int i = 0;
 uni_p = (unsigned char *)t;
-while(rootword[i] = uc = utf8_1())
+while(rootword[i] = utf8_1())
 ++i;
 return rootword;
 } /* inline_uni */
-
-static int isvowel_english(int c)
-{
-return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y');
-} /* isvowel_english */
 
 static int mkroot_english(int wdlen)
 {
@@ -746,9 +889,9 @@ static int mkroot_english(int wdlen)
 
 	if(l4 == 'g') { // possible present progressive
 		if(l3 != 'n' || l2 != 'i') return 0;
-		if(!isvowel(l1)) {
+		if(!acs_isvowel(l1)) {
 			if(l1 == l0) { rootword[l+1] = 0; return 5; }
-			if(isvowel(l0) &&  l0 < 'w' && !isvowel(rootword[l-1])) {
+			if(acs_isvowel(l0) &&  l0 < 'w' && !acs_isvowel(rootword[l-1])) {
 				rootword[l+2] = 'e';
 				rootword[l+3] = 0;
 				return 6;
@@ -765,9 +908,9 @@ static int mkroot_english(int wdlen)
 			rootword[l+3] = 0;
 			return 10;
 		}
-		if(!isvowel(l2)) {
+		if(!acs_isvowel(l2)) {
 			if(l2 == l1) { rootword[l+2] = 0; return 8; }
-			if(isvowel(l1) && l1 < 'w' && !isvowel(l0)) {
+			if(acs_isvowel(l1) && l1 < 'w' && !acs_isvowel(l0)) {
 				rootword[l+4] = 0;
 				return 7;
 			}
@@ -795,7 +938,7 @@ static const char sufdouble[] = {
 	unsigned int c;
 
 	--root;
-	wdlen = rootlen();
+	wdlen = acs_unilen(rootword);
 	t = rootword + wdlen-1;
 	if(sufdouble[root]) c = *t, *++t = c;
 	if(sufdrop[root] == *t) --t;
@@ -823,49 +966,6 @@ reconst_english,
 0,
 0};
 
-char *acs_replace_iso(const char *s, int len)
-{
-int i, root;
-char *t;
-unsigned int c;
-root_fn f;
-
-uni_p = (unsigned char *)lw_utf8;
-for(i=0; i<len; ++i, ++s) {
-if((char *)uni_p - lw_utf8 > WORDLEN) return 0;
-c = *(unsigned char *)s;
-// This should already be a letter, but let's recheck.
-if(!acs_isalpha(c)) return 0;
-if(c != 0xdf) c |= 0x20;
-rootword[i] = c;
-uni_1(c);
-}
-rootword[i] = 0;
-*uni_p = 0;
-
-t = fromDictionary(lw_utf8);
-if(t) return t;
-
-// not there; extrac the root word
-if(!(f = mkroot_fns[acs_lang])) return 0;
-
-root = (*f)(i);
-if(!root) return 0;
-
-// english is all ascii, do this the easy way.
-for(i=0; (lw_utf8[i] = rootword[i]); ++i)  ;
-t = fromDictionary(lw_utf8);
-if(!t) return 0;
-		for(i=0; t[i]; ++i) {
-			if(t[i] != ' ' && !isalpha((unsigned char)t[i])) return 0;
-rootword[i] = t[i];
-}
-rootword[i] = 0;
-		(*reconst_fns[acs_lang])(root);
-for(i=0; (lw_utf8[i] = rootword[i]); ++i)  ;
-return lw_utf8;
-} /* acs_replace_iso */
-
 unsigned int *acs_replace(const unsigned int *s, int len)
 {
 int i, root;
@@ -879,8 +979,7 @@ if((char *)uni_p - lw_utf8 > WORDLEN) return 0;
 c = *s;
 // This should already be a letter, but let's recheck.
 if(!acs_isalpha(c)) return 0;
-// This turns c to lower case for all the letters we know about so far.
-if(c != 0xdf) c |= 0x20;
+c = acs_tolower(c);
 rootword[i] = c;
 uni_1(c);
 }
@@ -1009,13 +1108,13 @@ p_uc = utf8_1();
 if(*uni_p == 0 || uni_p == (unsigned char *)t) {
 punc:
 // cannot leave it with no pronunciation
-if(!t) return -1;
+if(!t) return -8;
 *t = save;
 skipWhite(&t);
-if(!*t) return -1;
-if(p_uc <= ' ') return -1;
-if(p_uc >= 0x10000) return -1;
-if(acs_isalnum(p_uc)) return -1;
+if(!*t) return -8;
+if(p_uc <= ' ') return -9;
+if(p_uc >= 0x10000) return -9;
+if(acs_isalnum(p_uc)) return -9;
 acs_setpunc(p_uc, t);
 return 0;
 }
@@ -1120,32 +1219,4 @@ acs_setkey(key, ss);
 }
 }
 } /* acs_resumekeys */
-
-/* These routines should perhaps be in acstalk.c,
- * but they have to convert to utf8. */
-void acs_say_char(unsigned int c)
-{
-char ubuf[8];
-char *s = acs_getpunc(c);
-if(!s) {
-uni_p = (unsigned char *)ubuf;
-uni_1(c);
-*uni_p = 0;
-s = ubuf;
-}
-acs_say_string(s);
-} // acs_say_char
-
-void acs_say_string_uc(const unsigned int *s)
-{
-static unsigned char buf[256];
-uni_p = buf;
-while(*s) {
-uni_1(*s++);
-if(uni_p - buf < 250) continue;
-write(acs_sy_fd1, buf, uni_p - buf);
-uni_p = buf;
-}
-acs_say_string(uni_p > buf ? (char *)buf : "");
-} /* acs_say_string_uc */
 

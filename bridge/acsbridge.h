@@ -789,7 +789,7 @@ Note that I require the root word to be replaced with one or more words,
 not punctuations etc, so that we can meaningfully put the suffix back on.
 *********************************************************************/
 
-char *acs_replace_iso(const char *word1, int len);
+unsigned int *acs_replace(const unsigned int *word1, int len);
 
 /*********************************************************************
 At this point I have described four configuration functions:
@@ -1374,6 +1374,7 @@ the next item - you can send it out here.
 
 void acs_say_char(unsigned int c);
 void acs_say_string(const char *s);
+void acs_say_string_n(const char *s);
 void acs_say_string_uc(const unsigned int *s);
 
 /*********************************************************************
@@ -1409,7 +1410,7 @@ Style must be set properly
 so that I know how to send and watch for index markers.
 *********************************************************************/
 
-void acs_say_indexed(const char *s, const acs_ofs_type *offsets, int firstmark);
+void acs_say_indexed(const unsigned int *s, const acs_ofs_type *offsets, int firstmark);
 
 /*********************************************************************
 Stop speech immediately.
@@ -1513,10 +1514,26 @@ You have to grep for acs_lang and see wherever it is used.
 Then add new words or cases or code for the new language.
 *********************************************************************/
 
+int acs_unilen(const unsigned int *u); // like strlen but for unicodes
+unsigned char *acs_uni2utf8(const unsigned int *unicode_buf); // allocates
+int acs_utf82uni(const unsigned char *utf8_buf, unsigned int *dest);
+// First argument lower utf8, second argument unicode
+int acs_substring_mix(const char *s, const unsigned int *t);
+// convert to utf8 then write to a file
+void acs_write_mix(int fd, const unsigned int *s, int len);
+
 int acs_isalpha(unsigned int uc);
+int acs_isdigit(unsigned int uc);
+int acs_isspace(unsigned int uc);
 int acs_isalnum(unsigned int uc);
-unsigned char *acs_uni2utf8(const unsigned int *unicode_buf);
-unsigned int *acs_utf82uni(const unsigned char *utf8_buf);
+// Next 5 routines assume the character is a letter in your language.
+int acs_isupper(unsigned int uc);
+int acs_islower(unsigned int uc);
+int acs_isvowel(unsigned int uc);
+unsigned int acs_tolower(unsigned int uc);
+unsigned int acs_toupper(unsigned int uc);
+// from u umlaut to u etc
+char acs_unaccent(unsigned int uc);
 
 
 #endif
