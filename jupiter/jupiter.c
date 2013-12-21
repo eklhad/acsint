@@ -628,7 +628,7 @@ top:
 acs_log("nextpart 0x%x\n", acs_rb->cursor[0]);
 tp_in->buf[0] = 0;
 tp_in->offset[0] = 0;
-acs_getsentence_uc(tp_in->buf+1, 120, tp_in->offset+1, gsprop);
+acs_getsentence(tp_in->buf+1, 120, tp_in->offset+1, gsprop);
 
 if(!tp_in->buf[1]) {
 /* Empty sentence, nothing else to read. */
@@ -814,7 +814,8 @@ static void runSpeechCommand(int input, const char *cmdlist)
 static 	char lasttext[256]; /* supporting text */
 	char support; /* supporting character */
 	int i, n;
-	int asword, quiet, rc, gsprop, c;
+	int asword, quiet, rc, gsprop;
+	unsigned int c;
 	char cmd;
 const char *t;
 
@@ -900,7 +901,7 @@ acs_cursorset();
 		if(!acs_back()) goto error_bound;
 		acs_startline();
 		for(i=1; i<n; ++i) {
-			if(acs_getc_uc() == '\n') goto error_bell;
+			if(acs_getc() == '\n') goto error_bell;
 acs_forward();
 		}
 		break;
@@ -910,7 +911,7 @@ acs_forward();
 acs_endline();
 		if(!acs_forward()) goto error_bound;
 		for(i=1; i<n; ++i) {
-			if(acs_getc_uc() == '\n') goto error_bell;
+			if(acs_getc() == '\n') goto error_bell;
 			if(!acs_forward()) goto error_bound;
 		}
 		break;
@@ -921,7 +922,7 @@ case 17: asword = 1; /* fall through */
 	case 16:
 letter:
 acs_cursorsync();
-		speakChar(acs_getc_uc(), 1, soundsOn, asword);
+		speakChar(acs_getc(), 1, soundsOn, asword);
 		break;
 
 	case 18: /* read column number */
@@ -934,14 +935,14 @@ if(!quiet) acs_click();
 
 	case 19: /* just read one word */
 acs_cursorsync();
-c = acs_getc_uc();
+c = acs_getc();
 if(c <= ' ') goto letter;
 acs_startword();
 acs_cursorsync();
 gsprop = ACS_GS_STOPLINE | ACS_GS_REPEAT | ACS_GS_ONEWORD;
 tp_in->buf[0] = 0;
 tp_in->offset[0] = 0;
-acs_getsentence_uc(tp_in->buf+1, WORDLEN, tp_in->offset+1, gsprop);
+acs_getsentence(tp_in->buf+1, WORDLEN, tp_in->offset+1, gsprop);
 		tp_in->len = acs_unilen(tp_in->buf+1) + 1;
 acs_rb->cursor += tp_in->offset[tp_in->len] - 1;
 acs_cursorset();
@@ -1062,7 +1063,7 @@ acs_cursorsync();
 	while(1) {
 		c = acs_getc();
 		if(c == '\n') asword = 1;
-		if(!isspace(c) && asword) break;
+		if(!acs_isspace(c) && asword) break;
 		if(!acs_back()) goto error_bound;
 	}
 	break;

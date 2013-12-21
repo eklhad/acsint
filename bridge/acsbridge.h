@@ -246,12 +246,9 @@ That's the way acsint receives them,
 and that's the way it stores them,
 and that's the way it passes them down to user space.
 The acs_getc routine, described in section 10,
-converts these unicodes back into latin-1, so that your adapter
-can deal with them as bytes, which is what traditional C does best.
-A few unicode routines are provided as well,
-to move international characters in and out of the bridge layer.
-See acs_getc_uc() and acs_getsentence_uc() below.
-And you can tap into the buffer yourself if you like.
+passes these unicodes back to the adapter for full international support.
+The acs_getsentence routine passes a sentence back, again in unicode.
+Or you can tap into the buffer yourself if you like.
 
 Note that this doesn't work in screen mode.
 A character in screen memory is a single byte, not a unicode.
@@ -961,15 +958,9 @@ void acs_cursorset(void);
 void acs_cursorsync(void);
 
 /* return the character pointed to by the cursor.
- * Could be null if the buffer is empty.
- * This is downshifted from unicode to iso8859-1.
- * Sorry, no other code pages are implemented at this time.
- * If the unicode cannot be downshifted you will get a question mark.
- * See the downshift() routine in acsbridge.c. */
-unsigned int acs_downshift(unsigned int unicode);
-int acs_getc(void);
-/* And here is the raw unicode version. */
-unsigned int acs_getc_uc(void);
+ * Could be null if the buffer is empty. */
+
+unsigned int acs_getc(void);
 
 /* Advance the cursor.
  * Return 0 if it moves off the end of the buffer.
@@ -1072,7 +1063,7 @@ this is for the aforementioned story, where newlines mean nothing.
 This is incompatible with ACS_GS_ONEWORD or ACS_GS_STOPLINE.
 
 Don't use this function to read a single character.
-Just grab acs_rb->cursor[0], or call acs_getc(), and go.
+Just grab acs_rb->cursor[0], or call acs_getc().
 This routine has too much overhead for just one character,
 and it does some translations that you may or may not want.
 
@@ -1151,11 +1142,11 @@ I'm going with unsigned short just to be safe.
 
 typedef unsigned short acs_ofs_type;
 
-int acs_getsentence(char *dest, int destlen,
+int acs_getsentence(unsigned int *dest, int destlen,
 		acs_ofs_type *offsets, int properties);
 
 /* If you want to manage the unicodes yourself */
-int acs_getsentence_uc(unsigned int *dest, int destlen,
+int acs_getsentence(unsigned int *dest, int destlen,
 acs_ofs_type *offsets, int properties);
 
 #define ACS_GS_ONEWORD 0x1

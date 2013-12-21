@@ -912,19 +912,10 @@ if(u == in_c[i]) return out_c[i];
 return (u < 256 ? u : '?');
 }
 
-/* Return the character pointed to by the temp cursor.
- * This is the iso version, using downshift().
- * The unicode version follows. */
-int acs_getc(void)
-{
-if(!tc) return 0;
-return acs_downshift(*tc);
-} // acs_getc
-
-unsigned int acs_getc_uc(void)
+unsigned int acs_getc(void)
 {
 return (tc ? *tc : 0);
-} // acs_getc_uc
+} // acs_getc
 
 int acs_forward(void)
 {
@@ -982,7 +973,7 @@ int acs_startword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	unsigned int c = acs_getc_uc();
+	unsigned int c = acs_getc();
 
 if(!c) return 0;
 
@@ -992,10 +983,10 @@ if(!c) return 0;
 		// But wait, if there are more than four in a row,
 		// we have a linear token.  Pull back to the start.
 		for(forward=0; acs_forward(); ++forward)
-			if(c != acs_getc_uc()) break;
+			if(c != acs_getc()) break;
 		putback(-(forward+1));
 		for(backward=0; acs_back(); ++backward)
-			if(c != acs_getc_uc()) break;
+			if(c != acs_getc()) break;
 		acs_forward();
 		if(forward+backward < 4) putback(backward);
 		return 1;
@@ -1003,7 +994,7 @@ if(!c) return 0;
 
 	apos = apos1 = 0;
 	do {
-		c = acs_getc_uc();
+		c = acs_getc();
 		if(c == '\'') {
 			if(apos1) break;
 			apos = apos1 = 1;
@@ -1023,17 +1014,17 @@ int acs_endword(void)
 {
 	int forward, backward;
 	char apos, apos1;
-	unsigned int c = acs_getc_uc();
+	unsigned int c = acs_getc();
 
 if(!c) return 0;
 
 	if(!acs_isalnum(c)) {
 		if(c == '\n' || c == ' ' || c == '\7') return 1;
 		for(backward=0; acs_back(); ++backward)
-			if(c != acs_getc_uc()) break;
+			if(c != acs_getc()) break;
 		putback(backward+1);
 		for(forward=0; acs_forward(); ++forward)
-			if(c != acs_getc_uc()) break;
+			if(c != acs_getc()) break;
 		acs_back();
 		if(forward+backward < 4) putback(-forward);
 		return 1;
@@ -1041,7 +1032,7 @@ if(!c) return 0;
 
 	apos = apos1 = 0;
 	do {
-		c = acs_getc_uc();
+		c = acs_getc();
 		if(c == '\'') {
 			if(apos1) break;
 			 apos = apos1 = 1;
@@ -1123,7 +1114,7 @@ return acs_startword();
  * This is an iso8859 match, not a unicode match. */
 static int stringmatch(const char *s)
 {
-	unsigned char x, y;
+	unsigned int x, y;
 	short count = 0;
 
 	if(!(y = (unsigned char)*++s)) return 1;
@@ -1131,6 +1122,7 @@ y = tolower(y);
 
 	while(++count, acs_forward()) {
 		x = acs_getc();
+if(x >= 0x100) break;
 x = tolower(x);
 if(x != y) break;
 		if(!(y = (unsigned char)*++s)) return 1;
@@ -1145,7 +1137,7 @@ y = tolower(y);
 int acs_bufsearch(const char *string, int back, int newline)
 {
 	int ok;
-	unsigned char c, first;
+	unsigned int c, first;
 
 if(acs_rb->end == acs_rb->start) return 0;
 if(!tc) return 0;
@@ -1193,177 +1185,7 @@ static const char *lengthword[] = {
 	" cumprimento ",
 };
 
-int acs_getsentence(char *dest, int destlen, acs_ofs_type *offsets, int prop)
-{
-const char *destend = dest + destlen - 1; /* end of destination array */
-char *t = dest;
-const unsigned int *s = acs_rb->cursor;
-acs_ofs_type *o = offsets;
-int j, l;
-unsigned int c;
-unsigned char c1; /* cut c down to 1 byte */
-char spaces = 1, alnum = 0;
-
-if(!s || !t) {
-errno = EFAULT;
-return -1;
-}
-
-if(destlen <= 0) {
-errno = ENOMEM;
-return -1;
-}
-
-if(destlen == 1) {
-*dest = 0;
-if(offsets) *offsets = 0;
-return 0;
-}
-
-// zero offsets by default
-if(o) memset(o, 0, sizeof(acs_ofs_type)*destlen);
-
-while((c = *s) && t < destend) {
-if(c == '\n' && prop&ACS_GS_NLSPACE)
-c = ' ';
-
-if(c == '\r' && !(prop&ACS_GS_ONEWORD))
-c = ' ';
-
-c1 = acs_downshift(c);
-
-if(c1 == ' ') {
-alnum = 0;
-if(prop&ACS_GS_ONEWORD) {
-if(t == dest) *t++ = c, ++s;
-break;
-}
-if(!spaces) *t++ = c1;
-spaces = 1;
-++s;
-continue;
-}
-
-if(c == '\n' || c == '\7') {
-alnum = 0;
-if(t > dest && t[-1] == ' ') --t;
-if(prop&ACS_GS_ONEWORD) {
-if(t == dest) *t++ = c, ++s;
-break;
-}
-if(o) o[t-dest] = s-acs_rb->cursor;
-*t++ = c;
-++s;
-if(prop&ACS_GS_STOPLINE) break;
-spaces = 1;
-continue;
-}
-
-spaces = 0;
-
-if(acs_isalnum(c)) {
-if(!alnum) { // new word
-if(o) o[t-dest] = s-acs_rb->cursor;
-}
-// building our word
-*t++ = c1;
-++s;
-alnum = 1;
-continue;
-}
-
-if(c1 == '\'' && alnum && acs_isalpha(s[1])) {
-const char *u;
-const unsigned int *v;
-unsigned char v0;
-/* this is treated as a letter, as in wouldn't,
- * unless there is another apostrophe before or after,
- * or digits are involved. */
-for(u=t-1; u>=dest && acs_isalpha((unsigned char)*u); --u)  ;
-if(u >= dest) {
-if(*u == '\'') goto punc;
-if(isdigit((unsigned char)*u)) goto punc;
-}
-for(v=s+1; acs_isalpha(*v); ++v)  ;
-v0 = acs_downshift(*v);
-if(v0 == '\'') goto punc;
-if(isdigit(v0)) goto punc;
-// keep alnum alive
-*t++ = c1;
-++s;
-continue;
-}
-
-// punctuation
-punc:
-alnum = 0;
-if(t > dest && prop&ACS_GS_ONEWORD) break;
-if(o) o[t-dest] = s-acs_rb->cursor;
-
-// check for repeat
-if(prop&ACS_GS_REPEAT &&
-c == s[1] &&
-c == s[2] &&
-c == s[3] &&
-c == s[4]) {
-char reptoken[60];
-const char *pname = acs_getpunc(c1); /* punctuation name */
-if(pname) {
-strncpy(reptoken, pname, 30);
-reptoken[30] = 0;
-} else {
-reptoken[0] = c1;
-reptoken[1] = 0;
-}
-strcat(reptoken, lengthword[acs_lang]);
-for(j=5; c == s[j]; ++j)  ;
-sprintf(reptoken+strlen(reptoken), "%d", j);
-l = strlen(reptoken);
-if(t+l+2 > destend) break; // no room
-if(t > dest && t[-1] != ' ')
-*t++ = ' ';
-strcpy(t, reptoken);
-t += l;
-*t++ = ' ';
-spaces = 1;
-s += j;
-if(prop & ACS_GS_ONEWORD) break;
-continue;
-}
-
-/* just a punctuation mark on its own.
-/* If it's a high unicode, see if it has a downshift,
- * or if it is pronounceable. */
-if(c >= 256 && c1 == '?') {
-const char *u = acs_getpunc(c);
-if(u) {
-l = strlen(u);
-if(t+l+2 > destend) break; // no room
-if(t > dest && t[-1] != ' ')
-*t++ = ' ';
-strcpy(t, u);
-t += l;
-*t++ = ' ';
-spaces = 1;
-++s;
-if(prop & ACS_GS_ONEWORD) break;
-continue;
-}
-}
-
-*t++ = c1;
-++s;
-if(prop & ACS_GS_ONEWORD) break;
-} // loop over characters in the tty buffer
-
-*t = 0;
-if(o) o[t-dest] = s-acs_rb->cursor;
-
-return 0;
-} /* acs_getsentence */
-
-/* If you want to manage the unicode chars yourself. */
-int acs_getsentence_uc(unsigned int *dest, int destlen, acs_ofs_type *offsets, int prop)
+int acs_getsentence(unsigned int *dest, int destlen, acs_ofs_type *offsets, int prop)
 {
 const unsigned int *destend = dest + destlen - 1; /* end of destination array */
 unsigned int *t = dest;
@@ -1511,5 +1333,5 @@ if(prop & ACS_GS_ONEWORD) break;
 if(o) o[t-dest] = s-acs_rb->cursor;
 
 return 0;
-} /* acs_getsentence_uc */
+} /* acs_getsentence */
 
