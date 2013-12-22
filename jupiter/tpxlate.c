@@ -1914,7 +1914,7 @@ if(			(g == '0' && e == 't') ||
 	if(end - start > 4) goto copydigits;
 
 	/* starts with 0, read all the digits */
-	if(c == '0' && d != '$') goto copydigits;
+	if(c == '0' && (end - start == 4 || d != '$')) goto copydigits;
 
 	/* read digits after the decimal point */
 	if(d == '.') {
@@ -1938,7 +1938,7 @@ copynumber:
 
 	/* speak digits in coded numbers, such as social security 374-81-6339.
 	 * We assume English text, rather than a mathematical formula
-	 * such as 374-82-7487 = -7195. */
+	 * such as 374-28-2929 = -2583. */
 	if(d == '-' && e == '-') goto copydigits;
 	if(d == '-' && acs_isdigit(start[-2])) {
 		q = start-3;
@@ -1964,7 +1964,7 @@ copynumber:
 	oneflag = (value == 1);
 	if(i == 4) {
 		if(appendYear(value)) goto overflow;
-		if(d == '$') goto money;
+		if(d == '$' && i < 4) goto money;
 		appendBackup();
 		goto possessive; /* the 1970's */
 	} /* 4 digits */
@@ -1996,7 +1996,7 @@ past3:
 	if(append3num(value, hundredflag, 0)) goto overflow;
 	if(d == '$' && !tp_oneSymbol) {
 		if(!tp_readLiteral) goto money;
-		if(end-start == 3) goto money;
+		if(end-start == 2 || end-start == 3) goto money;
 		if(e == '.' && acs_isdigit(end[1])) goto money;
 		/* read $3 as dollar three, a positional parameter */
 	}
@@ -2484,18 +2484,21 @@ do_to_word:
 			break;
 		}
 		if(!isdigit(e)) goto nomoney;
+// now $3, but could be a positional parameter
 		for(t=end+1; acs_isdigit(*t); ++t)  ;
 		len = t - end;
-		if(len > 4) goto nomoney;
-		if(len >= 3) break;
+		if(len > 3) goto nomoney; // $3456
+		if(len > 1) break; // $34 or $345
+// now looks like $3 and something, could be a parameter
 		if(!tp_readLiteral) break;
-		if(*t == '.' && acs_isdigit(t[1])) break;
+		if(*t == '.' && acs_isdigit(t[1])) break; // $3.5
 		/* Check for comma formatting. */
 		if(*t != ',') goto nomoney;
 		for((s = ++t); acs_isdigit(*t); ++t)  ;
 		if(t-s != 3) goto nomoney;
 		if(*t != ',') break;
 		if(!acs_isdigit(t[1])) break;
+// $345,678,digits
 nomoney:
 		if(tp_readLiteral) goto do_punct;
 		break;
