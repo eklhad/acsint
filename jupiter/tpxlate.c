@@ -658,12 +658,11 @@ copy_t:
 		return;
 	} /* control character */
 
-top:
 t = (char*)acs_getpunc(c);
 if(t) goto copy_t;
 
-if(c < 0x80 && isalpha(c) && asword == 2) {
-c |= 0x20;
+if(acs_isalpha(c) && asword == 2) {
+c = acs_unaccent(c);
 t = ow->natoWords[c-'a'];
 goto copy_t;
 }
@@ -1478,7 +1477,7 @@ static int isPronounceable(const unsigned int *s, int len)
 	/* check for words with apostrophes in them */
 	c1 = c2 = 0;
 	for(i=1; i<len; ++i)
-		if(acs_downshift(s[i]) == '\'')
+		if(acs_unaccent(s[i]) == '\'')
 ++c1, c2 = i;
 	if(!c1) goto no_apos;
 	if(c1 > 1) return 0;
@@ -2139,7 +2138,7 @@ alphaToken:
 			} /* letters have different case */
 			continue;
 		} /* another letter */
-		if(acs_downshift(e) == '\'') {
+		if(acs_unaccent(e) == '\'') {
 			if(!apos) apos = end;
 			continue;
 		}
@@ -2147,7 +2146,7 @@ alphaToken:
 	} /* loop finding the end of the word */
 
 	/* strip out trailing apostrophes */
-	while(acs_downshift(end[-1]) == '\'') {
+	while(acs_unaccent(end[-1]) == '\'') {
 		if(end-start >= 5 && !tp_readLiteral &&
 		acs_tolower(end[-2]) == 'n' &&
 		acs_tolower(end[-3]) == 'i') {
@@ -2163,11 +2162,11 @@ alphaToken:
 
 	/* Strip off 's */
 	/* The possessive code will put it back on after translation. */
-	if(end-start > 2 && acs_tolower(end[-1]) == 's' && acs_downshift(end[-2]) == '\'') {
+	if(end-start > 2 && acs_tolower(end[-1]) == 's' && acs_unaccent(end[-2]) == '\'') {
 		end -= 2, e = '\'';
 		if(apos == end) apos = 0;
 	}
-	if(end-start > 3 && acs_downshift(end[-3]) == '\'' &&
+	if(end-start > 3 && acs_unaccent(end[-3]) == '\'' &&
 	acs_tolower(end[-1]) == 'l' && end[-1] == end[-2]) {
 		end -= 3, e = '\'';
 		if(apos == end) apos = 0;
@@ -2204,7 +2203,7 @@ alphaToken:
 	if(apos) { /* interior apostrophe */
 		/* If it's not a native word, or it has yet more apostrophes
 		 * around it, read each component. */
-		if(acs_downshift(d) == '\'' || acs_downshift(d) == '\'' ||
+		if(acs_unaccent(d) == '\'' || acs_unaccent(d) == '\'' ||
 		!isPronounceable(start, end-start))
 			end = apos, apos = 0, e = '\'';
 	} /* interior apostrophe */
@@ -2245,7 +2244,7 @@ alphaToken:
 	/* in a hyphenated word such as dis-obedient, the dis doesn't
 	 * look like a valid English word, so it gets acronized.
 	 * Check for this here, and jump to copyword. */
-	if(acs_downshift(e) == '-' && i <= 3 && i > 1 && acs_isalpha(end[1])) {
+	if(acs_unaccent(e) == '-' && i <= 3 && i > 1 && acs_isalpha(end[1])) {
 		if(leadSequence(start, i))
 			goto copyword;
 	}
@@ -2275,12 +2274,12 @@ possessive:
 	}
 
 	/* check for 's or 'll */
-	if(acs_downshift(e) == '\'' && acs_tolower(end[1]) == 's' && !acs_isalnum(end[2])) {
+	if(acs_unaccent(e) == '\'' && acs_tolower(end[1]) == 's' && !acs_isalnum(end[2])) {
 		end += 2;
 		if(appendString("'s")) goto overflow;
 		goto success;
 	}
-	if(acs_downshift(e) == '\'' && acs_tolower(end[1]) == 'l' && end[1] == end[2] && !acs_isalnum(end[3])) {
+	if(acs_unaccent(e) == '\'' && acs_tolower(end[1]) == 'l' && end[1] == end[2] && !acs_isalnum(end[3])) {
 		end += 3;
 		if(appendString("'ll")) goto overflow;
 		goto success;
@@ -2566,10 +2565,10 @@ do_dot:
 			break;
 		}
 		if((e == 's' && !acs_isalnum(s[2])) ||
-		(acs_downshift(e) == '\'' && s[2] == 's' && !acs_isalnum(s[3]))) {
+		(acs_unaccent(e) == '\'' && s[2] == 's' && !acs_isalnum(s[3]))) {
 			if(appendString(ow->numbersWord)) goto overflow;
 			++end;
-			if(acs_downshift(e) == '\'') ++end;
+			if(acs_unaccent(e) == '\'') ++end;
 		}
 		break;
 

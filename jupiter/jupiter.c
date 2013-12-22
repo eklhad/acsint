@@ -818,6 +818,7 @@ static 	char lasttext[256]; /* supporting text */
 	unsigned int c;
 	char cmd;
 const char *t;
+char *cut8;
 
 interrupt();
 
@@ -1088,14 +1089,17 @@ cutbuf[n++] = '<';
 acs_cursorsync();
 markright = acs_rb->cursor;
 if(markright < markleft) goto error_bound;
+++markright;
 i = markright - markleft;
-++i;
 if(i + n >= sizeof(cutbuf)) goto error_bound;
-while(i) {
-cutbuf[n] = acs_downshift(*markleft);
-++n, ++markleft, --i;
-}
-cutbuf[n] = 0;
+c = *markright; // save this value
+*markright = 0;
+cut8 = acs_uni2utf8(markleft);
+*markright = c; // put it back
+if(!cut8) goto error_bell;
+if(n + strlen(cut8) >= sizeof(cutbuf)) { free(cut8); goto error_bound; }
+strcpy(cutbuf + n, cut8);
+free(cut8);
 /* Stash it in the macro */
 if(acs_line_configure(cutbuf, cfg_syntax) < 0)
 goto error_bell;

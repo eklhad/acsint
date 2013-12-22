@@ -1029,14 +1029,10 @@ int acs_bufsearch(const char *string, int back, int newline);
 Section 11: get a chunk of text to read.
 Starting at the reading cursor, fetch text from the buffer
 and copy it into a destination array that you specify.
-This performs an implicit downshift from unicode to iso8859-1.
-Certain unicode characters that are equivalent to apostrophe, dash, star, etc,
-become those ascii symbols.
-Other high unicodes that have been rendered pronounceable,
-by the default values in the bridge layer or by your config file,
-are translated into the corresponding words.
+This is unicode, to support all languages.
+However, some processing is performed.
 
-If you are reading a word at a time (set ACS_GS_ONEWORD),
+If you are reading one word at a time (set ACS_GS_ONEWORD),
 I will fetch one word as defined above,
 or one unicode / punctuation mark.
 This could be a space, newline, control character, etc.
@@ -1056,7 +1052,6 @@ in sync with the speech.
 Stopline might be off if you are reading a story,
 and the punctuations tell all,
 and the newlines really mean nothing.
-In my world that doesn't happen very often, so stopline is usually set.
 
 Set ACS_GS_NLSPACE if newlines are to be treated as spaces.
 this is for the aforementioned story, where newlines mean nothing.
@@ -1096,8 +1091,7 @@ and remove space from the beginning or the end of the sentence.
 You could get an empty string if the buffer is empty,
 or consists entirely of spaces and you are reading continuously.
 
-These, along with the pronounceable high unicodes,
-are the only translations that take place here.
+These are the only translations that take place here.
 Other than that you will receive the text as it appears in the buffer.
 There is of course much more translation that could be done.
 $3,000 becomes 3 thousand dollars
@@ -1106,10 +1100,7 @@ $3,000 becomes 3 thousand dollars
 3.4.5.6 becomes 3 dot 4 dot 5 dot 6
 And so on.
 These changes, that make text more readable,
-will be handled in other routines.
-(Run jupiter tts to see such translations.)
-We shouldn't try to do everything here.
-This is just the first step.
+are best left up to the adapter, and are not part of this bridge layer.
 
 The offset array, which you provide, is optional, and can be 0.
 If present it must be as long as the sentence array.
@@ -1144,10 +1135,6 @@ typedef unsigned short acs_ofs_type;
 
 int acs_getsentence(unsigned int *dest, int destlen,
 		acs_ofs_type *offsets, int properties);
-
-/* If you want to manage the unicodes yourself */
-int acs_getsentence(unsigned int *dest, int destlen,
-acs_ofs_type *offsets, int properties);
 
 #define ACS_GS_ONEWORD 0x1
 #define ACS_GS_STOPLINE 0x2
@@ -1523,7 +1510,7 @@ int acs_islower(unsigned int uc);
 int acs_isvowel(unsigned int uc);
 unsigned int acs_tolower(unsigned int uc);
 unsigned int acs_toupper(unsigned int uc);
-// from u umlaut to u etc
+// from u umlaut to u
 char acs_unaccent(unsigned int uc);
 
 

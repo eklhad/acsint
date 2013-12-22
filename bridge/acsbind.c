@@ -230,27 +230,42 @@ return wv[c-0xc0];
 return 0;
 } /* acs_isvowel */
 
+/* Turn unicode into lower case ascii, as best we can. */
 char acs_unaccent(unsigned int c)
 {
 	static const char down[256+1] =
-	"                "
-	"                "
-	"                "
-	"                "
-	" abcdefghijklmno"
-	"pqrstuvwxyz     "
-	" abcdefghijklmno"
-	"pqrstuvwxyz     "
-	"          s     "
-	"          s    y"
-	"                "
-	"                "
+	"\0......\07.\t\n.\f\r.."
+	"................"
+	" !\"#$%&'()*+,-./"
+	"0123456789:;<=>?"
+	"@abcdefghijklmno"
+	"pqrstuvwxyz[\\]^_"
+	"`abcdefghijklmno"
+	"pqrstuvwxyz{|}~\177"
+	"..........s....."
+	"..........s....y"
+	" ..............."
+	"................"
 	"aaaaaaa eeeeiiii"
-	"dnooooo ouuuuy s"
+	"dnooooo.ouuuuy.s"
 	"aaaaaaaceeeeiiii"
-	" nooooo ouuuuy y";
-if(c >= 0x100) return ' ';
-return down[c];
+	".nooooo.ouuuuy.y";
+static const unsigned int in_c[] = {
+0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
+0xa0, 0xad, 0x96, 0x97, 0x85,
+0x2022, 0x25ba, 0x113, 0x2013, 0x2014,
+0x2018, 0x2019, 0x201c, 0x201d,
+0};
+static const char out_c[] =
+"*'`'`'`' ----**`--`'`'";
+int i;
+
+if(c < 0x100) return down[c];
+
+for(i=0; in_c[i]; ++i)
+if(c == in_c[i]) return out_c[i];
+
+return '?';
 } /* acs_unaccent */
 
 int acs_substring_mix(const char *s, const unsigned int *t)

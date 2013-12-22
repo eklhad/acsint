@@ -890,28 +890,6 @@ void acs_cursorsync(void)
 acs_rb->cursor = tc;
 } // acs_cursorsync
 
-/* This routine lowers a unicode down to an ascii symbol that is essentially equivalent.
- * Mostly for things that are equivalent to apostrophe or space or dash.
- * If this unicode is not in our table then we return the same unicode,
- * unless the unicode is greater than 256, whence we return question mark. */
-unsigned int acs_downshift(unsigned int u)
-{
-static const unsigned int in_c[] = {
-0x95, 0x99, 0x9c, 0x9d, 0x91, 0x92, 0x93, 0x94,
-0xa0, 0xad, 0x96, 0x97, 0x85,
-0x2022, 0x25ba, 0x113, 0x2013, 0x2014,
-0x2018, 0x2019, 0x201c, 0x201d,
-0};
-static char out_c[] =
-"*'`'`'`' ----**`--`'`'";
-int i;
-
-for(i=0; in_c[i]; ++i)
-if(u == in_c[i]) return out_c[i];
-
-return (u < 256 ? u : '?');
-}
-
 unsigned int acs_getc(void)
 {
 return (tc ? *tc : 0);
@@ -1111,19 +1089,17 @@ return acs_startword();
 } // acs_prevword
 
 /* Case insensitive match.  Assumes the first letters already match.
- * This is an iso8859 match, not a unicode match. */
+ * This is an ascii match on the unaccented letters. */
 static int stringmatch(const char *s)
 {
-	unsigned int x, y;
+	char x, y;
 	short count = 0;
 
-	if(!(y = (unsigned char)*++s)) return 1;
-y = tolower(y);
+	if(!(y = *++s)) return 1;
+	y = tolower(y);
 
 	while(++count, acs_forward()) {
-		x = acs_getc();
-if(x >= 0x100) break;
-x = tolower(x);
+		x = acs_unaccent(acs_getc());
 if(x != y) break;
 		if(!(y = (unsigned char)*++s)) return 1;
 y = tolower(y);
@@ -1153,8 +1129,7 @@ first = (unsigned char) *string;
 first = tolower(first);
 
 	do {
-		c = acs_getc();
-c = tolower(c);
+		c = acs_unaccent(acs_getc());
 if(c == first && stringmatch(string)) return 1;
 		ok = back ? acs_back() : acs_forward();
 	} while(ok);
@@ -1193,8 +1168,8 @@ const unsigned int *s = acs_rb->cursor;
 acs_ofs_type *o = offsets;
 int j, l;
 unsigned int c;
-unsigned char c1; /* cut c down to 1 byte */
-char spaces = 1, alnum = 0;
+char c1; /* cut c down to 1 byte */
+char spaces = 1, alnum = 0; // flags
 
 if(!s || !t) {
 errno = EFAULT;
@@ -1222,7 +1197,7 @@ c = ' ';
 if(c == '\r' && !(prop&ACS_GS_ONEWORD))
 c = ' ';
 
-c1 = acs_downshift(c);
+c1 = acs_unaccent(c);
 
 if(c1 == ' ') {
 alnum = 0;
@@ -1230,7 +1205,7 @@ if(prop&ACS_GS_ONEWORD) {
 if(t == dest) *t++ = c, ++s;
 break;
 }
-if(!spaces) *t++ = c1;
+if(!spaces) *t++ = ' ';
 spaces = 1;
 ++s;
 continue;
@@ -1266,22 +1241,22 @@ continue;
 
 if(c1 == '\'' && alnum && acs_isalpha(s[1])) {
 const unsigned int *v;
-unsigned char v0;
+char v0;
 /* this is treated as a letter, as in wouldn't,
  * unless there is another apostrophe before or after,
  * or digits are involved. */
 for(v=t-1; v>=dest && acs_isalpha(*v); --v)  ;
 if(v >= dest) {
-v0 = acs_downshift(*v);
+v0 = acs_unaccent(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 }
 for(v=s+1; acs_isalpha(*v); ++v)  ;
-v0 = acs_downshift(*v);
+v0 = acs_unaccent(*v);
 if(v0 == '\'') goto punc;
 if(isdigit(v0)) goto punc;
 // keep alnum alive
-*t++ = c1;
+*t++ = '\'';
 ++s;
 continue;
 }
