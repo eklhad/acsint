@@ -2328,6 +2328,13 @@ static int expandPunct(const unsigned int **sp)
 		/* Here are the exceptions */
 		if(tp_oneSymbol |c >= 0x80 || !strchr(".^$", (char)c)) {
 do_punct:
+			d = acs_unaccent(c);
+			if(!tp_oneSymbol &&
+			!acs_getpunc(c) &&
+			c >= 0x100 &&
+			d != '?' &&
+			!isalnum(d))
+				c = d;
 			speakChar(c, 0, 0, 0);
 				if(appendString(shortPhrase)) goto overflow;
 			goto success;
