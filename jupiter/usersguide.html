@@ -1,0 +1,470 @@
+<HTML>
+<FONT face=Arial,Helvetica,sans-serif size=4>
+<HEAD>
+<META name=description content="jupiter documentation, a linear adapter for the blind.">
+<meta name=keywords content="
+text based, command line, interactive, linear,
+adapter, speech, blind, customizable">
+<TITLE> Jupiter Documentation </TITLE>
+<LINK REL="SHORTCUT ICON" href="pc.ico">
+</HEAD>
+<BODY bgcolor=white text=black link=red vlink=red alink=navy>
+
+<H2 align=center> Jupiter Documentation, a User's Guide </H2>
+
+<H3 align=center> <A NAME=top> Contents </A> </H3>
+
+<UL>
+<LI><A HREF=#auth> Author </A>
+<LI><A HREF=#copy> Copyright Notice </A>
+<LI><A HREF=#over> Overview </A>
+<LI><A HREF=#lang> Other Languages </A>
+<LI><A HREF=#syn> Synthesizers </A>
+<LI><A HREF=#mod> Modules </A>
+<LI><A HREF=#modes> Modes </A>
+</UL>
+
+<H3 align=center> <A NAME=auth> Author </A> </H3>
+
+Karl Dahlke
+<A HREF=mailto:eklhad@gmail.com>eklhad@gmail.com</A>
+
+<H3 align=center> <A NAME=copy> Copyright Notice </A> </H3>
+
+This program is copyright &copy; Karl Dahlke, 2000-2014.
+It is made available by the author under the terms of the GNU General Public License (GPL),
+as articulated by the Free Software Foundation.
+It may be used for any purpose, and redistributed, provided this copyright notice is included.
+
+<H3 align=center> <A NAME=over> Overview </A> </H3>
+
+Jupiter is unique among all adapters in that it does not transform the words or icons on the screen into speech or braille.
+although it is capable of reading screen memory,
+it typically runs in line mode,
+capturing all tty output like a paper teletype, and making it available to the blind user through speech.
+The buffer is 64K, and could represent several hours of work,
+depending on the nature and quantity of output during that time.
+Or it could represent just a few seconds of output, if a program prints "hello world" in an infinite loop.
+
+<P>
+I call this a linear adapter, rather than a screen reader,
+because it maintains a linear buffer of tty output,
+and allows the blind user to move about within this buffer and read the accumulated text.
+This is part of a larger philosophy,
+wherein editers, browsers, mail clients, spreadsheets, and other critical applications
+are rewritten from the ground up if necessary
+to support various disabilities.
+Once this is done,
+Other applications
+can leverage these tools,
+and be immediately accessible to a wide range of computer users.
+You can read more about this philosophy
+<A HREF=philosophy.html>here</A>.
+
+<P>
+Jupiter is incompatible with a graphical desktop such as gnome or kde.
+More generally, Jupiter is incompatible with X, which bypasses the traditional tty entirely.
+It doesn't even see the output, and certainly can't read it to you.
+Instead, Jupiter was written for people who spend most of their time at run level 3,
+logged into a text based console.
+Furthermore, it is most effective when combined with command line programs such as bash,
+fdisk, mpg123, ed, and of course edbrowse.
+As mentioned earlier, Jupiter can read screen memory,
+thus providing access to curses based programs such as emacs, vi, or lynx,
+but the experience is rather awkward.
+I only dabble in screen memory when I must.
+
+<H3 align=center> <A NAME=lang> Other Languages </A> </H3>
+
+The buffer stores tty output in unicode, which is compatible with every language on Earth.
+Thus, in theory, Jupiter could be modified to support any language.
+At present it supports English, German, and Portuguese.
+If you are interested in other languages, or if you can help in this effort, please let me know.
+You don't have to be a programmer;
+you just have to be fluent in your language and conversational in English.
+I will do the rest.
+
+<H3 align=center> <A NAME=syn> Synthesizers </A> </H3>
+
+This adapter, like Speakup or Window Eyes or any other adapter, requires a speech synthesizer.
+There are two flavors.
+An external synthesizer plugs into the serial port on your computer
+and runs as a peripheral,
+apart from your sound card and speakers.
+In contrast, a software synthesizer is a program that runs on your computer and uses the in-built sound card.
+I prefer an external synth, because it runs independently of my music.
+They run through different channels, and I can control them independently.
+I turn up the music when I am taking a break, and I turn down the music when I have to think.
+But a software synth has distinct advantages too.
+It does not require a serial port (some computers don't have these ports any more),
+and I don't really want to carry a hardware synth and cables with me when I am on the go.
+That kinda defeats the purpose of a laptop.
+Also, a software synth can be updated from time to time,
+to fix bugs or improve the speech.
+So there are pros and cons to these two approaches.
+
+<P>
+The hardware synths, or external synths, that are supported are shown by the usage message.
+Type jupiter with no arguments to get the usage message.
+After a few options, the first argument is the synthesizer.
+Here are the supported hardware synthesizers.
+
+<P>
+dbe = doubletalk external
+<br>
+dte = dectalk external
+<br>
+bns = braille n speak
+<br>
+ace = accent
+
+<P>
+The second argument determines the serial port.
+This is 0 through 3, for /dev/ttyS0 through /dev/ttyS3.
+On my system I invoke `jupiter dbe 0' for the DoubleTalk synthesizer on /dev/ttyS0.
+
+<P>
+At some point I need to generalize the port parameter.
+A computer without a serial port can still connect to an external synth using a usb to serial converter.
+However, the name of the serial device might not be /dev/ttyS0.
+More research is needed here.
+
+<P>
+The only software synthesizer currrently supported is espeak,
+although espeak comes in a variety of languages.
+(Most of the external synths are English, or perhaps English and one other language.)
+Jupiter connects to espeakup through a pipe, sending text to be spoken, and receiving index markers, a form of acknowledgement, in return.
+Once again jupiter is invoked with two arguments.
+The first is esp, for espeakup, and the second is the command to launch espeakup.
+On my system it looks like this.
+
+<P>
+jupiter esp "|espeakup -V en-us+klatt4 -a 2>/dev/null"
+
+<P>
+espeakup is the program to run, and even though it launches and operates correctly,
+it generates error messages, which is why standard error is sent to /dev/null.
+The -V option specifies the language and the voice,
+in this case English, as pronounced in the United States,
+using the male voice klatt4.
+Finally the -a option tells espeakup to operate through a pipe,
+as required by Jupiter,
+and that's where we run into trouble.
+The distributed version of espeakup doesn't recognize the -a option, and doesn't work with jupiter.
+Instead, you must fetch the source from sourceforge.net and compile it yourself.
+I really don't understand why the distributed binary does not behave exactly as the compiled source,
+but there it is.
+You can always test your system by:
+
+echo "hello world" | espeakup -V en-us -a
+
+<P>
+Another quirk of espeakup is that it does not exit on broken pipe.
+If jupiter exits for any reason, espeakup is still hanging around.
+You need to killall espeakup to clean things up.
+
+<H3 align=center> <A NAME=mod> Modules </A> </H3>
+
+Any program can read screen memory from /dev/vcs*,
+but how do you get your hands on tty output
+as it is being generated?
+How do you intercept these output characters and store them in a buffer for review?
+The answer is a new device driver called /dev/acsint.
+Jupiter opens this device driver, and has access to all tty output,
+and to the keystrokes that implement speech commands.
+In other words, /dev/acsint is the connector between Jupiter and the Linux kernel.
+
+<P>
+You must compile and install two modules to bring /dev/acsint to life.
+These modules are ttyclicks.ko and acsint.ko.
+Unfortunately I can't distribute these modules in binary,
+because a new module must be compiled for each kernel version.
+Run `uname -r' to see your kernel version.
+If yours is 3.12.3.2, and mine is 3.12.3.1, then my modules won't run on your kernel, and vice versa.
+This is intentional,
+to prevent the accidental assembly of an inconsistent kernel, but it sometimes gets in the way.
+Thus you have to build these modules yourself.
+And that means you have to have the source for your kernel, which is often available as part of your distribution,
+but is rarely loaded onto your computer.
+After all, most people don't build the kernel or kernel modules.
+But you may have to, as part of the Jupiter installation process,
+so make sure you have the source for your running kernel.
+Then descend into the drivers directory in the acsint package and type `make modules'.
+Then as root, type `make modules_install'.
+If these two steps run without error, run `depmod -a'.
+This tells the modprobe system about the two new modules that you just built.
+You will be able to load them into the kernel at any time,
+and of course you will want to load them very early in the boot sequence,
+because Jupiter will not run without them.
+I have this near the top of /etc/rc.sysinit.
+
+<P>
+modprobe acsint
+
+<P>
+That brings in the acsint module and the ttyclicks module, since the former depends on the latter.
+See /lib/modules/version/modules.dep for module dependencies.
+With acsint loaded, we are ready for Jupiter -
+with a few caveats that will be described below.
+
+<P>
+There is no harm in installing and running ttyclicks and acsint, whether you use Jupiter or not.
+They will not interfere with Speakup, or other adapters, or other running programs.
+So just let them run all the time.
+
+<P>
+You'll notice that ttyclicks
+generates clicks as output is sent to the screen.
+This is exactly what it is suppose to do;
+it is the primary function of the ttyclicks module.
+This can be extremely helpful, especially if your adapter is not running for any reason.
+I can tell, by clicks alone, when the computer responds to a command,
+and I can discern the quantity and format of that response,
+without any speech or braille.
+In addition, the output is throttled, and does not fly by the screen
+faster than I could possibly hit control S.
+
+<P>
+It is important that this be a separate, stand alone kernel module,
+apart from anybody's adapter.
+If the adapter isn't running,
+if the synthesizer isn't working, if the braille display isn't working,
+if we're talking to the wrong serial port, if the sound card isn't working,
+if the sound card is not properly initialized,
+if the sound module is not loaded, if the wrong sound module is loaded,
+if an essential daemon is not running - at least I have my clicks.
+I can tell, to some degree, what the computer is doing.
+If it gets to a login prompt, I know what that sounds like.
+I can log in and listen for the single click of the $ prompt,
+which tells me I have a shell.
+Then I can issue some basic commands,
+trying to load modules and start the adapter.
+All this I do without speech.
+I need these clicks to be present whenever Linux is running.
+To this end, ttyclicks is a self-contained module
+that is loaded first in the boot sequence.
+I can turn off the clicks at run time if I wish,
+but if the synthesizer ever fails me for any reason,
+I have the clicks to fall back on.
+
+<P>
+As you can see from the above paragraph,
+I don't want to run these clicks through anybody's sound card.
+There are too many points of failure along that path.
+Instead, I use the in-built toggle speaker at port 0x61.
+Not all computers have this speaker, but most do,
+and I wouldn't buy one that didn't.
+
+<P>
+Other programs, outside of the linux kernel, can also take advantage of
+this legacy speaker.
+Grub, for instance, beeps when it brings up the menu,
+provided I put a control G in the first title in grub.conf.
+This tells me that I have ten seconds to cursor up and down
+and select a target, if I want something other than the default.
+Beyound this, it tells me that the machine has gotten to grub successfully,
+and is not stuck in bios for some bizarre reason.
+Thus a multi-boot system becomes practical.
+It is difficult to overstate the importance of this little in-built speaker
+for the blind user.
+
+<P>
+This module might not click and chirp if you are in X.
+It responds to text characters that pass through the standard tty,
+and as mentioned earlier, X bypasses this channel.
+Even the terminal emulator running under a desktop still runs through X,
+and probably won't work with ttyclicks.
+You really need to be at run level 3.
+See /etc/inittab for the run level.
+The ttyclicks module is for command line users,
+or users who will stay in command mode long enough to make sure their
+software is properly launched and speaking.
+
+<P>
+If an output character is an echo of what you typed in, and if it is in upper case, you will hear a high beep instead of a click.
+This confirms the fact that you have entered a capital letter.
+Thus you receive immediate audio feedback if caps lock is on.
+It is quite common for me to hit caps lock by mistake, but I know that it has happened, thanks to the high beeps,
+and I hit caps lock again to return to standard typing.
+All this audio feedback is at your disposal as long as ttyclicks is installed, whether you run Jupiter or not.
+
+<P>
+The clicks have one drawback however;
+while output is being generated they monopolize the cpu.
+It is hard for other processes to run.
+You may find that your music pauses
+when a program generates a lot of output.
+There is a two step fix for this.
+The first step is a patch to the kernel.
+See click-sleep.3.12.3.patch in the patch directory of the acsint project.
+If you are able to patch and rebuild and reinstall your kernel,
+which is, sadly, not a trivial task, then the parameter sleep=1
+enables ttyclicks to sleep between clicks, so that it does not take over the cpu.
+Place this line in /etc/modprobe.d/access.conf, but only if you have patched the kernel as directed above.
+
+<P>
+options ttyclicks sleep=1
+
+<P>
+The acsint module also has an optional parameter, major=n, to set the major number of the device driver.
+If a major number is not specified, then acsint registers a character device with major number 10 and a minor number that is chosen dynamically.
+In practice the minor number is the same each time (on your machine),
+as long as acsint is loaded early in the boot sequence.
+Thus it becomes predictable.
+There are two ways to determine the minor number.
+After acsint is loaded, tail /var/log/messages.
+The log contains the registration of acsint as a character device, along with its minor number.
+A better way is to look at
+/sys/devices/virtual/misc/acsint/dev,
+assuming /sys is mounted type sysfs.
+In fact, Jupiter reads this file to see if perhaps /dev/acsint was created with the wrong major or minor numbers.
+If /dev/acsint is missing, or if it has numbers different from its corresponding file under /sys,
+Jupiter tries to remove it and recreate it.
+I am doing everything I can to make sure the system comes up talking.
+And yet there are still speedbumps.
+At startup, /dev is mounted readonly, so I can't make any changes to it.
+One way around this is to start udev first.
+Then /dev becomes a virtual file system that is writable.
+But bear in mind, I want Jupiter to start speaking as soon as possible,
+so I can read any error messages that might occur.
+Starting a lot of other services before Jupiter is not ideal,
+but we don't always have a choice.
+As mentioned above, starting udev before Jupiter might make sense.
+Beyond this, you have to install acsint, and your sound card modules, or Jupiter won't talk at all.
+Thus the order of commands in /etc/rc.sysinit is something like this.
+
+<P>
+#  Get the clicks running right away, so you have some audio feedback.
+<br>
+modprobe acsint
+<br>
+#  If you are using a software synth, get the sound card ready.
+<br>
+modprobe sound
+<br>
+sleep 1
+<br>
+/sbin/alsactl init 0 >/dev/null 2>&1
+<br>
+aumix -v 60 -w 100 -c 100 -p 50
+<br>
+#  Optionally start udev, and perhaps that will create /dev/acsint for you.
+<br>
+mount /sys
+<br>
+/usr/local/bin/jupiter -d esp "|espeakup -V en-us -a 2>/dev/null"
+
+<P>
+If you don't start udev at this point, or if you don't use udev at all,
+then /dev/acsint should be in place on your system,
+with major 10 and minor 59, or whatever minor number comes up on your system,
+or perhaps with major 11 minor 1 if you put this line
+in /etc/modprobe.d/access.conf
+
+<P>
+options acsint major=11
+
+<H3 align=center> <A NAME=modes> Modes </A> </H3>
+
+Jupiter has several modes that are on or off, enabled or disabled.
+Bind these to function or control keys, and you can turn these modes on or off at will.
+These modes are global to all consoles.
+For example, if autoread is on, then it remains on even if you switch from console 2 to console 8.
+The modes are as follows.
+
+<DL>
+<DT>Sounds
+
+<P>
+<DD>
+If it is the middle of the night and your roommate is asleep, you can disable all the chirps and clicks and beeps from the pc speaker.
+This includes the clicks that accompany tty output,
+and the short beeps that Jupiter uses to convy status or error conditions.
+They can all be turned off in one go.
+
+<DT>Clicktty
+
+<P>
+<DD>
+If sounds are on, you can still disable the clicks associated with tty output.
+That leaves the beeps and tones that Jupiter produces for empty buffer, end of buffer, input error, toggle mode, etc.
+Without clicktty, output is no longer throttled, and flies across the screen at lightning speed.
+
+<DT>Transparent
+
+<P>
+<DD>
+In transparent mode, jupiter steps aside, as though it was not running at all.
+Function keys pass right through, and it is not possible to read any text.
+Also, the sounds are disabled.
+Jupiter watches for one and only one keystroke, the one that turns transparent mode off
+and brings Jupiter back to life.
+You will hear three descending tones when transparent mode is enabled, as though Jupiter was stepping away,
+then three ascending tones when transparent mode is turned off and Jupiter returns.
+Text accumulates in the tty buffer even in transparent mode,
+so you can see what happened while Jupiter was away.
+
+<P>
+This is the only mode that runs per console.
+Put console 1 in transparent mode and switch to console 2, and Jupiter is talking again.
+Thus you could leave a console in transparent mode for your sighted friend.
+
+<DT>Screen
+
+<P>
+<DD>
+Jupiter reads tty output by default,
+but in screen mode it will read the text from screen memory.
+This is useful if a program uses curses to arrange text on the screen in a certain manner,
+and you need to read it exactly as it appears on the screen.
+I try to avoid programs like this,
+because (A) I don't like them, and (B) Jupiter does not work well in this mode.
+The reading cursor does not stay with the text as it scrolls up or down,
+international characters might not read properly,
+and autoread doesn't work at all.
+Perhaps these deficiencies could be addressed,
+but for now, Jupiter is truly a linear adapter,
+with screen mode as a last resort.
+
+<DT>Autoread
+
+<P>
+<DD>
+If the computer generates a new batch of output, jump to the end of the buffer and start reading the new output.
+The word "new" here is subtle, and very important.
+The computer may be cranking out 2 or 3 pages of output,
+but I stopped reading because I want to review the exact words or letters in the first sentence.
+As I am roaming around the buffer, reviewing the output, more output is added to the end of the buffer.
+I don't want Jupiter to drag me down to the end of the buffer and start reading again.
+I am busy elsewhere.
+So autoread only comes into play if the output is new,
+not related to the output I am already looking at.
+And how, you may ask, does it determine whether the output is new?
+As every comic knows, it's all in the timing.
+If a burst of output occurs at least 0.4 seconds after the prior output, it is considered new output,
+and autoread will take you down to the end of the buffer and start reading.
+Conversely, if the output is less than 0.4 seconds after the prior output,
+it is considered more of the same,
+and Jupiter won't
+take you away from what you are doing to read it, even if you are doing nothing at all.
+Try it and see.
+Cat a modest file, and the clicks begin, and reading begins.
+Hit the shutup key and reading stops, but the clicks continue, as output continues.
+After the file is done, issue another command,
+and reading begins with the new output.
+This was tricky to program, but you know, it works pretty well.
+If your system is under load, or if you are connected to a distant system via ssh, then 0.4 seconds may not be enough.
+This parameter is hard coded in Jupiter, but some day I may make it a tunable parameter in your config file.
+
+<P>
+As mentioned above, autoread does not work in screen mode.
+With ansi sequences moving the cursor all about,
+and little bits of text updating status bars and the like, I just don't know how to read it automatically.
+So if autoread is enabled, but isn't working, and you don't know why, maybe you are in screen mode.
+
+</DL>
+
+<P>
+<A HREF=#top>Back to top</A>
+
+</BODY></font>
