@@ -421,7 +421,8 @@ and you need to read it exactly as it appears on the screen.&nbsp;
 I try to avoid programs like this,
 because (A) I don't like them, and (B) Jupiter does not work well in this mode.&nbsp;
 The reading cursor does not stay with the text as it scrolls up or down,
-international characters might not read properly,
+international characters might not read properly
+(an accented letter is in unicode in the tty buffer, I don't know what it looks like in screen memory),
 and autoread doesn't work at all.&nbsp;
 Perhaps these deficiencies could be addressed,
 but for now, Jupiter is truly a linear adapter,
@@ -440,7 +441,7 @@ I don't want Jupiter to drag me down to the end of the buffer and start reading 
 I am busy elsewhere.&nbsp;
 So autoread only comes into play if the output is new,
 not related to the output I am already looking at.&nbsp;
-And how, you may ask, does it determine whether the output is new?&nbsp;
+But how, you may ask, does it determine whether the output is new?&nbsp;
 As every comic knows, it's all in the timing.&nbsp;
 If a burst of output occurs at least 0.4 seconds after the prior output, it is considered new output,
 and autoread will take you down to the end of the buffer and start reading.&nbsp;
@@ -463,7 +464,101 @@ With ansi sequences moving the cursor all about,
 and little bits of text updating status bars and the like, I just don't know how to read it automatically.&nbsp;
 So if autoread is enabled, but isn't working, and you don't know why, maybe you are in screen mode.
 
+<DT>Oneline
+
+<P>
+<DD>
+If oneline is enabled,Jupiter reads to the end of a line and then stops.&nbsp;
+A line is delimited by newline in the tty buffer, or the edge of the screen if screen mode is enabled.&nbsp;
+If oneline is disabled then Jupiter reads all the way to the end of the buffer or the end of the screen.
+
+<DT>Interrupt
+
+<P>
+<DD>
+If interrupt is active, then any key will interrupt reading.&nbsp;
+This is a mode you probably don't want.&nbsp;
+I often type ahead, entering the next command while Jupiter is reading the prior output.&nbsp;
+By default, Jupiter continues to read until a jupiter-bound key is entered,
+that is, a key that causes Jupiter to take some action.&nbsp;
+At that point Jupiter will stop reading.&nbsp;
+This includes, of course, the shutup key.
+
+<DT>Echo
+
+<P>
+<DD>
+When echo mode is on, Jupiter echos the keys that you type.&nbsp;
+These are the primary keys, alphanumeric and punctuation.&nbsp;
+Function keys and the like are not echoed, assuming they perform some function, either through Jupiter or through a running application.&nbsp;
+Like the clicks, this is a confirmation of the character on screen.&nbsp;
+Type an e, and you hear the e when the e comes back to you, perhaps from far away over ssh.
+
+<P>
+This is primarily for people who aren't confident in their typing.&nbsp;
+I find it distracting, and since echo mode implies interrupt mode,
+it prevents any type-ahead, which slows me down even further.
+
+<P>
+For you international folks, this feature doesn't work with accented letters.&nbsp;
+The &ntilde; that comes back on screen doesn't match n, the last key you typed, and so there is no echo.&nbsp;
+This could be addressed, but it's not a high priority for me,
+since echo mode is rarely used.
+
+<DT>Literal
+
+<P>
+<DD>
+When literal mode is on, all punctuation marks are read.&nbsp;
+Programmers typically run with literal mode enabled, because every comma, every semicolon, might be important.&nbsp;
+When literal mode is off, punctuation marks are passed directly to the synthesizer,
+as though you are reading a story.&nbsp;
+A smart synthesizer will pause for a comma, paus and lower pitch for a period, and pause and raise the pitch for a question mark.&nbsp;
+However, even when reading English text, I usually leave literal mode on.&nbsp;
+I have become accustom to hearing commas and periods spoken,
+and in my brain it almost has the same effect as the corresponding pauses.&nbsp;
+Of course it isn't nearly as funny as Victor Borge's
+Phonetic Punctuation.
+
+<DT>Control Chars
+
+<P>
+<DD>
+Control characters, other than newline, tab, and bell, are typically culled from the tty buffer.&nbsp;
+If this mode is enabled, they are retained.&nbsp;
+This is usually used for debugging.
+
+<DT>Override Signals
+
+<P>
+<DD>
+If the serial connection to your external synthesizer is suspect,
+you can use this mode to override the cts and rts signals that are typically used for flow control.&nbsp;
+In other words, we switch to software flow control using x-on and x-off.&nbsp;
+This is used for debugging serial connections, and is rarely needed.
+
+<DT>Debug
+
+<P>
+<DD>
+When debug is enabled, status messages are written to /var/log/acslog.&nbsp;
+This helps me debug the acsint system and the Jupiter adapter.&nbsp;
+A typical user will never activate this mode.
+
 </DL>
+
+<P>
+Function keys, control keys, or alt keys can be configured to set, clear, or toggle any of these modes.&nbsp;
+(Key bindings will be discussed later.)&nbsp;
+Some of these modes, like the oneline mode, are changed often,
+and you will want a handy unshifted key to toggle this mode.&nbsp;
+Turn it off when you can sit back and read a page of text,
+and turn it on when you have to concentrate on technical material, and you only want to hear one line at a time.&nbsp;
+Another mode that changes frequently is clicktty.&nbsp;
+Sometimes you want to hear all those clicks, and sometimes,
+e.g. when there is a lot more output than you expected, you want to shut them off at the touch of a button.&nbsp;
+Thus I use F9 to toggle online, and F10 to toggle clicktty.&nbsp;
+Other modes are changed infrequently, and can be modified by key chords or sequences.
 
 <P>
 <A HREF=#top>Back to top</A>
