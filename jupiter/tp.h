@@ -66,15 +66,6 @@ extern char shortPhrase[NEWWORDLEN];
 
 /* prototypes */
 
-/* sourcefile=tpencode.c */
-void ascify(void) ;
-void doWhitespace(void) ;
-void ungarbage(void) ;
-void titles(void) ;
-void sortReservedWords(void) ;
-void listItem(void) ;
-void doEncode(void) ;
-
 /* sourcefile=tpxlate.c */
 int setupTTS(void) ;
 void speakChar(unsigned int c, int sayit, int bellsound, int asword) ;

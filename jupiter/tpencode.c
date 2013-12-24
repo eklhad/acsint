@@ -2,46 +2,14 @@
 
 tpencode.c: Encode dates, times, etc for text preprocessing.
 
+At present this entire file isn't being used.
+
 Copyright (C) Karl Dahlke, 2014.
 This software may be freely distributed under the GPL, general public license,
 as articulated by the Free Software Foundation.
 *********************************************************************/
 
 #include "tp.h"
-
-
-/*********************************************************************
-Turn null into '\n'.
-Turn nonspace control character or delete into space.
-The name of this function is vestigial; now acting on unicodes,
-so we wouldn't want to ascify the buffer.
-*********************************************************************/
-
-void ascify(void)
-{
-	unsigned int *s, *end_s;
-	unsigned int  c;
-
-	s =tp_in->buf + 1;
-	end_s = tp_in->buf + tp_in->len;
-
-	for(; s < end_s; ++s) {
-		c = *s;
-		if(c == 0) c = '\n'; //should never happen
-		if(c == '\t') goto add_c;
-		if(c == '\n') goto add_c;
-		if(c == '\7')goto add_c;
-		if(!tp_readLiteral) {
-			/* Treat delete or control character as space */
-			if(c == 0x7f) c = ' ';
-			if(c < ' ') c = ' ';
-		}
-
-add_c:
-		if(c == SP_MARK) c = ' '; /* this one's reserved */
-		*s = c;
-	} /* end loop over characters in the input message. */
-} /* ascify */
 
 
 #if 0

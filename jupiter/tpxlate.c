@@ -586,7 +586,7 @@ static const struct OUTWORDS outwords[5] = {
 
 static const struct OUTWORDS *ow;
 const char * const * articles;
-const char *andWord;
+static const char *andWord;
 
 /* Set things up for tts preprocessing */
 int
@@ -610,6 +610,40 @@ tp_out->room = room;
 
 return 0;
 } /* setupTTS */
+
+
+/*********************************************************************
+Turn null into '\n'.
+Turn nonspace control character or delete into space.
+The name of this function is vestigial; now acting on unicodes,
+so we wouldn't want to ascify the buffer.
+*********************************************************************/
+
+static void ascify(void)
+{
+	unsigned int *s, *end_s;
+	unsigned int  c;
+
+	s =tp_in->buf + 1;
+	end_s = tp_in->buf + tp_in->len;
+
+	for(; s < end_s; ++s) {
+		c = *s;
+		if(c == 0) c = '\n'; //should never happen
+		if(c == '\t') goto add_c;
+		if(c == '\n') goto add_c;
+		if(c == '\7')goto add_c;
+		if(!tp_readLiteral) {
+			/* Treat delete or control character as space */
+			if(c == 0x7f) c = ' ';
+			if(c < ' ') c = ' ';
+		}
+
+add_c:
+		if(c == SP_MARK) c = ' '; /* this one's reserved */
+		*s = c;
+	} /* end loop over characters in the input message. */
+} /* ascify */
 
 
 /* speak a single character.
@@ -2332,7 +2366,6 @@ do_punct:
 			if(!tp_oneSymbol &&
 			!acs_getpunc(c) &&
 			c >= 0x100 &&
-			d != '?' &&
 			!isalnum(d))
 				c = d;
 			speakChar(c, 0, 0, 0);

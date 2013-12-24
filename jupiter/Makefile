@@ -13,7 +13,7 @@ DRIVERPATH = ../drivers
 
 ACSLIB = ../bridge/libacs.a
 
-SRCS = jupiter.c tpencode.c tpxlate.c
+SRCS = jupiter.c tpxlate.c
 OBJS = $(SRCS:.c=.o)
 
 all : jupiter
