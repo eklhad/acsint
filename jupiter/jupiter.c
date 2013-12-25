@@ -1485,7 +1485,7 @@ acs_setvoice(4);
 acs_setspeed(9);
 acs_say_string(readyword[acs_lang]);
 
-acs_startfifo("/etc/jupiter.fifo");
+acs_startfifo("/etc/jupiter/fifo");
 
 /* I have a low usage machine, so a small gap in output
  * usually means something new to read.  Set it at 0.4 seconds. */
