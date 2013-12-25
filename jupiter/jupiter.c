@@ -77,7 +77,7 @@ static const struct cmd speechcommands[] = {
 	{"label", "label", 1, 0, 1},
 	{"jump", "jump", 1, 0, 1},
 	{"restart the adapter","reexec",0,1},
-	{"reload the config file","reload",0,1},
+	{"reload the config file","reload",0,1,1},
 	{"dump buffer","dump",0, 1},
 	{"suspend the adapter","suspend",0,1},
 	{"test step function","step",0,1},
@@ -450,7 +450,8 @@ last_atom = s;
 } // cfg_syntax
 
 /* configure the jupiter system. */
-static const char *my_config = "/etc/jupiter.cfg";
+static char base_config[] = "/etc/jupiter/setup0.cfg";
+static char *my_config = base_config;
 static const char *acsdriver = "/dev/acsint";
 
 static void
@@ -1148,6 +1149,8 @@ puts("\7\7\7");
 exit(1);
 
 case 46: /* reload config file */
+base_config[18] = support;
+if(access(base_config, 4)) goto error_bell;
 acs_cr();
 acs_reset_configure();
 acs_say_string(reloadword[acs_lang]);
