@@ -160,8 +160,39 @@ static void cb_append(struct cbuf *cb, unsigned int c)
 }
 
 /* Indicate which keys, by key code, are meta.  For example,
- * shift, alt, numlock, etc.  These are the state changing keys. */
-static bool ismeta[ACS_NUM_KEYS];
+ * shift, alt, numlock, etc.  These are the state changing keys.
+ * Also flag the simulated shift states, on or off, for shift,
+ * ralt, control, lalt.
+ * I don't do the bookkeeping for the standar keys, the kernel does that.
+ * I keep track for any other keys you might equate with shift or alt etc. */
+
+#define ACS_SS_KERNEL 0x20 /* states handled by the kernel */
+
+static unsigned char ismeta[ACS_NUM_KEYS];
+static unsigned char metaflag[4];
+
+static void
+reset_meta(void)
+{
+	int j;
+
+	for (j = 0; j < ACS_NUM_KEYS; ++j)
+		ismeta[j] = 0;
+/* These all have to be less than ACS_NUM_KEYS */
+	ismeta[KEY_LEFTCTRL] = ACS_SS_KERNEL;
+	ismeta[KEY_RIGHTCTRL] = ACS_SS_KERNEL;
+	ismeta[KEY_LEFTSHIFT] = ACS_SS_KERNEL;
+	ismeta[KEY_RIGHTSHIFT] = ACS_SS_KERNEL;
+	ismeta[KEY_LEFTALT] = ACS_SS_KERNEL;
+	ismeta[KEY_RIGHTALT] = ACS_SS_KERNEL;
+	ismeta[KEY_CAPSLOCK] = ACS_SS_KERNEL;
+	ismeta[KEY_NUMLOCK] = ACS_SS_KERNEL;
+	ismeta[KEY_SCROLLLOCK] = ACS_SS_KERNEL;
+
+	for(j=0; j<4; ++j)
+		metaflag[j] = 0;
+} /* reset_meta */
+
 
 /* Indicate which keys should be intercepted.
  * There is an intersception state, or istate, for each key.
@@ -249,24 +280,11 @@ static int device_open(struct inode *inode, struct file *file)
 		cb_nomem_alloc[j] = 0;
 	}
 
+	reset_meta();
 	clear_keys();
 	key_divert = false;
 	key_monitor = false;
 	key_bypass = false;
-
-/* Set certain keys as meta, consistent with the standard key map */
-	for (j = 0; j < ACS_NUM_KEYS; ++j)
-		ismeta[j] = false;
-/* These all have to be less than ACS_NUM_KEYS */
-	ismeta[KEY_LEFTCTRL] = true;
-	ismeta[KEY_RIGHTCTRL] = true;
-	ismeta[KEY_LEFTSHIFT] = true;
-	ismeta[KEY_RIGHTSHIFT] = true;
-	ismeta[KEY_LEFTALT] = true;
-	ismeta[KEY_RIGHTALT] = true;
-	ismeta[KEY_CAPSLOCK] = true;
-	ismeta[KEY_NUMLOCK] = true;
-	ismeta[KEY_SCROLLLOCK] = true;
 
 /* At startup we tell the process which virtual console it is on.
  * Place this directive in rbuf to be read. */
@@ -477,6 +495,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 		switch (c) {
 		case ACS_CLEAR_KEYS:
 			clear_keys();
+			reset_meta();
 			break;
 
 		case ACS_SET_KEY:
@@ -514,7 +533,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(c, p++);
 			len--;
 			if (key < ACS_NUM_KEYS)
-				ismeta[key] = (c != 0);
+				ismeta[key] = (unsigned char)c;
 			break;
 
 		case ACS_CLICK:
@@ -1057,6 +1076,8 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	unsigned int key = param->value;
 	int downflag = param->down;
 	int ss = param->shift;
+	int mymeta, mymask;
+	int j;
 	unsigned short action;
 	bool wake = false, keep = false, send = false;
 	bool divert, monitor, bypass;
@@ -1068,12 +1089,8 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (param->vc->vc_mode == KD_GRAPHICS)
 		goto done;
 
-/* Only the key down events */
-	if (downflag == 0)
-		goto done;
-
 /* post any unicode events for echo */
-	if (type == KBD_UNICODE) {
+	if (type == KBD_UNICODE && downflag) {
 		post4echo(KBD_UNICODE, param);
 		goto done;
 	}
@@ -1081,7 +1098,26 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (type != KBD_KEYCODE)
 		goto done;
 
+/* Capture and process keys that are meta, but not kernel meta */
+	if(key < ACS_NUM_KEYS && (mymeta = ismeta[key]) && mymeta != ACS_SS_KERNEL) {
+		mymask = 1;
+		for(j=0; j<4; ++j, mymask<<=1)
+			if(mymask & mymeta)
+				metaflag[j] = (downflag != 0);
+		return NOTIFY_STOP;
+	}
+
+/* Only the key down events */
+	if (downflag == 0)
+		goto done;
+
 	ss &= 0xf;
+/* Adjust by the user meta keys. */
+	mymask = 1;
+	for(j=0; j<4; ++j, mymask<<=1) {
+		if(metaflag[j])
+			ss |= mymask;
+	}
 
 	action = 0;
 	if (key < ACS_NUM_KEYS)

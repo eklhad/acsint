@@ -509,6 +509,7 @@ static char goRead; /* read the next sentence */
 #define markleft acs_rb->marks[26]
 static unsigned int *markright;
 static char screenMode = 0;
+static char smlist[MAX_NR_CONSOLES+1];
 static char jdebug;
 static char cc_buffer = 0; // control chars in the buffer
 static char echoMode; // echo keys as they are typed
@@ -560,6 +561,7 @@ break;
 case 'o': acs_serial_flow(1-*p); break;
 case 's':
 acs_screenmode(*p);
+smlist[acs_fgc] = screenMode;
 /* this line is really important; don't leave the temp cursor in the other world. */
 acs_cursorset();
 break;
@@ -1220,6 +1222,12 @@ return;
 
 if(last_fgc == acs_fgc)
 return; /* should never happen */
+
+/* Modes that are per console */
+if(screenMode != smlist[acs_fgc]) {
+screenMode = smlist[acs_fgc];
+acs_screenmode(screenMode);
+}
 
 last_fgc = acs_fgc;
 /* kill any pending keystroke command; we just switched consoles */

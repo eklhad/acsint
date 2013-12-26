@@ -71,8 +71,19 @@ Furthermore, it is most effective when combined with command line programs such 
 fdisk, mpg123, ed, and of course edbrowse.&nbsp;
 As mentioned earlier, Jupiter can read screen memory,
 thus providing access to curses based programs such as emacs, vi, or lynx,
-but the experience is rather awkward.&nbsp;
+but the experience is suboptimal.&nbsp;
 I only dabble in screen memory when I must.
+
+<P>
+The tty buffers are maintained per console,
+thus Jupiter is most effective when combined with the 12 virtual consoles that come standard in Linux,
+accessible by alt F1 through alt F12.&nbsp;
+Switch to console 7 and you will be reading the tty buffer associated with that console,
+i.e. the output of the programs that have been run from that console.&nbsp;
+If you use screen(1) to maintain parallel sessions,
+the output of all your sessions will intermix in the tty buffer,
+and the result will be very confusing.&nbsp;
+I therefore recommend 12 or 24 virtual text-based consoles, at run level 3.
 
 <H3 align=center> <A NAME=lang> Other Languages </A> </H3>
 
@@ -369,8 +380,12 @@ options acsint major=11
 
 Jupiter has several modes that are on or off, enabled or disabled.&nbsp;
 Bind these to function or control keys, and you can turn these modes on or off at will.&nbsp;
-These modes are global to all consoles.&nbsp;
+Most of these modes are global to all consoles.&nbsp;
 For example, if autoread is on, then it remains on even if you switch from console 2 to console 8.&nbsp;
+But some modes are per-console.&nbsp;
+For instance, you may have an application running on console 9 that has to operate in screen mode,
+while all the other consoles run happily in line mode.&nbsp;
+Again, this assumes you are using virtual consoles rather than screen(1) or some other session manager.&nbsp;
 The modes are as follows.
 
 <DL>
@@ -558,7 +573,7 @@ Another mode that changes frequently is clicktty.&nbsp;
 Sometimes you want to hear all those clicks, and sometimes,
 e.g. when there is a lot more output than you expected, you want to shut them off at the touch of a button.&nbsp;
 Thus I use F9 to toggle online, and F10 to toggle clicktty.&nbsp;
-Other modes are changed infrequently, and can be modified by key chords or sequences.
+Other modes are changed infrequently, and can be modified by key chords or key sequences.
 
 <P>
 <A HREF=#top>Back to top</A>

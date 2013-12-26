@@ -461,6 +461,10 @@ static char *macrolist[MK_RANGE];
  * adapter specific, so I'm not sure. */
 static char *speechcommandlist[MK_RANGE];
 
+/* This mirrors ismeta in the device driver, but we don't need
+ * the kernel meta keys, just the user specified meta keys. */
+static unsigned char ismetalist[ACS_NUM_KEYS];
+
 void acs_clearmacro(int mkcode)
 {
 if(mkcode < 0) return;
@@ -1062,14 +1066,36 @@ mkcode = acs_ascii2mkcode(s, &s);
 if(mkcode >= 0) { // key assignment
 int code_l, code_r; /* left and right alt */
 code_l = code_r = 0;
+
+skipWhite(&s);
+
+/* handle the meta settings first */
+if(!key1ss && strpbrk(s, "+^@")) {
+int simss = 0; // the simulated shift state
+t = s;
+while(c = *t) {
+++t;
+if(c == '+') { simss |= ACS_SS_SHIFT; continue; }
+if(c == '^') { simss |= ACS_SS_CTRL; continue; }
+if(*t++ != '@') goto nometa;
+if(c == 'r' || c == 'R') { simss |= ACS_SS_RALT; continue; }
+if(c == 'l' || c == 'L') { simss |= ACS_SS_LALT; continue; }
+goto nometa;
+}
+// We got something.
+ismetalist[key1key] = simss;
+acs_ismeta(key1key, simss);
+return 0;
+}
+
+nometa:
+c = *s;
 if(key1ss&ACS_SS_EALT) {
 key1ss &= 0xf;
 code_l = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_RALT));
 code_r = acs_build_mkcode(key1key, (key1ss & ~ACS_SS_LALT));
 }
 
-skipWhite(&s);
-c = *s;
 	if(c == '<' || c == '|') {
 if(!s[1]) goto clear;
 if(c == '<')
@@ -1099,6 +1125,10 @@ acs_unsetkey(key1key, (key1ss & ~ACS_SS_LALT));
 acs_clearmacro(mkcode);
 acs_clearspeechcommand(mkcode);
 acs_unsetkey(key1key, key1ss);
+}
+if(!key1ss) { // plain state, no meta
+ismetalist[key1key] = 0;
+acs_ismeta(key1key, 0);
 }
 return 0;
 }
@@ -1172,6 +1202,7 @@ int i;
 const struct uc_name *u;
 
 acs_clearkeys();
+memset(ismetalist, 0, sizeof(ismetalist));
 
 for(i=0; i<numdictwords; ++i) {
 free(dict1[i]);
@@ -1233,8 +1264,10 @@ acs_log("resume keys\n");
 /* in case the config file has changed, and keys are bound differently. */
 acs_clearkeys();
 
-for(ss=0; ss<=15; ++ss) {
 for(key=0; key<ACS_NUM_KEYS; ++key) {
+if(ismetalist[key]) acs_ismeta(key, ismetalist[key]);
+
+for(ss=0; ss<=15; ++ss) {
 mkcode = acs_build_mkcode(key, ss);
 if(acs_getspeechcommand(mkcode) || acs_getmacro(mkcode))
 acs_setkey(key, ss);
