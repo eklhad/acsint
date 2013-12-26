@@ -1333,7 +1333,7 @@ acs_lang = ACS_LANG_DE;
     }
 
     if(!strncmp(buf, "pt", 2)) {
-acs_lang = ACS_LANG_PT;
+acs_lang = ACS_LANG_PT_BR;
 	return;
     }
 

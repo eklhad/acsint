@@ -143,7 +143,7 @@ int acs_isalpha(unsigned int c)
 		if(c == 0xe4 || c == 0xfc || c == 0xf6) return 1;
 		break;
 
-	case ACS_LANG_PT:
+	case ACS_LANG_PT_BR:
 		c |= 0x20;
 		if( c == 0xe0 || c == 0xe1 || c == 0xe2 || c == 0xe3 || c == 0xe7) return 1;
 		if(c == 0xe9 || c == 0xea || c == 0xed) return 1;
