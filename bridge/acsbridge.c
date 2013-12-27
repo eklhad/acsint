@@ -691,7 +691,7 @@ if(j < 20 && s[j]) {
 /* a letter indicates end of escape sequence.
  * If the letter is H, we are repositioning the cursor.
  * Most of the time we are starting a new line.
- * If not, we are at least starting a new word or phrase.
+ * If not, we are at least jumping to another part of the screen.
  * In either case I find it helpful to introduce a newline.
  * That deliniates a new block of text,
  * and most of the time said text is indeed on a new line. */

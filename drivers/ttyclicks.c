@@ -590,7 +590,8 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		if (isalpha(c)) {
 			/* a letter indicates end of escape sequence. */
 			escState = 0;
-/* perhaps check for c == 'H' here? */
+			if(c == 'H')
+				ttyclicks_cr();
 		}
 		goto done;
 	}
