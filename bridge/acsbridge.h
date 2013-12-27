@@ -225,8 +225,8 @@ and will still be at the end of buffer.
 This is useful for continuous reading.
 
 It may be convenient to use a define symbol:
-#define cutLeftMark acs_rb->marks[0]
-Set this to acs_rb->cursor to mark the left boundary
+cutLeftMark = acs_mb->marks[0]
+Set this to acs_mb->cursor to mark the left boundary
 of a block of text that you plan to cut&paste.
 This mark remains in sync with the text, even if more output is generated.
 Move your cursor to the right edge of the block and issue the cut command.
@@ -281,19 +281,18 @@ struct acs_readingBuffer {
 };
 
 /*********************************************************************
-Point to the current reading buffer.
-This is a global variable you can use anywhere.
-I keep it up to date, even if you switch consoles
-or toggle between screen and line mode.
-I would declare it const, but you have to be able to update acs_rb->cursor.
+The current reading buffer, tty buffer, and manipulation buffer.
+Manipulation is tty or screen, depending on mode.
+Reading is the same as manipulation, except for autoread in screen mode.
+I would declare these const, but you have to be able to update the cursor.
 *********************************************************************/
 
-extern struct acs_readingBuffer *acs_rb;
+extern struct acs_readingBuffer *acs_mb, *acs_rb, *acs_tb;
 
 /*********************************************************************
 Within screen mode, attribs is an array holding the attributes of each character on screen.
 Underline, inverse, blinking, etc.
-The attribute of the character pointed to by s is acs_rb->attribs[s-acs_rb->start];
+The attribute of the character pointed to by s is acs_mb->attribs[s-acs_mb->start];
 No, I don't know what any of the bits mean; guess we'll have to look them up in linux documentation.
 A normal character is 7.
 *********************************************************************/
@@ -1058,7 +1057,8 @@ this is for the aforementioned story, where newlines mean nothing.
 This is incompatible with ACS_GS_ONEWORD or ACS_GS_STOPLINE.
 
 Don't use this function to read a single character.
-Just grab acs_rb->cursor[0], or call acs_getc().
+Just grab acs_mb->cursor[0], or call acs_getc().
+The latter is preferable for purposes of encapsulation.
 This routine has too much overhead for just one character,
 and it does some translations that you may or may not want.
 

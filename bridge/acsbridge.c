@@ -90,7 +90,9 @@ static const char nomem_message[] = "Acsint bridge cannot allocate space for thi
 static struct acs_readingBuffer *tl; // current tty log
 static struct acs_readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
-struct acs_readingBuffer *acs_rb; /* current reading buffer for the application */
+struct acs_readingBuffer *acs_mb; /* manipulation buffer */
+struct acs_readingBuffer *acs_tb; /* tty buffer */
+struct acs_readingBuffer *acs_rb; /* current reading buffer */
 
 // cp437 code page, for English.
 static const unsigned int cp437[] = {
@@ -170,52 +172,53 @@ screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
 static void
 checkAlloc(void)
 {
-acs_rb = tty_log[acs_fgc - 1];
-if(acs_rb && acs_rb != &tty_nomem)
+acs_mb = acs_tb = tty_log[acs_fgc - 1];
+if(acs_tb && acs_tb != &tty_nomem)
 return; /* already allocated */
 
-acs_rb = malloc(sizeof(struct acs_readingBuffer));
-if(acs_rb) acs_log("allocate %d\n", acs_fgc);
-else acs_rb = &tty_nomem;
-tty_log[acs_fgc-1] = acs_rb;
-acs_rb->start = acs_rb->area + 1;
-acs_rb->area[0] = 0;
-if(acs_rb == &tty_nomem) {
+acs_tb = malloc(sizeof(struct acs_readingBuffer));
+if(acs_tb) acs_log("allocate %d\n", acs_fgc);
+else acs_tb = &tty_nomem;
+tty_log[acs_fgc-1] = acs_mb = acs_tb;
+
+acs_tb->start = acs_tb->area + 1;
+acs_tb->area[0] = 0;
+if(acs_tb == &tty_nomem) {
 int j;
 for(j=0; nomem_message[j]; ++j)
-acs_rb->start[j] = nomem_message[j];
-acs_rb->start[j] = 0;
-acs_rb->end = acs_rb->start + j;
+acs_tb->start[j] = nomem_message[j];
+acs_tb->start[j] = 0;
+acs_tb->end = acs_tb->start + j;
 } else {
-acs_rb->end = acs_rb->start;
-acs_rb->area[1] = 0;
+acs_tb->end = acs_tb->start;
+acs_tb->area[1] = 0;
 }
 
-acs_rb->cursor = acs_rb->start;
-acs_rb->v_cursor = 0;
-acs_rb->attribs = 0;
+acs_tb->cursor = acs_tb->start;
+acs_tb->v_cursor = 0;
+acs_tb->attribs = 0;
 } /* checkAlloc */
 
 void
 acs_screenmode(int enabled)
 {
-acs_imark_start = 0;
 /* If you issued this command at the call of a keystroke,
  * and that is what I am expecting / assuming,
  * then yes the buffer will be caught up.
  * If it is called by some other automated process, or at startup,
  * then you will want to call acs_refresh to bring the buffer up to date,
  * at least in line mode.  I call screenSnap for you in screen mode. */
-if(enabled) {
-screenmode = 1;
-screenSnap();
-acs_rb = &screenBuf;
-acs_rb->cursor = acs_rb->v_cursor;
-memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
-} else {
+
+acs_imark_start = 0;
 screenmode = 0;
 checkAlloc();
-}
+if(!enabled) return;
+
+screenmode = 1;
+screenSnap();
+acs_mb = &screenBuf;
+acs_mb->cursor = acs_mb->v_cursor;
+memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 } /* acs_screenmode */
 
 
@@ -719,9 +722,9 @@ void acs_clearbuf(void)
 {
 if(screenmode) return;
 acs_imark_start = 0;
-if(acs_rb && acs_rb != &tty_nomem) {
-acs_rb->end = acs_rb->cursor = acs_rb->start;
-memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
+if(acs_mb && acs_mb != &tty_nomem) {
+acs_mb->end = acs_mb->cursor = acs_mb->start;
+memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }
 } // acs_clearbuf
 
@@ -790,13 +793,13 @@ acs_log("fg %d\n", inbuf[i+1]);
 acs_fgc = inbuf[i+1];
 checkAlloc();
 if(screenmode) {
-/* Oops, the checkAlloc function changed acs_rb out from under us. */
-acs_rb = &screenBuf;
+/* Oops, the checkAlloc function changed acs_mb out from under us. */
+acs_mb = &screenBuf;
 /* I hope linux has done the console switch by this time. */
 screenSnap();
 refreshed = 1;
-acs_rb->cursor = acs_rb->v_cursor;
-memset(acs_rb->marks, 0, sizeof(acs_rb->marks));
+acs_mb->cursor = acs_mb->v_cursor;
+memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }
 if(acs_fgc_h) acs_fgc_h();
 i += 4;
@@ -927,12 +930,12 @@ static unsigned int *tc; // temp cursor
 
 void acs_cursorset(void)
 {
-tc = acs_rb->cursor;
+tc = acs_mb->cursor;
 } // acs_cursorset
 
 void acs_cursorsync(void)
 {
-acs_rb->cursor = tc;
+acs_mb->cursor = tc;
 } // acs_cursorsync
 
 unsigned int acs_getc(void)
@@ -942,24 +945,24 @@ return (tc ? *tc : 0);
 
 int acs_forward(void)
 {
-if(acs_rb->end == acs_rb->start) return 0;
+if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
-if(++tc == acs_rb->end) return 0;
+if(++tc == acs_mb->end) return 0;
 return 1;
 } // acs_forward
 
 int acs_back(void)
 {
-if(acs_rb->end == acs_rb->start) return 0;
+if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
-if(tc-- == acs_rb->start) return 0;
+if(tc-- == acs_mb->start) return 0;
 return 1;
 } // acs_back
 
 int acs_startline(void)
 {
 int colno = 0;
-if(acs_rb->end == acs_rb->start) return 0;
+if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
 do ++colno;
 while(acs_back() && acs_getc() != '\n');
@@ -969,7 +972,7 @@ return colno;
 
 int acs_endline(void)
 {
-if(acs_rb->end == acs_rb->start) return 0;
+if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
 while(acs_getc() != '\n') {
 if(acs_forward()) continue;
@@ -1072,19 +1075,19 @@ return 1;
 
 void acs_startbuf(void)
 {
-tc = acs_rb->start;
+tc = acs_mb->start;
 } // acs_startbuf
 
 void acs_endbuf(void)
 {
-tc = acs_rb->end;
-if(tc != acs_rb->start) --tc;
+tc = acs_mb->end;
+if(tc != acs_mb->start) --tc;
 } // acs_endbuf
 
 // skip past left spaces
 void acs_lspc(void)
 {
-if(acs_rb->end == acs_rb->start) return;
+if(acs_mb->end == acs_mb->start) return;
 if(!tc) return;
 	if(!acs_back()) goto done;
 	while(acs_getc() == ' ')
@@ -1096,7 +1099,7 @@ done:
 // skip past right spaces
 void acs_rspc(void)
 {
-if(acs_rb->end == acs_rb->start) return;
+if(acs_mb->end == acs_mb->start) return;
 if(!tc) return;
 	if(!acs_forward()) goto done;
 	while(acs_getc() == ' ')
@@ -1160,7 +1163,7 @@ int acs_bufsearch(const char *string, int back, int newline)
 	int ok;
 	unsigned int c, first;
 
-if(acs_rb->end == acs_rb->start) return 0;
+if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
 
 	if(newline) {
@@ -1207,19 +1210,22 @@ static const char *lengthword[] = {
 
 int acs_getsentence(unsigned int *dest, int destlen, acs_ofs_type *offsets, int prop)
 {
-const unsigned int *destend = dest + destlen - 1; /* end of destination array */
-unsigned int *t = dest;
-const unsigned int *s = acs_rb->cursor;
-acs_ofs_type *o = offsets;
+const unsigned int *s;
+unsigned int *t, *destend;
+acs_ofs_type *o;
 int j, l;
 unsigned int c;
 char c1; /* cut c down to 1 byte */
 char spaces = 1, alnum = 0; // flags
 
-if(!s || !t) {
+if(!dest || !acs_rb || !(s = acs_rb->cursor)) {
 errno = EFAULT;
 return -1;
 }
+
+t = dest;
+destend = dest + destlen - 1; /* end of destination array */
+o = offsets;
 
 if(destlen <= 0) {
 errno = ENOMEM;
@@ -1228,7 +1234,7 @@ return -1;
 
 if(destlen == 1) {
 *dest = 0;
-if(offsets) *offsets = 0;
+if(o) *o = 0;
 return 0;
 }
 

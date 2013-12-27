@@ -88,7 +88,6 @@ static int bnsf; // counting control f's from bns
 static void indexSet(int n)
 {
 if(acs_style == ACS_SY_STYLE_BNS || acs_style == ACS_SY_STYLE_ACE) {
-/* don't return until you have done this bookkeeping. */
 ++bnsf;
 n = imark_end + bnsf;
 } else {
@@ -96,7 +95,9 @@ n -= imark_first;
 }
 
 if(!acs_imark_start) return;
+if(!acs_rb) return;
 if(n < 0 || n >= imark_end) return;
+
 acs_rb->cursor = acs_imark_start + imark_loc[n];
 acs_log("imark %d cursor now base+%d\n", n, imark_loc[n]);
 
@@ -406,8 +407,10 @@ const unsigned int *t;
 char ibuf[30]; // index mark buffer
 const acs_ofs_type *o0 = o;
 
-acs_imark_start = acs_rb->cursor;
+acs_imark_start = 0;
+if(acs_rb) acs_imark_start = acs_rb->cursor;
 imark_end = 0;
+
 if(acs_style == ACS_SY_STYLE_BNS || acs_style == ACS_SY_STYLE_ACE) mark = 0;
 imark_first = mark;
 

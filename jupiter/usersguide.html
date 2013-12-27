@@ -38,10 +38,12 @@ It may be used for any purpose, and redistributed, provided this copyright notic
 
 <H3 align=center> <A NAME=over> Overview </A> </H3>
 
-Jupiter is unique among all adapters in that it does not transform the words or icons on the screen into speech or braille.&nbsp;
-although it is capable of reading screen memory,
-it typically runs in line mode,
-capturing all tty output like a paper teletype, and making it available to the blind user through speech.&nbsp;
+Jupiter is unique among all adapters in that it does not (by default) transform the words or icons on the screen into speech or braille.&nbsp;
+It is not typically used as a screen reader.&nbsp;
+It is capable of reading screen memory
+and interacting with certain curses programs,
+but it typically runs in line mode,
+capturing all tty output like a paper teletype and making it available to the blind user through speech.&nbsp;
 The buffer is 64K, and could represent several hours of work,
 depending on the nature and quantity of output during that time.&nbsp;
 Or it could represent just a few seconds of output, if a program prints "hello world" in an infinite loop.
@@ -55,27 +57,23 @@ wherein editers, browsers, mail clients, spreadsheets, and other critical applic
 are rewritten from the ground up if necessary
 to support various disabilities.&nbsp;
 Once this is done,
-Other applications
-can leverage these tools,
+Other applications can leverage these tools,
 and be immediately accessible to a wide range of computer users.&nbsp;
 You can read more about this philosophy
 <A HREF=http://www.eklhad.net/edbrowse/philosophy.html>here</A>.
 
 <P>
-Jupiter is incompatible with a graphical desktop such as gnome or kde.&nbsp;
-More generally, Jupiter is incompatible with X, which bypasses the traditional tty entirely.&nbsp;
-It doesn't even see the output, and certainly can't read it to you.&nbsp;
+Although Jupiter is interoperable with some curses-based screen programs,
+it is incompatible with a graphical desktop such as gnome or kde.&nbsp;
+More generally, Jupiter is incompatible with X, which bypasses the traditional tty driver entirely.&nbsp;
+It doesn't see the output, and certainly can't read it to you.&nbsp;
 Instead, Jupiter was written for people who spend most of their time at run level 3,
 logged into a text based console.&nbsp;
 Furthermore, it is most effective when combined with command line programs such as bash,
-fdisk, mpg123, ed, and of course edbrowse.&nbsp;
-As mentioned earlier, Jupiter can read screen memory,
-thus providing access to curses based programs such as emacs, vi, or lynx,
-but the experience is suboptimal.&nbsp;
-I only dabble in screen memory when I must.
+fdisk, mpg123, ed, and of course edbrowse.
 
 <P>
-The tty buffers are maintained per console,
+The tty buffers are maintained per console -
 thus Jupiter is most effective when combined with the 12 virtual consoles that come standard in Linux,
 accessible by alt F1 through alt F12.&nbsp;
 Switch to console 7 and you will be reading the tty buffer associated with that console,
@@ -83,13 +81,14 @@ i.e. the output of the programs that have been run from that console.&nbsp;
 If you use screen(1) to maintain parallel sessions,
 the output of all your sessions will intermix in the tty buffer,
 and the result will be very confusing.&nbsp;
-I therefore recommend 12 or 24 virtual text-based consoles, at run level 3.
+I therefore recommend 12 or 24 virtual text-based consoles
+to manage your parallel sessions.
 
 <H3 align=center> <A NAME=lang> Other Languages </A> </H3>
 
 The buffer stores tty output in unicode, which is compatible with every language on Earth.&nbsp;
 Thus, in theory, Jupiter could be modified to support any language.&nbsp;
-At present it supports English, German, and Portuguese.&nbsp;
+At present it supports English, German, and Brazilian Portuguese.&nbsp;
 If you are interested in other languages, or if you can help in this effort, please let me know.&nbsp;
 You don't have to be a programmer;
 you just have to be fluent in your language and conversational in English.&nbsp;
@@ -143,8 +142,9 @@ More research is needed here.
 <P>
 The only software synthesizer currrently supported is espeak,
 although espeak comes in a variety of languages.&nbsp;
-(Most of the external synths are English, or perhaps English and one other language.)&nbsp;
-Jupiter connects to espeakup through a pipe, sending text to be spoken, and receiving index markers, a form of acknowledgement, in return.&nbsp;
+(Most of the external synths are English, or perhaps English and Spanish.)&nbsp;
+Jupiter connects to espeakup through a pipe, sending text to be spoken,
+and receiving index markers in return.&nbsp;
 Once again jupiter is invoked with two arguments.&nbsp;
 The first is esp, for espeakup, and the second is the command to launch espeakup.&nbsp;
 On my system it looks like this.
@@ -177,7 +177,7 @@ You need to killall espeakup to clean things up.
 
 <H3 align=center> <A NAME=mod> Modules </A> </H3>
 
-Any program can read screen memory from /dev/vcs*,
+Any program can read screen memory from /dev/vcs,
 but how do you get your hands on tty output
 as it is being generated?&nbsp;
 How do you intercept these output characters and store them in a buffer for review?&nbsp;
@@ -214,7 +214,7 @@ I have this near the top of /etc/rc.sysinit.
 modprobe acsint
 
 <P>
-That brings in the acsint module and the ttyclicks module, since the former depends on the latter.&nbsp;
+That brings in the acsint module, and the ttyclicks module, since the former depends on the latter.&nbsp;
 See /lib/modules/version/modules.dep for module dependencies.&nbsp;
 With acsint loaded, we are ready for Jupiter -
 with a few caveats that will be described below.
@@ -320,7 +320,7 @@ options ttyclicks sleep=1
 <P>
 The acsint module also has an optional parameter, major=n, to set the major number of the device driver.&nbsp;
 If a major number is not specified, then acsint registers a character device with major number 10 and a minor number that is chosen dynamically.&nbsp;
-In practice the minor number is the same each time (on your machine),
+In practice the minor number is the same each time on your machine,
 as long as acsint is loaded early in the boot sequence.&nbsp;
 Thus it becomes predictable.&nbsp;
 There are two ways to determine the minor number.&nbsp;
@@ -385,7 +385,6 @@ For example, if autoread is on, then it remains on even if you switch from conso
 But some modes are per-console.&nbsp;
 For instance, you may have an application running on console 9 that has to operate in screen mode,
 while all the other consoles run happily in line mode.&nbsp;
-Again, this assumes you are using virtual consoles rather than screen(1) or some other session manager.&nbsp;
 The modes are as follows.
 
 <DL>
@@ -403,8 +402,8 @@ They can all be turned off in one go.
 <P>
 <DD>
 If sounds are on, you can still disable the clicks associated with tty output.&nbsp;
-That leaves the beeps and tones that Jupiter produces for empty buffer, end of buffer, input error, toggle mode, etc.&nbsp;
-Without clicktty, output is no longer throttled, and flies across the screen at lightning speed.
+That still leaves the beeps and tones that Jupiter produces for empty buffer, end of buffer, input error, toggle mode, etc.&nbsp;
+Without clicktty, output is no longer throttled, and it flies across the screen at lightning speed.
 
 <DT>Transparent
 
@@ -418,10 +417,10 @@ and brings Jupiter back to life.&nbsp;
 You will hear three descending tones when transparent mode is enabled, as though Jupiter was stepping away,
 then three ascending tones when transparent mode is turned off and Jupiter returns.&nbsp;
 Text accumulates in the tty buffer even in transparent mode,
-so you can see what happened while Jupiter was away.
+so you can see what happened while Jupiter was quiescent.
 
 <P>
-This is the only mode that runs per console.&nbsp;
+This mode runs per console.&nbsp;
 Put console 1 in transparent mode and switch to console 2, and Jupiter is talking again.&nbsp;
 Thus you could leave a console in transparent mode for your sighted friend.
 
@@ -434,14 +433,11 @@ but in screen mode it will read the text from screen memory.&nbsp;
 This is useful if a program uses curses to arrange text on the screen in a certain manner,
 and you need to read it exactly as it appears on the screen.&nbsp;
 I try to avoid programs like this,
-because (A) I don't like them, and (B) Jupiter does not work well in this mode.&nbsp;
+because (A) I don't like them, and (B) Jupiter is not as efficient in this mode.&nbsp;
 The reading cursor does not stay with the text as it scrolls up or down,
-international characters might not read properly
-(an accented letter is in unicode in the tty buffer, I don't know what it looks like in screen memory),
-and autoread doesn't work at all.&nbsp;
-Perhaps these deficiencies could be addressed,
-but for now, Jupiter is truly a linear adapter,
-with screen mode as a last resort.
+and some international characters are misrepresented in screen memory.&nbsp;
+Still, there are times when a screen program is the only game in town,
+and in those situations, we just have to play along.
 
 <DT>Autoread
 
@@ -465,19 +461,14 @@ it is considered more of the same,
 and Jupiter won't
 take you away from what you are doing to read it, even if you are doing nothing at all.&nbsp;
 Try it and see.&nbsp;
-Cat a modest file, and the clicks begin, and reading begins.&nbsp;
+Cat a small file, and the clicks begin, and reading begins.&nbsp;
 Hit the shutup key and reading stops, but the clicks continue, as output continues.&nbsp;
 After the file is done, issue another command,
+like echo hello world,
 and reading begins with the new output.&nbsp;
 This was tricky to program, but you know, it works pretty well.&nbsp;
 If your system is under load, or if you are connected to a distant system via ssh, then 0.4 seconds may not be enough.&nbsp;
-This parameter is hard coded in Jupiter, but some day I may make it a tunable parameter in your config file.
-
-<P>
-As mentioned above, autoread does not work in screen mode.&nbsp;
-With ansi sequences moving the cursor all about,
-and little bits of text updating status bars and the like, I just don't know how to read it automatically.&nbsp;
-So if autoread is enabled, but isn't working, and you don't know why, maybe you are in screen mode.
+This parameter is hard coded in Jupiter, but some day I may make it a tunable parameter in the config file.
 
 <DT>Oneline
 
@@ -517,7 +508,7 @@ it prevents any type-ahead, which slows me down even further.
 <P>
 For you international folks, this feature doesn't work with accented letters.&nbsp;
 The &ntilde; that comes back on screen doesn't match n, the last key you typed, and so there is no echo.&nbsp;
-This could be addressed, but it's not a high priority for me,
+This could be addressed, but it's not a high priority,
 since echo mode is rarely used.
 
 <DT>Literal
@@ -564,15 +555,15 @@ A typical user will never activate this mode.
 
 <P>
 Function keys, control keys, or alt keys can be configured to set, clear, or toggle any of these modes.&nbsp;
-(Key bindings will be discussed later.)&nbsp;
+Key bindings will be discussed later.&nbsp;
 Some of these modes, like the oneline mode, are changed often,
-and you will want a handy unshifted key to toggle this mode.&nbsp;
+and you will want a handy, unshifted key to toggle this mode.&nbsp;
 Turn it off when you can sit back and read a page of text,
 and turn it on when you have to concentrate on technical material, and you only want to hear one line at a time.&nbsp;
 Another mode that changes frequently is clicktty.&nbsp;
 Sometimes you want to hear all those clicks, and sometimes,
 e.g. when there is a lot more output than you expected, you want to shut them off at the touch of a button.&nbsp;
-Thus I use F9 to toggle online, and F10 to toggle clicktty.&nbsp;
+Thus I use F9 to toggle oneline, and F10 to toggle clicktty.&nbsp;
 Other modes are changed infrequently, and can be modified by key chords or key sequences.
 
 <P>

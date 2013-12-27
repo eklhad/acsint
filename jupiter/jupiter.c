@@ -73,7 +73,7 @@ static const struct cmd speechcommands[] = {
 	{"last complete line","lcline",1},
 	{"mark left", "markl", 1},
 	{"mark right", "markr", 1, 0, 1},
-	{"set echo", "echo", 0, 0, 1},
+	{"set echo", "x@y`", 0, 0, 1},
 	{"label", "label", 1, 0, 1},
 	{"jump", "jump", 1, 0, 1},
 	{"restart the adapter","reexec",0,1},
@@ -503,10 +503,9 @@ static char autoRead = 1; // read new text automatically
 static char oneLine; /* read one line at a time */
 static char overrideSignals = 0; // don't rely on cts rts etc
 static char keyInterrupt;
-static char reading; /* continuous reading in progress */
 static char goRead; /* read the next sentence */
 /* for cut&paste */
-#define markleft acs_rb->marks[26]
+#define markleft acs_mb->marks[26]
 static unsigned int *markright;
 static char screenMode = 0;
 static char smlist[MAX_NR_CONSOLES+1];
@@ -583,7 +582,7 @@ Stop any reading in progress.
 
 static void interrupt(void)
 {
-reading = 0;
+acs_rb = 0;
 goRead = 0;
 if(acs_stillTalking())
 acs_shutup();
@@ -606,7 +605,7 @@ if(readNextMark) {
 /* could be past the buffer */
 if(readNextMark >= acs_rb->end) {
 readNextMark = 0;
-reading = 0;
+acs_rb = 0;
 return;
 }
 acs_rb->cursor = readNextMark;
@@ -616,7 +615,7 @@ readNextMark = 0;
 if(!acs_rb->cursor) {
 /* lots of text has pushed the reading cursor off the edge. */
 acs_buzz();
-reading = 0;
+acs_rb = 0;
 return;
 }
 
@@ -636,7 +635,7 @@ acs_getsentence(tp_in->buf+1, 120, tp_in->offset+1, gsprop);
 if(!tp_in->buf[1]) {
 /* Empty sentence, nothing else to read. */
 acs_log("empty done\n");
-reading = 0;
+acs_rb = 0;
 return;
 }
 
@@ -648,7 +647,7 @@ speakChar(tp_in->buf[1], 1, soundsOn, 0);
 
 if(oneLine && first == '\n') {
 acs_log("newline done\n");
-reading = 0;
+acs_rb = 0;
 return;
 }
 
@@ -659,7 +658,7 @@ acs_rb->cursor += tp_in->offset[i];
 if(acs_rb->cursor >= acs_rb->end) {
 acs_rb->cursor = acs_rb->end-1;
 acs_log("eof done\n");
-reading = 0;
+acs_rb = 0;
 return;
 }
 
@@ -729,7 +728,7 @@ acs_say_indexed(tp_out->buf+1, tp_out->offset+1, flip);
 static void imark_h(int mark, int lastmark)
 {
 /* Not sure how we would get here if we weren't reading, but just in case */
-if(!reading) return;
+if(!acs_rb) return;
 
 if(mark == lastmark)
 readNextPart();
@@ -745,7 +744,7 @@ The conversion routine is part of the acsint bridge layer.
 static int dumpBuffer(void)
 {
 int fd, l, n;
-char *utf8 =  acs_uni2utf8(acs_rb->start);
+char *utf8 =  acs_uni2utf8(acs_mb->start);
 if(!utf8) return -1;
 sprintf(shortPhrase, "/tmp/buf%d", acs_fgc);
 fd = open(shortPhrase, O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -771,7 +770,7 @@ static void suspend(void)
 {
 static const char suspendCommand[] = { CMD_SUSPEND, 0};
 acs_suspendkeys(suspendCommand);
-reading = 0;
+acs_rb = 0;
 suspended = 1;
 suspendClicks = soundsOn;
 if(soundsOn) {
@@ -838,10 +837,10 @@ return;
 
 	/* some comands are meaningless when the buffer is empty */
 	if(cmdp->nonempty) {
-if(!acs_rb->cursor &&
+if(!acs_mb->cursor &&
 cmd != 3 && cmd != 4 && cmd != 39 && cmd != 44)
 goto error_buzz;
-if(acs_rb->end == acs_rb->start) goto error_bound;
+if(acs_mb->end == acs_mb->start) goto error_bound;
 }
 
 	support = 0;
@@ -876,7 +875,7 @@ break;
 
 	case 2: /* locate visual cursor */
 		if(!screenMode) goto error_bell;
-acs_rb->cursor = acs_rb->v_cursor;
+acs_mb->cursor = acs_mb->v_cursor;
 acs_cursorset();
 		break;
 
@@ -946,6 +945,7 @@ acs_cursorsync();
 gsprop = ACS_GS_STOPLINE | ACS_GS_REPEAT | ACS_GS_ONEWORD;
 tp_in->buf[0] = 0;
 tp_in->offset[0] = 0;
+acs_rb = acs_mb;
 acs_getsentence(tp_in->buf+1, WORDLEN, tp_in->offset+1, gsprop);
 		tp_in->len = acs_unilen(tp_in->buf+1) + 1;
 acs_rb->cursor += tp_in->offset[tp_in->len] - 1;
@@ -953,6 +953,7 @@ acs_cursorset();
 tp_oneSymbol = 1;
 prepTTS();
 tp_oneSymbol = 0;
+acs_rb = 0;
 		acs_say_string_uc(tp_out->buf+1);
 break;
 
@@ -962,7 +963,7 @@ startread:
 		/* We always start reading at the beginning of a word */
 acs_startword();
 		acs_cursorsync();
-reading = 1;
+acs_rb = acs_mb;
 /* start at the cursor, not at some leftover nextMark */
 readNextMark = 0;
 readNextPart();
@@ -988,7 +989,7 @@ else strcpy(suptext, lasttext);
 if(!quiet) acs_cr();
 		if(!oneLine) {
 			acs_say_string("o k");
-acs_rb->cursor -= (strlen(suptext)-1);
+acs_mb->cursor -= (strlen(suptext)-1);
 			return;
 		}
 		/* start reading at the beginning of this line */
@@ -1075,7 +1076,7 @@ acs_cursorsync();
 case 40: /* mark left */
 if(!input) goto error_bell;
 acs_cursorsync();
-markleft = acs_rb->cursor;
+markleft = acs_mb->cursor;
 if(!quiet) acs_tone_onoff(0);
 break;
 
@@ -1090,7 +1091,7 @@ cutbuf[n] = 0;
 acs_line_configure(cutbuf, 0);
 cutbuf[n++] = '<';
 acs_cursorsync();
-markright = acs_rb->cursor;
+markright = acs_mb->cursor;
 if(markright < markleft) goto error_bound;
 ++markright;
 i = markright - markleft;
@@ -1110,6 +1111,7 @@ markleft = 0;
 if(!quiet) acs_tone_onoff(0);
 return;
 
+#if 0
 	case 42: /* set echo */
 		if(support < '0' || support > '4') goto error_bell;
 echoMode = support - '0';
@@ -1118,19 +1120,20 @@ static const char * const echoWords[] = { "off", "letters", "words", "letters pa
 acs_say_string(echoWords[echoMode]);
 }
 		break;
+#endif
 
 case 43: /* set a marker in the tty buffer */
 if(support < 'a' || support > 'z') goto error_bell;
 acs_cursorsync();
-if(!acs_rb->cursor) goto error_bell;
-acs_rb->marks[support-'a'] = acs_rb->cursor;
+if(!acs_mb->cursor) goto error_bell;
+acs_mb->marks[support-'a'] = acs_mb->cursor;
 if(!quiet) acs_tone_onoff(0);
 break;
 
 case 44: /* jump to a preset marker */
 if(support < 'a' || support > 'z') goto error_bell;
-if(!acs_rb->marks[support-'a']) goto error_bell;
-acs_rb->cursor = acs_rb->marks[support-'a'];
+if(!acs_mb->marks[support-'a']) goto error_bell;
+acs_mb->cursor = acs_mb->marks[support-'a'];
 acs_cursorset();
 if(!quiet) acs_tone_onoff(0);
 break;
@@ -1143,8 +1146,7 @@ usleep(700000);
 /* We should really capture the absolute path of the running program,
  * and feed it to execv.  Not sure how to do that,
  * so I'm just using execvp instead.
- * Hope it gloms onto the correct executable.
- * Best to create a symblink from /usr/local/bin/jupiter to a safe executable. */
+ * Hope it gloms onto the correct executable. */
 execvp("jupiter", argvector);
 /* should never get here */
 puts("\7\7\7");
@@ -1260,7 +1262,7 @@ if (keyInterrupt && echo == 1) {
 /* In this case we want to shutup, whether the unit
  * is in reading/indexed mode or not. */
 acs_shutup();
-reading = 0;
+acs_rb = 0;
 goRead = 0;
 }
 if(echoMode && echo == 1 && c < 256 && isprint(c)) {
@@ -1268,10 +1270,8 @@ interrupt();
 speakChar(c, 1, soundsOn, 0);
 }
 
-if(reading) return;
+if(acs_rb) return;
 if(!autoRead) return;
-/* autoRead doesn't work in screen mode anyways */
-if(screenMode) return;
 if(echo) return;
 
 goRead = 1;
@@ -1524,27 +1524,28 @@ goRead = 0;
 /* fetch the new stuff and start reading */
 /* Pause, to allow for some characters to print, especially if clicks are on. */
 usleep((soundsOn && clickTTY) ? 250000 : 25000);
+acs_rb = acs_tb;
 readNextMark = acs_rb->end;
 /* The refresh is really a call to events() in disguise.
  * So any of those handlers could be called.
- * Turn reading on, so the more_h handler doesn't cause any trouble. */
-reading = 1;
+ * Since acs_rb is set, more_h won't cause any trouble. */
 acs_refresh();
 /* did a keycommand sneak in? */
 if(last_key) goto key_command;
 /* did reading get killed for any other reason, e.g. console switch? */
-if(!reading) continue;
-/* now turn it off; we'll turn it on later if it's a go */
-reading = 0;
-if(!readNextMark) continue;
+if(!acs_rb) continue;
+if(!readNextMark) { acs_rb = 0; continue; }
 while(c = *readNextMark) {
 if(c != ' ' && c != '\n' &&
 c != '\r' && c != '\7')
 break;
 ++readNextMark;
 }
-if(!c) continue;
-reading = 1;
+if(!c) { acs_rb = 0; continue; }
+/* The cursor doesn't track in screen mode; just put it at the new location,
+ * as though we have read all the new stuff. */
+if(screenMode)
+acs_mb->cursor = acs_mb->v_cursor;
 readNextPart();
 }
 
