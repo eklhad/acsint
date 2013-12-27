@@ -596,9 +596,6 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		goto done;
 	}
 
-	if (!isdigit(c) && c != '?' && c != '#' && c != ';')
-		escState = 0;
-
 	if (escState == 1) {
 		if (c == '[') {
 			escState = 2;
@@ -608,6 +605,9 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		escState = 1;
 		goto done;
 	}
+
+	if (!isdigit(c) && c != '?' && c != '#' && c != ';')
+		escState = 0;
 
 	usecs = soundFromChar(c, minor);
 

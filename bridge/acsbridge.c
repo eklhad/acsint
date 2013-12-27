@@ -698,7 +698,7 @@ if(j < 20 && s[j]) {
  * In either case I find it helpful to introduce a newline.
  * That deliniates a new block of text,
  * and most of the time said text is indeed on a new line. */
-			if(*s == 'H') *t++ = '\n';
+			if(s[j] == 'H') *t++ = '\n';
 s += j+1;
 continue;
 		}
