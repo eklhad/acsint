@@ -23,6 +23,7 @@ as articulated by the Free Software Foundation.
 struct cmd {
 	const char *desc; // description
 	const char brief[12]; // brief name for the command
+	char catc; /* some kind of reading cursor action */
 	char nonempty; // buffer must be nonempty
 	char endstring; // must be last in a command sequence
 	char nextchar; // needs next key to complete command
@@ -33,54 +34,54 @@ struct cmd {
 static const struct cmd speechcommands[] = {
 	{0,""}, // 0 is not a function
 	{"clear buffer","clbuf"},
-	{"visual cursor","cursor",1},
-	{"start of buffer","sbuf",1},
-	{"end of buffer","ebuf",1},
-	{"start of line","sline",1},
-	{"end of line","eline",1},
-	{"start of word","sword",1},
-	{"end of word","eword",1},
-	{"left spaces","lspc",1},
-	{"right spaces","rspc",1},
-	{"back one character","back",1},
-	{"forward one character","for",1},
-	{"preivious row","prow",1},
-	{"next row","nrow",1},
-	{"reed the current karecter as a nato word","asword",1,1},
-	{"reed the current karecter","char",1,1},
-	{"read capital x as cap x","capchar",1,1},
-	{"current cohllumm number","colnum",1,1},
-	{"reed the current word","word",1,1},
-	{"start reeding","read",1,1},
+	{"visual cursor","cursor",1,1},
+	{"start of buffer","sbuf",1,1},
+	{"end of buffer","ebuf",1,1},
+	{"start of line","sline",1,1},
+	{"end of line","eline",1,1},
+	{"start of word","sword",1,1},
+	{"end of word","eword",1,1},
+	{"left spaces","lspc",1,1},
+	{"right spaces","rspc",1,1},
+	{"back one character","back",1,1},
+	{"forward one character","for",1,1},
+	{"preivious row","prow",1,1},
+	{"next row","nrow",1,1},
+	{"reed the current karecter as a nato word","asword",1,1,1},
+	{"reed the current karecter","char",1,1,1},
+	{"read capital x as cap x","capchar",1,1,1},
+	{"current cohllumm number","colnum",1,1,1},
+	{"reed the current word","word",1,1,1},
+	{"start reeding","read",1,1,1},
 	{"stop speaking","shutup"},
-	{"pass next karecter through","bypass",0,1},
-	{"clear bighnary mode","clmode",0,0,1},
-	{"set bighnary mode","stmode",0,0,1},
-	{"toggle bighnary mode","toggle",0,0,1},
-	{"search up","searchu",1,1,0,1},
-	{"search down","searchd",1,1,0,1},
-	{"set volume","volume",0,0,1},
+	{"pass next karecter through","bypass",0,0,1},
+	{"clear bighnary mode","clmode",0,0,0,1},
+	{"set bighnary mode","stmode",0,0,0,1},
+	{"toggle bighnary mode","toggle",0,0,0,1},
+	{"search up","searchu",1,1,1,0,1},
+	{"search down","searchd",1,1,1,0,1},
+	{"set volume","volume",0,0,0,1},
 	{"increase volume", "incvol"},
 	{"decrease volume", "decvol"},
-	{"set speed","speed",0,0,1},
+	{"set speed","speed",0,0,0,1},
 	{"increase speed", "incspd"},
 	{"decrease speed", "decspd"},
-	{"set pitch","pitch",0,0,1},
+	{"set pitch","pitch",0,0,0,1},
 	{"increase pitch", "incpch"},
 	{"decrease pitch", "decpch"},
-	{"set voice", "voice", 0, 0, 1},
-	{"key binding","bind",0,1,0,1},
-	{"last complete line","lcline",1},
-	{"mark left", "markl", 1},
-	{"mark right", "markr", 1, 0, 1},
-	{"set echo", "x@y`", 0, 0, 1},
-	{"label", "label", 1, 0, 1},
-	{"jump", "jump", 1, 0, 1},
-	{"restart the adapter","reexec",0,1},
-	{"reload the config file","reload",0,1,1},
-	{"dump buffer","dump",0, 1},
-	{"suspend the adapter","suspend",0,1},
-	{"test step function","step",0,1},
+	{"set voice", "voice",0, 0, 0, 1},
+	{"key binding","bind",0,0,1,0,1},
+	{"last complete line","lcline",1,1},
+	{"mark left", "markl",1, 1},
+	{"mark right", "markr",1, 1, 0, 1},
+	{"set echo", "x@y`",0, 0, 0, 1},
+	{"label", "label",1, 1, 0, 1},
+	{"jump", "jump",1, 1, 0, 1},
+	{"restart the adapter","reexec",0,0,1},
+	{"reload the config file","reload",0,0,1,1},
+	{"dump buffer","dump",0,0, 1},
+	{"suspend the adapter","suspend",0,0,1},
+	{"test step function","step",0,0,1},
 	{0,""}
 };
 
@@ -564,7 +565,11 @@ acs_tty_clicks(*p);
 break;
 case 'o': acs_serial_flow(1-*p); break;
 case 's':
-acs_screenmode(*p);
+if(acs_screenmode(*p)) {
+/* failure to switch to screen mode */
+screenMode = 0;
+acs_buzz();
+}
 smlist[acs_fgc] = screenMode;
 /* this line is really important; don't leave the temp cursor in the other world. */
 acs_cursorset();

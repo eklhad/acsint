@@ -27,11 +27,12 @@ and declared in acsbridge.h.
 #define INBUFSIZE (TTYLOGSIZE*4 + 400) /* size of input buffer */
 /* Output buffer could be 40 bytes, except for injectstring() */
 #define OUTBUFSIZE 20000
-/* I assume the screen doesn't have more than 5000 characters,
- * and TTYLOGSIZE is at least 10000.
- * 40 rows by 120 columns is, for instance, 4800 */
-#define ATTRIBOFFSET 5000
-#define VCREADOFFSET 7000
+/* I assume the screen doesn't have more than 20000 cells,
+ * and TTYLOGSIZE is at least 2.5 times 20000.
+ * 48 rows by 170 columns is, for instance, 8160 */
+#define SCREENCELLS 20000
+#define ATTRIBOFFSET SCREENCELLS
+#define VCREADOFFSET (2*SCREENCELLS)
 
 int acs_fd = -1; /* file descriptor for /dev/acsint */
 static int vcs_fd; /* file descriptor for /dev/vcsa */
@@ -41,6 +42,9 @@ static unsigned char vcs_header[4];
 #define ncols (int)vcs_header[1]
 #define csr (int)vcs_header[3] // cursor row
 #define csc (int)vcs_header[2] // cursor column
+/* Make cursor coordinates available to the adapter */
+int acs_vc_nrows, acs_vc_ncols;
+int acs_vc_row, acs_vc_col;
 
 int acs_fgc = 1; // current foreground console
 
@@ -166,7 +170,12 @@ for(j=0; j<ncols; ++j) {
 *t = 0;
 screenBuf.end = t;
 
+acs_vc_nrows = nrows;
+acs_vc_ncols = ncols;
+acs_vc_row = csr;
+acs_vc_col = csc;
 screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
+
 } // screenSnap
 
 /* check to see if a tty reading buffer has been allocated */
@@ -200,17 +209,21 @@ acs_tb->v_cursor = 0;
 acs_tb->attribs = 0;
 } /* checkAlloc */
 
-void
+int
 acs_screenmode(int enabled)
 {
 acs_imark_start = 0;
 if(screenmode && acs_fgc) lscur[acs_fgc] = screenBuf.cursor;
 screenmode = 0;
 checkAlloc();
-if(!enabled) return;
+if(!enabled) return 0;
+lseek(vcs_fd, 0, 0);
+read(vcs_fd, vcs_header, 4);
+if(nrows * ncols > SCREENCELLS) return -1;
 screenmode = 1;
 acs_mb = &screenBuf;
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
+return 0;
 } /* acs_screenmode */
 
 

@@ -338,9 +338,11 @@ if you have one; just like regular tty output.
 /*********************************************************************
 Switch between linear and screen mode.
 Linear is the default at startup.
+Returns -1 only if the screen is too big to fit in the static buffer
+that I have set aside for it.
 *********************************************************************/
 
-void acs_screenmode(int enabled);
+int acs_screenmode(int enabled);
 
 /*********************************************************************
 Notify the adapter when more characters have been posted to the tty
@@ -1512,6 +1514,10 @@ unsigned int acs_tolower(unsigned int uc);
 unsigned int acs_toupper(unsigned int uc);
 // from u umlaut to u
 char acs_unaccent(unsigned int uc);
+
+/* visual cursor coordinates, based at 1,1 */
+extern int acs_vc_nrows, acs_vc_ncols;
+extern int acs_vc_row, acs_vc_col;
 
 
 #endif
