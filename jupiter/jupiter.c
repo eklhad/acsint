@@ -201,7 +201,7 @@ static const char *configError[][10] = {
 "%s cannot be in the middle of a composite speech command",
 "%s must be followed by a letter or digit",
 "%s is not a recognized speech command",
-"bypass cannot be mixed with any other commands",
+"%s cannot be mixed with any other commands",
 "dictionary word or replacement word is too long",
 "too many words in the replacement dictionary",
 "cannot leave a punctuation or unicode with no pronunciation",
@@ -211,7 +211,7 @@ static const char *configError[][10] = {
 "%s cannot be in the middle of a composite speech command",
 "%s must be followed by a letter or digit",
 "%s is not a recognized speech command",
-"bypass cannot be mixed with any other commands",
+"%s cannot be mixed with any other commands",
 "dictionary word or replacement word is too long",
 "too many words in the replacement dictionary",
 "cannot leave a punctuation or unicode with no pronunciation",
@@ -221,7 +221,7 @@ static const char *configError[][10] = {
 "%s não pode estar no meio dum comando de fala composto",
 "%s tem que ser seguido por uma letra ou dígito",
 "%s não é um comando de fala conhecido",
-"passar não pode ser misturado com outros comandos",
+"%s não pode ser misturado com outros comandos",
 "palavra original ou palavra substituta longa demais",
 "palavras demais no dicionário de substituição",
 "não é possível deixar uma pontuação ou unicode sem pronúncia",
@@ -231,7 +231,7 @@ static const char *configError[][10] = {
 "%s cannot be in the middle of a composite speech command",
 "%s must be followed by a letter or digit",
 "%s is not a recognized speech command",
-"bypass cannot be mixed with any other commands",
+"%s cannot be mixed with any other commands",
 "dictionary word or replacement word is too long",
 "too many words in the replacement dictionary",
 "cannot leave a punctuation or unicode with no pronunciation",
@@ -386,8 +386,9 @@ compStatus(int cmd)
 	/* Follow-on string always ends the composite. */
 	if(cmdp->nextline) compstat |= 1;
 if(cmd == CMD_BYPASS || cmd == CMD_REEXEC ||
-cmd == CMD_RELOAD || cmd == CMD_SUSPEND)
+cmd == CMD_SUSPEND)
 compstat = 5;
+if(cmd == CMD_RELOAD) compstat = 7;
 	return compstat;
 } // compStatus
 
@@ -407,7 +408,7 @@ static int last_cmd_index(const char *list)
 	return i-1;
 } // last_cmd_index
 
-static char *last_atom;
+static char last_atom[12];
 static int cfg_syntax(char *s)
 {
 char *v = s;
@@ -423,17 +424,21 @@ unsigned compstat;
 	while(c = *s) {
 if(c == ' ' || c == '\t') { ++s; continue; }
 
-		if(mustend) return -2;
 		t = strpbrk(s, " \t");
 		if(t) *t = 0;
+
 		if(nextchar) {
 			if(c < 0 || !isalnum(c) || s[1]) return -3;
 *v++ = c;
 			nextchar = 0;
 		} else {
+
+		if(mustend) return -2;
+
 			cmd = cmdByName(s);
-last_atom = s;
+strcpy(last_atom, s);
 			if(!cmd) return -4;
+
 			compstat = compStatus(cmd);
 			if(compstat&4 && v > s0) return -5;
 			if(compstat & 1) mustend = 1;
@@ -1542,10 +1547,13 @@ break;
 ++readNextMark;
 }
 if(!c) { acs_rb = 0; continue; }
-/* The cursor doesn't track in screen mode; just put it at the new location,
+/* There is new nonblank text to read.
+ * The cursor doesn't track in screen mode; just put it at the new location,
  * as though we have read all the new stuff. */
 if(screenMode)
 acs_mb->cursor = acs_mb->v_cursor;
+// autoread turns off oneLine mode.
+oneLine = 0;
 readNextPart();
 }
 

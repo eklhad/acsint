@@ -431,13 +431,26 @@ Thus you could leave a console in transparent mode for your sighted friend.
 Jupiter reads tty output by default,
 but in screen mode it will read the text from screen memory.&nbsp;
 This is useful if a program uses curses to arrange text on the screen in a certain manner,
-and you need to read it exactly as it appears on the screen.&nbsp;
+and you need to read it exactly as it appears on screen.&nbsp;
 I try to avoid programs like this,
 because (A) I don't like them, and (B) Jupiter is not as efficient in this mode.&nbsp;
 The reading cursor does not stay with the text as it scrolls up or down,
 and some international characters are misrepresented in screen memory.&nbsp;
 Still, there are times when a screen program is the only game in town,
-and in those situations, we just have to play along.
+and in those situations you just have to play along.
+
+<DT>Oneline
+
+<P>
+<DD>
+If oneline is enabled,Jupiter reads to the end of a line and then stops.&nbsp;
+A line is delimited by newline in the tty buffer, or the edge of the screen if screen mode is enabled.&nbsp;
+If oneline is disabled then Jupiter reads all the way to the end of the buffer or the end of the screen.&nbsp;
+You may want to explicitly set or clear oneline mode in your reading commands.&nbsp;
+If F3 reads the previous line, and F4 reads the next line,
+they should perhaps set oneline mode to stop at the end of that line.&nbsp;
+If F5 reads the rest of the screen or the rest of the buffer, it should clear oneline mode.&nbsp;
+But it's up to you of course.
 
 <DT>Autoread
 
@@ -466,17 +479,21 @@ Hit the shutup key and reading stops, but the clicks continue, as output continu
 After the file is done, issue another command,
 like echo hello world,
 and reading begins with the new output.&nbsp;
-This was tricky to program, but you know, it works pretty well.&nbsp;
+This was tricky to program, but you know, it works pretty well.
+
+<P>
 If your system is under load, or if you are connected to a distant system via ssh, then 0.4 seconds may not be enough.&nbsp;
 This parameter is hard coded in Jupiter, but some day I may make it a tunable parameter in the config file.
 
-<DT>Oneline
-
 <P>
-<DD>
-If oneline is enabled,Jupiter reads to the end of a line and then stops.&nbsp;
-A line is delimited by newline in the tty buffer, or the edge of the screen if screen mode is enabled.&nbsp;
-If oneline is disabled then Jupiter reads all the way to the end of the buffer or the end of the screen.
+Autoread disables oneline mode.&nbsp;
+If there is new stuff to read, and you're not busy reading other stuff,
+and Jupiter pulls you down and reads the new stuff for you,
+then you likely don't want to hear the first line only;
+in fact the second line of the status message might be the important part.&nbsp;
+So it makes sense to disable oneline mode at this point.&nbsp;
+There is no trouble here,
+because your next reading command will probably enable or disable oneline mode as part of its functionality.
 
 <DT>Interrupt
 
@@ -557,7 +574,7 @@ A typical user will never activate this mode.
 Function keys, control keys, or alt keys can be configured to set, clear, or toggle any of these modes.&nbsp;
 Key bindings will be discussed later.&nbsp;
 Some of these modes, like the oneline mode, are changed often,
-and you will want a handy, unshifted key to toggle this mode.&nbsp;
+and you may want a handy, unshifted key to toggle this mode.&nbsp;
 Turn it off when you can sit back and read a page of text,
 and turn it on when you have to concentrate on technical material, and you only want to hear one line at a time.&nbsp;
 Another mode that changes frequently is clicktty.&nbsp;
