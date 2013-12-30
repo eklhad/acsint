@@ -23,7 +23,7 @@ as articulated by the Free Software Foundation.
 struct cmd {
 	const char *desc; // description
 	const char brief[12]; // brief name for the command
-	char catc; /* some kind of reading cursor action */
+	char cact; /* some kind of reading cursor action */
 	char nonempty; // buffer must be nonempty
 	char endstring; // must be last in a command sequence
 	char nextchar; // needs next key to complete command
@@ -507,6 +507,7 @@ static char soundsOn = 1; // sounds on, over all */
 static char clickTTY = 1; // clicks accompany tty output
 static char autoRead = 1; // read new text automatically
 static char oneLine; /* read one line at a time */
+static char ctrack; /* track visual cursor in screen mode */
 static char overrideSignals = 0; // don't rely on cts rts etc
 static char keyInterrupt;
 static char goRead; /* read the next sentence */
@@ -571,6 +572,7 @@ screenMode = 0;
 acs_buzz();
 }
 smlist[acs_fgc] = screenMode;
+ctrack = 1;
 /* this line is really important; don't leave the temp cursor in the other world. */
 acs_cursorset();
 break;
@@ -834,12 +836,16 @@ char *cut8;
 
 interrupt();
 
+if(screenMode & ctrack)
+acs_mb->cursor = acs_mb->v_cursor;
+
 acs_cursorset();
 
 top:
 	cmd = *cmdlist;
 if(cmd) ++cmdlist;
 	cmdp = &speechcommands[cmd];
+if(cmdp->cact) ctrack = 0;
 asword = 0;
 
 if(suspended && cmd != CMD_SUSPEND)
@@ -1239,6 +1245,7 @@ return; /* should never happen */
 if(screenMode != smlist[acs_fgc]) {
 screenMode = smlist[acs_fgc];
 acs_screenmode(screenMode);
+ctrack = 1;
 }
 
 last_fgc = acs_fgc;
@@ -1281,6 +1288,7 @@ speakChar(c, 1, soundsOn, 0);
 }
 
 if(acs_rb) return;
+ctrack = 1;
 if(!autoRead) return;
 if(echo) return;
 
@@ -1552,11 +1560,6 @@ break;
 ++readNextMark;
 }
 if(!c) { acs_rb = 0; continue; }
-/* There is new nonblank text to read.
- * The cursor doesn't track in screen mode; just put it at the new location,
- * as though we have read all the new stuff. */
-if(screenMode)
-acs_mb->cursor = acs_mb->v_cursor;
 // autoread turns off oneLine mode.
 oneLine = 0;
 readNextPart();
