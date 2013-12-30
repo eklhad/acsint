@@ -50,7 +50,7 @@ static const struct cmd speechcommands[] = {
 	{"reed the current karecter","char",1,1,1},
 	{"read capital x as cap x","capchar",1,1,1},
 	{"current cohllumm number","colnum",1,1,1},
-	{"reed the current word","word",1,1,1},
+	{"reed the current word","word",1,1},
 	{"start reeding","read",1,1,1},
 	{"stop speaking","shutup"},
 	{"pass next karecter through","bypass",0,0,2},

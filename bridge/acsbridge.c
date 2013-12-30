@@ -1112,34 +1112,6 @@ done:
 	acs_back();
 } // acs_rspc
 
-int acs_nextline(void)
-{
-if(!acs_endline()) return 0;
-return acs_forward();
-} // acs_nextline
-
-int acs_prevline(void)
-{
-if(!acs_startline()) return 0;
-if(!acs_back()) return 0;
-return acs_startline();
-} // acs_prevline
-
-int acs_nextword(void)
-{
-if(!acs_endword()) return 0;
-acs_rspc();
-return acs_forward();
-} // acs_nextword
-
-int acs_prevword(void)
-{
-if(!acs_startword()) return 0;
-acs_lspc();
-if(!acs_back()) return 0;
-return acs_startword();
-} // acs_prevword
-
 /* Case insensitive match.  Assumes the first letters already match.
  * This is an ascii match on the unaccented letters. */
 static int stringmatch(const char *s)

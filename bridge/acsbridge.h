@@ -991,7 +991,7 @@ This is read as dash length 5, see getsentence() below.
 ---- is 4 separate words.  That's just my convention.
 
 What about the word niño in Spanish?
-I use iswalpha() from the wctype library, on the unicodes in the buffer,
+I use acs_isalpha() on the unicodes in the buffer,
 to determine what is a letter, so it should work,
 as long as your $LANG reflects your desired language.
 *********************************************************************/
@@ -1002,16 +1002,9 @@ int acs_endword(void);
 void acs_startbuf(void);
 void acs_endbuf(void);
 
-// Skip past left or right spaces.
+// Skip through a block of spaces, stopping at the last space.
 void acs_lspc(void);
 void acs_rspc(void);
-
-// previous or next line, previous or next word.
-// Next word skips past spaces using the rspc routine.
-int acs_nextline(void);
-int acs_prevline(void);
-int acs_nextword(void);
-int acs_prevword(void);
 
 /*********************************************************************
 Search for a string in the buffer.
