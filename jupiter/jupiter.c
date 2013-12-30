@@ -1001,6 +1001,7 @@ readNextPart();
 else strcpy(suptext, lasttext);
 		if(!*suptext) goto error_bell;
 		if(!acs_bufsearch(suptext, asword, oneLine)) goto error_bound;
+if(*cmdlist) break; // more to do
 		acs_cursorsync();
 if(!quiet) acs_cr();
 		if(!oneLine) {
