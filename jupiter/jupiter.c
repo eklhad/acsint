@@ -46,10 +46,10 @@ static const struct cmd speechcommands[] = {
 	{"forward one character","for",1,1},
 	{"preivious row","prow",1,1},
 	{"next row","nrow",1,1},
-	{"reed the current karecter as a nato word","asword",1,1,1},
-	{"reed the current karecter","char",1,1,1},
-	{"read capital x as cap x","capchar",1,1,1},
-	{"current cohllumm number","colnum",1,1,1},
+	{"reed the current karecter as a nato word","asword",1,1},
+	{"reed the current karecter","char",1,1},
+	{"read capital x as cap x","capchar",1,1},
+	{"current cohllumm number","colnum",1,1},
 	{"reed the current word","word",1,1},
 	{"start reeding","read",1,1,1},
 	{"stop speaking","shutup"},
@@ -945,12 +945,12 @@ acs_cursorsync();
 		break;
 
 	case 18: /* read column number */
-if(!quiet) acs_click();
 		acs_cursorsync();
 		n = acs_startline();
+		acs_cursorset();
 		sprintf(shortPhrase, "%d", n);
 		acs_say_string_uc(prepTTSmsg(shortPhrase));
-		return;
+		break;
 
 	case 19: /* just read one word */
 acs_cursorsync();
