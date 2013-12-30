@@ -22,6 +22,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#syn> Synthesizers </A>
 <LI><A HREF=#mod> Modules </A>
 <LI><A HREF=#modes> Modes </A>
+<LI><A HREF=#cfg> Config Files </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -587,6 +588,41 @@ Sometimes you want to hear all those clicks, and sometimes,
 e.g. when there is a lot more output than you expected, you want to shut them off at the touch of a button.&nbsp;
 Thus I use F9 to toggle oneline, and F10 to toggle clicktty.&nbsp;
 Other modes are changed infrequently, and can be modified by key chords or key sequences.
+
+<H3 align=center> <A NAME=cfg> Config Files </A> </H3>
+
+At startup, Jupiter reads its key bindings, and loads its replacement dictionary,
+from the file /etc/jupiter/start.cfg.&nbsp;
+This can be changed using the -c option.&nbsp;
+The syntax and semantics of the config file will be described later.
+
+<P>
+You can have many different config files in /etc/jupiter,
+tailored to specific applications.&nbsp;
+These can be loaded at run time.&nbsp;
+You can type in the name of a file to load, or preset a key to load a given config file.&nbsp;
+If a preset filename does not begin with a slash, it is taken relative to /etc/jupiter.&nbsp;
+This is different from the -c option,
+where the filename is taken relative to the current directory.&nbsp;
+If you have 4 different config files in /etc/jupiter,
+I'll call them foo1 through foo4,
+and if you want the 4 function keys on the right to load these 4 files,
+then your bindings will look like this.
+
+<P>
+f9 reload foo1
+<br>
+f10 reload foo2
+<br>
+f11 reload foo3
+<br>
+f12 reload foo4
+
+<P>
+These bindings should be the same in every config file, so you can switch between them in a consistent manner.&nbsp;
+Of course other keys will differ, from one config file to another, in their placement and functionality;
+else why would you have different config files?&nbsp;
+Key bindings will be described later, after I have presented the atomic speech commands.
 
 <P>
 <A HREF=#top>Back to top</A>

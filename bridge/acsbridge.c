@@ -94,7 +94,6 @@ static const char nomem_message[] = "Acsint bridge cannot allocate space for thi
 static struct acs_readingBuffer *tl; // current tty log
 static struct acs_readingBuffer screenBuf;
 static int screenmode; // 1 = screen, 0 = tty log
-static unsigned int *lscur[MAX_NR_CONSOLES];
 struct acs_readingBuffer *acs_mb; /* manipulation buffer */
 struct acs_readingBuffer *acs_tb; /* tty buffer */
 struct acs_readingBuffer *acs_rb; /* current reading buffer */
@@ -213,7 +212,6 @@ int
 acs_screenmode(int enabled)
 {
 acs_imark_start = 0;
-if(screenmode && acs_fgc) lscur[acs_fgc] = screenBuf.cursor;
 screenmode = 0;
 checkAlloc();
 if(!enabled) return 0;
@@ -800,13 +798,11 @@ break;
 
 case ACS_FGC:
 acs_log("fg %d\n", inbuf[i+1]);
-if(screenmode && acs_fgc) lscur[acs_fgc] = screenBuf.cursor;
 acs_fgc = inbuf[i+1];
 checkAlloc();
 if(screenmode) {
 /* Oops, the checkAlloc function changed acs_mb out from under us. */
 acs_mb = &screenBuf;
-if(!(screenBuf.cursor = lscur[acs_fgc]))
 screenBuf.cursor = screenBuf.v_cursor;
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }

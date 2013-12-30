@@ -25,9 +25,8 @@ struct cmd {
 	const char brief[12]; // brief name for the command
 	char cact; /* some kind of reading cursor action */
 	char nonempty; // buffer must be nonempty
-	char endstring; // must be last in a command sequence
-	char nextchar; // needs next key to complete command
-	char nextline; // needs line of text to complete command
+	char endstring; // must be last or alone in a command sequence
+	char nextchar; // needs next key or string to complete command
 };
 
 /* the available speech commands */
@@ -54,12 +53,12 @@ static const struct cmd speechcommands[] = {
 	{"reed the current word","word",1,1,1},
 	{"start reeding","read",1,1,1},
 	{"stop speaking","shutup"},
-	{"pass next karecter through","bypass",0,0,1},
+	{"pass next karecter through","bypass",0,0,2},
 	{"clear bighnary mode","clmode",0,0,0,1},
 	{"set bighnary mode","stmode",0,0,0,1},
 	{"toggle bighnary mode","toggle",0,0,0,1},
-	{"search up","searchu",1,1,1,0,1},
-	{"search down","searchd",1,1,1,0,1},
+	{"search up","searchu",1,1,0,2},
+	{"search down","searchd",1,1,0,2},
 	{"set volume","volume",0,0,0,1},
 	{"increase volume", "incvol"},
 	{"decrease volume", "decvol"},
@@ -70,58 +69,48 @@ static const struct cmd speechcommands[] = {
 	{"increase pitch", "incpch"},
 	{"decrease pitch", "decpch"},
 	{"set voice", "voice",0, 0, 0, 1},
-	{"key binding","bind",0,0,1,0,1},
+	{"key binding","bind",0,0,2,2},
 	{"last complete line","lcline",1,1},
 	{"mark left", "markl",1, 1},
 	{"mark right", "markr",1, 1, 0, 1},
-	{"set echo", "x@y`",0, 0, 0, 1},
+	{"obsolete", "x@y`",0, 0, 0, 1},
 	{"label", "label",1, 1, 0, 1},
 	{"jump", "jump",1, 1, 0, 1},
-	{"restart the adapter","reexec",0,0,1},
-	{"reload the config file","reload",0,0,1,1},
-	{"dump buffer","dump",0,0, 1},
-	{"suspend the adapter","suspend",0,0,1},
-	{"test step function","step",0,0,1},
+	{"restart the adapter","reexec",0,0,2},
+	{"reload the config file","reload",0,0,2,2},
+	{"dump buffer","dump",0,0,2},
+	{"suspend the adapter","suspend",0,0,2},
+	{"chromatic scale","step",0,0,0,2},
 	{0,""}
 };
 
-static short const max_cmd = sizeof(speechcommands)/sizeof(struct cmd) - 1;
-
-/* Make sure these correspond to the commands above */
-#define CMD_BYPASS 22
-#define CMD_REEXEC 45
-#define CMD_RELOAD 46
 #define CMD_SUSPEND 48
+
+static short const max_cmd = sizeof(speechcommands)/sizeof(struct cmd) - 1;
 
 /* messages in the languages supported. */
 
 static const char *usageMessage[] = {
 "",
 // English
-"usage:  jupiter [-d] [-a] [-c configfile] synthesizer port\n"
+"usage:  jupiter [-d] [-c configfile] synthesizer port\n"
 "-d is daemon mode, run in background.\n"
-"-a is alphanumeric translations, such as dates,\n"
-"\ttimes, fractions, urls, and so on.\n"
 "Synthesizer is: dbe = doubletalk external,\n"
 "dte = dectalk external, dtp = dectalk pc,\n"
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
 "port is 0 1 2 or 3, for the serial device.\n"
 "jupiter tc    to test the configuration file.\n",
 // German (but still English)
-"usage:  jupiter [-d] [-a] [-c configfile] synthesizer port\n"
+"usage:  jupiter [-d] [-c configfile] synthesizer port\n"
 "-d is daemon mode, run in background.\n"
-"-a is alphanumeric translations, such as dates,\n"
-"\ttimes, fractions, urls, and so on.\n"
 "Synthesizer is: dbe = doubletalk external,\n"
 "dte = dectalk external, dtp = dectalk pc,\n"
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
 "port is 0 1 2 or 3, for the serial device.\n"
 "jupiter tc    to test the configuration file.\n",
 // Portuguese
-"uso: jupiter [-d] [-a] [-c arq. de config.] sintetizador porta\n"
+"uso: jupiter [-d] [-c arq. de config.] sintetizador porta\n"
 "-d é modo daemon, roda em segundo plano.\n"
-"-a é tradução alfanumérica, para datas,\n"
-"\thoras, frações, URLs, etc.\n"
 "Sintetizador é: dbe = doubletalk externo,\n"
 "dte = dectalk externo, dtp = dectalk pc,\n"
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
@@ -380,34 +369,13 @@ cmdByName(const char *name)
 static unsigned
 compStatus(int cmd)
 {
-	unsigned compstat = 0;
+	unsigned compstat;
 	const struct cmd *cmdp = speechcommands + cmd;
-	if(cmdp->endstring) compstat |= 1;
-	if(cmdp->nextchar) compstat |= 2;
-	/* Follow-on string always ends the composite. */
-	if(cmdp->nextline) compstat |= 1;
-if(cmd == CMD_BYPASS || cmd == CMD_REEXEC ||
-cmd == CMD_SUSPEND)
-compstat = 5;
-if(cmd == CMD_RELOAD) compstat = 7;
+compstat = cmdp->nextchar;
+	if(cmdp->endstring == 1) compstat |= 4;
+	if(cmdp->endstring == 2) compstat |= 12;
 	return compstat;
 } // compStatus
-
-static int last_cmd_index(const char *list)
-{
-	int i;
-	char cmd;
-	const struct cmd *cmdp;
-	for(i=0; list[i]; ++i) {
-		cmd = list[i];
-		cmdp = &speechcommands[cmd];
-		if(cmdp->nextchar && list[i+1]) {
-			if(!list[i+2]) return i;
-			++i;
-		}
-	}
-	return i-1;
-} // last_cmd_index
 
 static char last_atom[12];
 static int cfg_syntax(char *s)
@@ -420,18 +388,29 @@ char c;
 int cmd;
 struct cmd *cmdp;
 unsigned compstat;
+int l;
 
 	// look up each command designator
 	while(c = *s) {
 if(c == ' ' || c == '\t') { ++s; continue; }
 
+if(nextchar == 2 && *s == '"')
+t = strchr(++s, '"');
+else
 		t = strpbrk(s, " \t");
 		if(t) *t = 0;
 
-		if(nextchar) {
+		if(nextchar == 1) {
 			if(c < 0 || !isalnum(c) || s[1]) return -3;
 *v++ = c;
 			nextchar = 0;
+} else if(nextchar == 2) {
+
+l = strlen(s);
+memmove(v, s, l);
+v += l;
+*v++ = '"';
+nextchar = 0;
 		} else {
 
 		if(mustend) return -2;
@@ -441,9 +420,9 @@ strcpy(last_atom, s);
 			if(!cmd) return -4;
 
 			compstat = compStatus(cmd);
-			if(compstat&4 && v > s0) return -5;
-			if(compstat & 1) mustend = 1;
-			if(compstat & 2) nextchar = 1;
+			if(compstat&8 && v > s0) return -5;
+			if(compstat & 4) mustend = 1;
+nextchar = (compstat & 3);
 *v++ = cmd;
 		}
 
@@ -455,13 +434,25 @@ strcpy(last_atom, s);
 	return 0;
 } // cfg_syntax
 
-/* configure the jupiter system. */
-static char base_config[] = "/etc/jupiter/setup0.cfg";
-static char *my_config = base_config;
+/* prepend directory /etc/jupiter */
+static char jfile[256+20];
+static void etcjup(const char *s)
+{
+if(*s == '/') {
+strcpy(jfile, s);
+} else {
+strcpy(jfile, "/etc/jupiter/");
+strcat(jfile, s);
+}
+} /* etcjup */
+
 static const char *acsdriver = "/dev/acsint";
 
+/* configure the jupiter system from a config file. */
+static const char default_config[] = "/etc/jupiter/start.cfg";
+static const char *start_config = default_config;
 static void
-j_configure(void)
+j_configure(const char *my_config)
 {
 FILE *f;
 char line[200];
@@ -803,17 +794,17 @@ suspended = 0;
 
 
 static void
-testStepFunction(void)
+chromscale(const char *scalefile)
 {
 FILE *f;
 int f1, f2, step, duration;
-f = fopen("/tmp/step", "r");
+f = fopen(scalefile, "r");
 if(!f) return;
 fscanf(f, "%d,%d,%d,%d",
 &f1, &f2, &step, &duration);
 fclose(f);
 acs_scale(f1, f2, step, duration);
-} /* testStepFunction */
+} /* chromscale */
 
 
 /*********************************************************************
@@ -860,7 +851,7 @@ if(acs_mb->end == acs_mb->start) goto error_bound;
 }
 
 	support = 0;
-	if(cmdp->nextchar) {
+	if(cmdp->nextchar == 1) {
 		if(*cmdlist) support = *cmdlist++;
 else{
 acs_click();
@@ -869,9 +860,18 @@ if(acs_get1char(&support)) goto error_bell;
 	}
 
 suptext[0] = 0;
-if(cmdp->nextline) {
+if(cmdp->nextchar == 2) {
+if(*cmdlist) {
+for(i=0; *cmdlist && *cmdlist != '"'; ++i, ++cmdlist) {
+if(i == sizeof(suptext)-1) goto error_bound;
+suptext[i] = *cmdlist;
+}
+suptext[i] = 0;
+if(*cmdlist) ++cmdlist;
+} else {
 acs_tone_onoff(0);
 if(acs_keystring(suptext, sizeof(suptext), ACS_KS_DEFAULT)) return;
+}
 }
 
 quiet = ((!input)|*cmdlist);
@@ -1169,12 +1169,13 @@ puts("\7\7\7");
 exit(1);
 
 case 46: /* reload config file */
-base_config[18] = support;
-if(access(base_config, 4)) goto error_bell;
+if(!*suptext) goto error_bell;
+etcjup(suptext);
+if(access(jfile, 4)) goto error_bell;
 acs_cr();
 acs_reset_configure();
 acs_say_string(reloadword[acs_lang]);
-j_configure();
+j_configure(jfile);
 return;
 
 case 47: /* dump tty buffer to a file */
@@ -1201,8 +1202,11 @@ suspendlist[acs_fgc] = suspended;
 return;
 
 case 49:
-testStepFunction();
-return;
+if(!*suptext) goto error_bell;
+etcjup(suptext);
+if(access(jfile, 4)) goto error_bell;
+chromscale(jfile);
+break;
 
 	default:
 	error_bell:
@@ -1319,7 +1323,7 @@ char *out;
 /* This doesn't go through the normal acs_open() process */
 acs_reset_configure();
 /* key bindings don't matter here, but let's load our pronunciations */
-j_configure();
+j_configure(start_config);
 
 while(fgets(line, sizeof(line), stdin)) {
 out = acs_uni2utf8(prepTTSmsg(line));
@@ -1409,16 +1413,10 @@ setsid();
 continue;
 }
 
-if(argc && stringEqual(argv[0], "-a")) {
-tp_alnumPrep = 1;
-++argv, --argc;
-continue;
-}
-
 if(argc && stringEqual(argv[0], "-c")) {
 ++argv, --argc;
 if(argc) {
-my_config = argv[0];
+start_config = argv[0];
 ++argv, --argc;
 }
 continue;
@@ -1440,7 +1438,7 @@ return 0;
 }
 
 if(argc && stringEqual(argv[0], "tc")) {
-j_configure();
+j_configure(start_config);
 return 0;
 }
 
@@ -1488,7 +1486,7 @@ acs_imark_h = imark_h;
 
 // this has to run after the device is open,
 // because it sends "key capture" commands to the acsint driver
-j_configure();
+j_configure(start_config);
 
 if (cmd && acs_pipe_system(cmd) == -1) {
 fprintf(stderr, execSoft[acs_lang], cmd);
