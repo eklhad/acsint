@@ -957,6 +957,7 @@ void acs_cursorset(void);
 
 // Update the reading cursor to agree with the temp cursor.
 void acs_cursorsync(void);
+int acs_cursorvalid(void);
 
 /* return the character pointed to by the cursor.
  * Could be null if the buffer is empty. */

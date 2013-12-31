@@ -24,7 +24,7 @@ struct cmd {
 	const char *desc; // description
 	const char brief[12]; // brief name for the command
 	char cact; /* some kind of reading cursor action */
-	char nonempty; // buffer must be nonempty
+	char nonempty; // buffer must be nonempty and perhaps a valid cursor
 	char endstring; // must be last or alone in a command sequence
 	char nextchar; // needs next key or string to complete command
 };
@@ -36,29 +36,29 @@ static const struct cmd speechcommands[] = {
 	{"visual cursor","cursor",1,1},
 	{"start of buffer","sbuf",1,1},
 	{"end of buffer","ebuf",1,1},
-	{"start of line","sline",1,1},
-	{"end of line","eline",1,1},
-	{"start of word","sword",1,1},
-	{"end of word","eword",1,1},
-	{"left spaces","lspc",1,1},
-	{"right spaces","rspc",1,1},
-	{"back one character","back",1,1},
-	{"forward one character","for",1,1},
-	{"preivious row","prow",1,1},
-	{"next row","nrow",1,1},
-	{"reed the current karecter as a nato word","asword",1,1},
-	{"reed the current karecter","char",1,1},
-	{"read capital x as cap x","capchar",1,1},
-	{"current cohllumm number","colnum",1,1},
-	{"reed the current word","word",1,1},
-	{"start reeding","read",1,1,1},
-	{"stop speaking","shutup"},
+	{"start of line","sline",1,3},
+	{"end of line","eline",1,3},
+	{"start of word","sword",1,3},
+	{"end of word","eword",1,3},
+	{"left spaces","lspc",1,3},
+	{"right spaces","rspc",1,3},
+	{"back one character","back",1,3},
+	{"forward one character","for",1,3},
+	{"preivious row","prow",1,3},
+	{"next row","nrow",1,3},
+	{"reed the current karecter as a nato word","asword",1,3},
+	{"reed the current karecter","char",1,3},
+	{"read capital x as cap x","capchar",1,3},
+	{"current cohllumm number","colnum",1,3},
+	{"reed the current word","word",1,3},
+	{"start reeding","read",1,3,1},
+	{"stop speaking","shutup",0,0,2},
 	{"pass next karecter through","bypass",0,0,2},
 	{"clear bighnary mode","clmode",0,0,0,1},
 	{"set bighnary mode","stmode",0,0,0,1},
 	{"toggle bighnary mode","toggle",0,0,0,1},
-	{"search up","searchu",1,1,0,2},
-	{"search down","searchd",1,1,0,2},
+	{"search up","searchu",1,3,0,2},
+	{"search down","searchd",1,3,0,2},
 	{"set volume","volume",0,0,0,1},
 	{"increase volume", "incvol"},
 	{"decrease volume", "decvol"},
@@ -71,10 +71,10 @@ static const struct cmd speechcommands[] = {
 	{"set voice", "voice",0, 0, 0, 1},
 	{"key binding","bind",0,0,2,2},
 	{"last complete line","lcline",1,1},
-	{"mark left", "markl",1, 1},
-	{"mark right", "markr",1, 1, 0, 1},
+	{"mark left", "markl",1,3},
+	{"mark right", "markr",1,3, 0, 1},
 	{"obsolete", "x@y`",0, 0, 0, 1},
-	{"label", "label",1, 1, 0, 1},
+	{"label", "label",1,3, 0, 1},
 	{"jump", "jump",1, 1, 0, 1},
 	{"restart the adapter","reexec",0,0,2},
 	{"reload the config file","reload",0,0,2,2},
@@ -842,13 +842,10 @@ asword = 0;
 if(suspended && cmd != CMD_SUSPEND)
 return;
 
-	/* some comands are meaningless when the buffer is empty */
-	if(cmdp->nonempty) {
-if(!acs_mb->cursor &&
-cmd != 3 && cmd != 4 && cmd != 39 && cmd != 44)
-goto error_buzz;
-if(acs_mb->end == acs_mb->start) goto error_bound;
-}
+	/* some comands are meaningless when the buffer is empty
+	 * or the cursor has rolled off the back. */
+	if(cmdp->nonempty&2 && !acs_cursorvalid()) goto error_buzz;
+if(cmdp->nonempty&1 && acs_mb->end == acs_mb->start) goto error_bound;
 
 	support = 0;
 	if(cmdp->nextchar == 1) {
@@ -884,9 +881,11 @@ if(!quiet) acs_click();
 		return;
 
 	case 1:
-acs_clearbuf();
 markleft = 0;
+if(screenMode) goto error_bell;
+acs_clearbuf();
 if(!quiet) acs_tone_onoff(0);
+acs_cursorset();
 break;
 
 	case 2: /* locate visual cursor */

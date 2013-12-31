@@ -726,9 +726,10 @@ void acs_clearbuf(void)
 if(screenmode) return;
 acs_imark_start = 0;
 if(acs_mb && acs_mb != &tty_nomem) {
-acs_mb->end = acs_mb->cursor = acs_mb->start;
+acs_mb->end = acs_mb->start;
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }
+acs_mb->cursor = acs_mb->start;
 } // acs_clearbuf
 
 /*********************************************************************
@@ -941,6 +942,11 @@ void acs_cursorsync(void)
 {
 acs_mb->cursor = tc;
 } // acs_cursorsync
+
+int acs_cursorvalid(void)
+{
+return tc != 0;
+} // acs_cursorvalid
 
 unsigned int acs_getc(void)
 {
