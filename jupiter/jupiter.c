@@ -1538,8 +1538,8 @@ if(goRead) {
 unsigned int c;
 goRead = 0;
 /* fetch the new stuff and start reading */
-/* Pause, to allow for some characters to print, especially if clicks are on. */
-usleep((soundsOn && clickTTY) ? 250000 : 25000);
+// Pause, to allow a block of characters to print.
+usleep(250000);
 acs_rb = acs_tb;
 readNextMark = acs_rb->end;
 /* The refresh is really a call to events() in disguise.
