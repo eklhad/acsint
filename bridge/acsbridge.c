@@ -680,11 +680,7 @@ if(tl->cursor && tl->cursor >= t)
 tl->cursor = (t > tl->start ? t-1 : t);
 for(j=0; j<NUMBUFMARKS; ++j) {
 u = tl->marks[j];
-if(u == 0) continue;
-if(u < t) continue; /* still in range */
-if(u == t+1) u = t;
-else u = 0;
-tl->marks[j] = u;
+if(u && u >= t) tl->marks[j] = 0;
 }
 continue;
 }
@@ -703,6 +699,10 @@ if(j < 20 && s[j]) {
  * and most of the time said text is indeed on a new line. */
 			if(s[j] == 'H') *t++ = '\n';
 s += j+1;
+// Could the cursor have read into the escape sequence, then we pulled it back?
+// I assume you didn't have time to set a mark in the middle of the sequence.
+if(tl->cursor && tl->cursor >= t)
+tl->cursor = (t > tl->start ? t-1 : t);
 continue;
 		}
 }
