@@ -177,6 +177,26 @@ screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
 
 } // screenSnap
 
+static void screenBlank(void)
+{
+int i, j, top;
+unsigned int *s;
+
+if(!screenmode) return; // should never happen
+top = nrows * ncols + nrows;
+if(top > SCREENCELLS) return; // should never happen
+
+s = screenBuf.area;
+*s++ = 0;
+screenBuf.v_cursor = screenBuf.cursor = screenBuf.start = s;
+for(i=0; i<nrows; ++i) {
+for(j=0; j<ncols; ++j) *s++ = ' ';
+*s++ = '\n';
+}
+*s = 0;
+screenBuf.end = s;
+} /* screenBlank */
+
 /* check to see if a tty reading buffer has been allocated */
 static void
 checkAlloc(void)
@@ -217,9 +237,10 @@ checkAlloc();
 if(!enabled) return 0;
 lseek(vcs_fd, 0, 0);
 read(vcs_fd, vcs_header, 4);
-if(nrows * ncols > SCREENCELLS) return -1;
+if(nrows * ncols  + nrows > SCREENCELLS) return -1;
 screenmode = 1;
 acs_mb = &screenBuf;
+screenBlank();
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 return 0;
 } /* acs_screenmode */
@@ -678,10 +699,12 @@ if(t[-1] == 0) continue; /* buffer was empty */
 /* Now check the cursor and the marks */
 if(tl->cursor && tl->cursor >= t)
 tl->cursor = (t > tl->start ? t-1 : t);
-for(j=0; j<NUMBUFMARKS; ++j) {
+for(j=0; j<27; ++j) {
 u = tl->marks[j];
 if(u && u >= t) tl->marks[j] = 0;
 }
+if(tl->marks[27] && tl->marks[27] >= t)
+tl->marks[27] = (t > tl->start ? t-1 : t);
 continue;
 }
 
@@ -748,6 +771,7 @@ int nr; // number of bytes read
 int i, j;
 int culen; /* catch up length */
 unsigned int *custart; // where does catch up start
+unsigned int *sp; // screen pointer
 int nlen; // length of new area
 int diff;
 int m2;
@@ -804,7 +828,7 @@ checkAlloc();
 if(screenmode) {
 /* Oops, the checkAlloc function changed acs_mb out from under us. */
 acs_mb = &screenBuf;
-screenBuf.cursor = screenBuf.v_cursor;
+screenBlank();
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }
 if(acs_fgc_h) acs_fgc_h();
@@ -847,6 +871,25 @@ acs_log("\n");
 }
 if(nr-i < culen*4) break;
 
+#if 0
+// Reprint detector
+if(screenmode && culen <= 6 &&
+(sp = last_vc)) {
+acs_log("rd %d len %d\n", sp-screenBuf.start, culen);
+for(j=0; j<culen; ++j) {
+d = * (int*) (inbuf + i + 4*j);
+if(d < ' ') break;
+if(d != *sp++) break;
+}
+if(j == culen) {
+acs_log("repeat drop %d\n", culen);
+screenBuf.v_cursor = sp;
+i += culen*4;
+break;
+}
+}
+#endif
+
 tl = tty_log[m2 - 1];
 if(!tl || tl == &tty_nomem) {
 /* not allocated; no room for this data */
@@ -881,8 +924,8 @@ if(acs_imark_start && !screenmode) {
 acs_imark_start -= diff;
 if(acs_imark_start < tl->start) acs_imark_start = 0;
 }
-for(j=0; j<NUMBUFMARKS; ++j)
-if(tl->marks[j]) {
+for(j=0; j<=27; ++j) {
+if(!tl->marks[j]) continue;
 tl->marks[j] -= diff;
 if(tl->marks[j] < tl->start) tl->marks[j] = 0;
 }

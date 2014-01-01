@@ -194,6 +194,7 @@ Characters are stored between start and end.
 If start == end then the buffer is empty.
 This is impossible in screen mode; there are always 25 rows
 and 80 columns of something.  Even blank spaces.
+(This is standard; larger screens are possible.)
 But in line mode there may be nothing if the tty has not generated any output
 for that console since the device was opened.
 
@@ -220,24 +221,15 @@ So check for that.
 
 If a mark is near the front of the buffer, and several backspaces come along,
 the mark could once again be out of range, and set to null.
-As a special exception, a mark that is at the end of buffer is pulled back,
-and will still be at the end of buffer.
-This is useful for continuous reading.
-
-It may be convenient to use a define symbol:
-cutLeftMark = acs_mb->marks[0]
-Set this to acs_mb->cursor to mark the left boundary
-of a block of text that you plan to cut&paste.
-This mark remains in sync with the text, even if more output is generated.
-Move your cursor to the right edge of the block and issue the cut command.
-
+The marks are 0 through 25 for a through z,
+26 for the left edge of cut&paste, and 27 for continuous reading.
 In screen mode these marks are transient,
 and go away if you switch consoles, or switch back to line mode.
 They also do not move with scrolling text.  Not implemented yet.
 
 When in screen mode, v_cursor points to the visual cursor on screen.
 The reading cursor is set to the visual cursor when
-you switch to screen mode.
+you switch to screen mode, or switch back to that console.
 
 The characters in the buffer are 4 byte unicodes.
 They leave the tty as utf8, or iso8859-x on some older systems,
@@ -246,29 +238,22 @@ That's the way acsint receives them,
 and that's the way it stores them,
 and that's the way it passes them down to user space.
 The acs_getc routine, described in section 10,
-passes these unicodes back to the adapter for full international support.
+passes the unicode back to the adapter for full international support.
 The acs_getsentence routine passes a sentence back, again in unicode.
 Or you can tap into the buffer yourself if you like.
 
-Note that this doesn't work in screen mode.
-A character in screen memory is a single byte, not a unicode.
-I map the byte over to a unicode, to keep a uniform interface,
-but I'm sure something gets lost in translation.
-Perhaps iso8859-1 is represented faithfully,
-but I don't know about other charsets.
-It may depend on your locale.
-More research is needed here.
-
-To be honest, this entire acsint system is biased towards linear adapters
-that read from the tty log.
-Many things work in line mode
-that are not yet implemented, and may never be implemented, in screen mode.
+This almost works in screen mode.
+A codepage converts the bytes in screen memory into unicode,
+but the conversion is not 100% faithful.
+It is optimized for the letters of your language, but there is some ambiguity.
+On my system, cp437, the Germsn s-zet is the same as the greek beta.
+A program can generate either character, as utf8 output,
+and they both have the same representation in screen memory, and cannot be distinguished by acsint.
+Speakup has the same problem; it is intrinsic to Linux.
+This is just one more reason you should run in line mode whenever possible.
 *********************************************************************/
 
-#define NUMBUFMARKS 30
-
-/* The size of the tty log; store this many characters of tty output.
- * Has to be between 30K and 64K */
+/* linear log buffer, has to be between 30K and 64K */
 #define TTYLOGSIZE 50000
 
 struct acs_readingBuffer {
@@ -277,7 +262,7 @@ struct acs_readingBuffer {
 	unsigned int *start, *end;
 	unsigned int *cursor;
 	unsigned int *v_cursor;
-	unsigned int *marks[NUMBUFMARKS];
+	unsigned int *marks[27+1];
 };
 
 /*********************************************************************
