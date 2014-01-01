@@ -1542,6 +1542,7 @@ goRead = 0;
 usleep(250000);
 acs_rb = acs_tb;
 readNextMark = acs_rb->end;
+acs_log("mark1 %d\n", readNextMark - acs_rb->start);
 /* The refresh is really a call to events() in disguise.
  * So any of those handlers could be called.
  * Since acs_rb is set, more_h won't cause any trouble. */
@@ -1549,8 +1550,10 @@ acs_refresh();
 /* did a keycommand sneak in? */
 if(last_key) goto key_command;
 /* did reading get killed for any other reason, e.g. console switch? */
-if(!acs_rb) continue;
-if(!readNextMark) { acs_rb = 0; continue; }
+if(!acs_rb) { acs_log("read off\n"); continue; }
+if(!readNextMark) { acs_rb = 0; acs_log("mark off\n"); continue; }
+acs_log("mark2 %d\n", readNextMark - acs_rb->start);
+
 while(c = *readNextMark) {
 if(c != ' ' && c != '\n' &&
 c != '\r' && c != '\7')
@@ -1558,6 +1561,8 @@ break;
 ++readNextMark;
 }
 if(!c) { acs_rb = 0; continue; }
+acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
+
 // autoread turns off oneLine mode.
 oneLine = 0;
 readNextPart();
