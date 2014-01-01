@@ -32,7 +32,7 @@ struct cmd {
 /* the available speech commands */
 static const struct cmd speechcommands[] = {
 	{0,""}, // 0 is not a function
-	{"clear buffer","clbuf"},
+	{"clear buffer","clbuf",0,0,2},
 	{"visual cursor","cursor",1,1},
 	{"start of buffer","sbuf",1,1},
 	{"end of buffer","ebuf",1,1},
@@ -51,7 +51,7 @@ static const struct cmd speechcommands[] = {
 	{"read capital x as cap x","capchar",1,3},
 	{"current cohllumm number","colnum",1,3},
 	{"reed the current word","word",1,3},
-	{"start reeding","read",1,3,1},
+	{"start reeding","read",1,3},
 	{"stop speaking","shutup",0,0,2},
 	{"pass next karecter through","bypass",0,0,2},
 	{"clear bighnary mode","clmode",0,0,0,1},
@@ -812,6 +812,7 @@ Execute the speech command.
 The argument is the command list, null-terminated.
 *********************************************************************/
 
+static const char *cmd_resume;
 static void runSpeechCommand(int input, const char *cmdlist)
 {
 	const struct cmd *cmdp;
@@ -826,6 +827,7 @@ const char *t;
 char *cut8;
 
 interrupt();
+cmd_resume = 0;
 
 if(screenMode & ctrack)
 acs_mb->cursor = acs_mb->v_cursor;
@@ -982,7 +984,10 @@ acs_rb = acs_mb;
 /* start at the cursor, not at some leftover nextMark */
 readNextMark = 0;
 readNextPart();
-		return; /* has to be the end of the composite */
+if(!acs_rb) break;
+if(!*cmdlist) break;
+cmd_resume = cmdlist;
+		return;
 
 	case 21: acs_shutup(); break;
 
@@ -1566,6 +1571,10 @@ acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
 // autoread turns off oneLine mode.
 oneLine = 0;
 readNextPart();
+}
+
+if(!acs_rb && cmd_resume) {
+runSpeechCommand(1, cmd_resume);
 }
 
 }
