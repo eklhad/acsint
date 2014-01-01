@@ -699,12 +699,14 @@ if(t[-1] == 0) continue; /* buffer was empty */
 /* Now check the cursor and the marks */
 if(tl->cursor && tl->cursor >= t)
 tl->cursor = (t > tl->start ? t-1 : t);
+// marks, but not the last mark, which is continuous reading
 for(j=0; j<27; ++j) {
 u = tl->marks[j];
 if(u && u >= t) tl->marks[j] = 0;
 }
-if(tl->marks[27] && tl->marks[27] >= t)
-tl->marks[27] = (t > tl->start ? t-1 : t);
+// the continuous reading mark
+if(tl->marks[27] && tl->marks[27] > t)
+tl->marks[27] = t;
 continue;
 }
 
@@ -872,20 +874,30 @@ acs_log("\n");
 if(nr-i < culen*4) break;
 
 #if 0
-// Reprint detector
-if(screenmode && culen <= 6 &&
-(sp = last_vc)) {
-acs_log("rd %d len %d\n", sp-screenBuf.start, culen);
+// The reprint detector
+if(screenmode && culen <= 8) {
+// no control chars except perhaps control h
 for(j=0; j<culen; ++j) {
 d = * (int*) (inbuf + i + 4*j);
-if(d < ' ') break;
-if(d != *sp++) break;
+if(d < ' ' && d != '\b') break;
 }
 if(j == culen) {
-acs_log("repeat drop %d\n", culen);
-screenBuf.v_cursor = sp;
+// pause so the characters print and the v cursor is up to date
+usleep(100000);
+read(vcs_fd, vcs_header, 4);
+sp = screenBuf.v_cursor = screenBuf.start +
+csr * (ncols+1) + csc;
+acs_log("rd %d,%d,%d\n", csr, csc, culen);
+for(j=culen-1; j>=0; --j) {
+d = * (int*) (inbuf + i + 4*j);
+if(d == '\b') continue;
+if(d != *--sp) break;
+}
+if(j < 0) {
+acs_log("reprint %d\n", culen );
 i += culen*4;
 break;
+}
 }
 }
 #endif
