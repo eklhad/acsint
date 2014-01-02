@@ -1527,6 +1527,14 @@ ACS_PP_CTRL_OTHER | ACS_PP_ESCB;
 /* This runs forever, you have to hit interrupt to kill it,
  * or kill it from another console. */
 while(1) {
+int lastrow, lastcol;
+char newcmd[8];
+
+if(screenMode) {
+acs_vc();
+lastrow = acs_vc_row, lastcol = acs_vc_col;
+}
+
 acs_all_events();
 
 key_command:
@@ -1539,12 +1547,16 @@ cmdlist = acs_getspeechcommand(mkcode);
 if(cmdlist) runSpeechCommand(1, cmdlist);
 }
 
+if(!acs_rb && cmd_resume) {
+runSpeechCommand(1, cmd_resume);
+}
+
 if(goRead) {
 unsigned int c;
 goRead = 0;
 /* fetch the new stuff and start reading */
 // Pause, to allow a block of characters to print.
-usleep(250000);
+usleep(100000);
 acs_rb = acs_tb;
 readNextMark = acs_rb->end;
 acs_log("mark1 %d\n", readNextMark - acs_rb->start);
@@ -1565,16 +1577,49 @@ c != '\r' && c != '\7')
 break;
 ++readNextMark;
 }
-if(!c) { acs_rb = 0; continue; }
+if(c) {
 acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
-
 // autoread turns off oneLine mode.
 oneLine = 0;
 readNextPart();
+continue;
 }
 
-if(!acs_rb && cmd_resume) {
-runSpeechCommand(1, cmd_resume);
+acs_rb = 0;
+if(!screenMode) continue;
+
+// read new character if you arrowed left or right one character
+acs_vc();
+if(acs_vc_row == lastrow && (acs_vc_col == lastcol+1 || acs_vc_col == lastcol-1)) {
+acs_mb->cursor = acs_mb->v_cursor;
+autoletter:
+		speakChar(acs_mb->cursor[0], 1, soundsOn, 1);
+continue;
+}
+
+// read new word if you arrowed left or right one word
+if(acs_vc_row == lastrow) {
+acs_mb->cursor = acs_mb->v_cursor;
+newcmd[0] = cmdByName("word");
+newcmd[1] = cmdByName("cursor");
+newcmd[2] = 0;
+runSpeechCommand(0, newcmd);
+continue;
+}
+
+// read new line if you arrowed up or down one line
+if(acs_vc_row == lastrow+1 || acs_vc_row == lastrow-1) {
+acs_mb->cursor = acs_mb->v_cursor;
+newcmd[0] = cmdByName("sline");
+newcmd[1] = cmdByName("stmode");
+newcmd[2] = '1';
+newcmd[3] = cmdByName("read");
+newcmd[4] = cmdByName("cursor");
+newcmd[5] = 0;
+runSpeechCommand(0, newcmd);
+continue;
+}
+
 }
 
 }

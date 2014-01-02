@@ -714,14 +714,7 @@ if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_ESCB) {
 for(j=2; s[j] && j<20; ++j)
 if(s[j] < 256 && isalpha(s[j])) break;
 if(j < 20 && s[j]) {
-/* a letter indicates end of escape sequence.
- * If the letter is H, we are repositioning the cursor.
- * Most of the time we are starting a new line.
- * If not, we are at least jumping to another part of the screen.
- * In either case I find it helpful to introduce a newline.
- * That deliniates a new block of text,
- * and most of the time said text is indeed on a new line. */
-			if(s[j] == 'H') *t++ = '\n';
+// a letter indicates end of escape sequence.
 s += j+1;
 // Could the cursor have read into the escape sequence, then we pulled it back?
 // I assume you didn't have time to set a mark in the middle of the sequence.
