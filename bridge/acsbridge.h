@@ -1494,9 +1494,10 @@ unsigned int acs_toupper(unsigned int uc);
 // from u umlaut to u
 char acs_unaccent(unsigned int uc);
 
-/* visual cursor coordinates, based at 1,1 */
+/* visual cursor coordinates, based at 0,0 */
 extern int acs_vc_nrows, acs_vc_ncols;
 extern int acs_vc_row, acs_vc_col;
+void acs_vc(void);
 
 
 #endif

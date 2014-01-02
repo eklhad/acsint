@@ -139,7 +139,7 @@ static const unsigned int *cp_lang[] = {0,
 cp437, cp437, cp850,
 };
 
-void acs_vcursor(void)
+void acs_vc(void)
 {
 lseek(vcs_fd, 0, 0);
 read(vcs_fd, vcs_header, 4);
@@ -150,7 +150,7 @@ acs_vc_ncols = vcs_header[1];
 acs_vc_row = vcs_header[3];
 acs_vc_col = vcs_header[2];
 screenBuf.v_cursor = screenBuf.start + acs_vc_row * (acs_vc_ncols+1) + acs_vc_col;
-} /* acs_vcursor */
+} /* acs_vc */
 
 static void screenSnap(void)
 {
@@ -158,7 +158,7 @@ unsigned int *t;
 unsigned char *a, *s;
 int i, j;
 
-acs_vcursor();
+acs_vc();
 
 t = screenBuf.start;
 screenBuf.attribs = a = (unsigned char *) (screenBuf.area + ATTRIBOFFSET);
@@ -235,7 +235,7 @@ acs_imark_start = 0;
 screenmode = 0;
 checkAlloc();
 if(!enabled) return 0;
-acs_vcursor();
+acs_vc();
 if(acs_vc_nrows * (acs_vc_ncols + 1) > SCREENCELLS) return -1;
 screenmode = 1;
 acs_mb = &screenBuf;
@@ -872,24 +872,27 @@ acs_log("\n");
 }
 if(nr-i < culen*4) break;
 
-#if 0
 // The reprint detector
-if(screenmode && culen <= 8 &&
-(sp = screenBuf.v_cursor)) {
+if(screenmode && culen <= 8) {
 for(j=0; j<culen; ++j) {
 d = * (int*) (inbuf + i + 4*j);
-if(d == '\b') { --sp; continue; }
-if(d < ' ') break;
-if(d != *sp++) break;
+if(d < ' ' && d != '\b') break;
 }
 if(j == culen) {
+acs_vc();
+sp = screenBuf.v_cursor;
+for(j=culen-1; j>=0; --j) {
+d = * (int*) (inbuf + i + 4*j);
+if(d == '\b') { ++sp; continue; }
+if(d != *--sp) break;
+}
+if(j < 0) {
 acs_log("reprint %d\n", culen );
-screenBuf.v_cursor = sp;
 i += culen*4;
 break;
 }
 }
-#endif
+}
 
 tl = tty_log[m2 - 1];
 if(!tl || tl == &tty_nomem) {
