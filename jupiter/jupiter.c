@@ -891,7 +891,7 @@ acs_cursorset();
 break;
 
 	case 2: /* locate visual cursor */
-		if(!screenMode) goto error_bell;
+		if(!screenMode) break;
 acs_mb->cursor = acs_mb->v_cursor;
 acs_cursorset();
 		break;
@@ -1530,7 +1530,7 @@ while(1) {
 int lastrow, lastcol;
 char newcmd[8];
 
-if(screenMode) {
+if(screenMode & autoRead) {
 acs_vc();
 lastrow = acs_vc_row, lastcol = acs_vc_col;
 }

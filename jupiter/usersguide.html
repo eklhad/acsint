@@ -23,6 +23,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#mod> Modules </A>
 <LI><A HREF=#modes> Modes </A>
 <LI><A HREF=#cfg> Config Files </A>
+<LI><A HREF=#rc> The Reading Cursor and Atomic Commands </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -389,7 +390,7 @@ while all the other consoles run happily in line mode.&nbsp;
 The modes are as follows.
 
 <DL>
-<DT>Sounds
+<P><DT>Sounds
 
 <P>
 <DD>
@@ -398,7 +399,7 @@ This includes the clicks that accompany tty output,
 and the short beeps that Jupiter uses to convy status or error conditions.&nbsp;
 They can all be turned off in one go.
 
-<DT>Clicktty
+<P><DT>Clicktty
 
 <P>
 <DD>
@@ -406,7 +407,7 @@ If sounds are on, you can still disable the clicks associated with tty output.&n
 That still leaves the beeps and tones that Jupiter produces for empty buffer, end of buffer, input error, toggle mode, etc.&nbsp;
 Without clicktty, output is no longer throttled, and it flies across the screen at lightning speed.
 
-<DT>Transparent
+<P><DT>Transparent
 
 <P>
 <DD>
@@ -425,7 +426,7 @@ This mode runs per console.&nbsp;
 Put console 1 in transparent mode and switch to console 2, and Jupiter is talking again.&nbsp;
 Thus you could leave a console in transparent mode for your sighted friend.
 
-<DT>Screen
+<P><DT>Screen
 
 <P>
 <DD>
@@ -445,7 +446,7 @@ Due to some hard compiled limits, screen mode will not work at all if the screen
 Jupiter will simply buzz for larger screens, and remain in line mode.&nbsp;
 The largest screen I've run into so far is 48 by 170 = 8,160.
 
-<DT>Oneline
+<P><DT>Oneline
 
 <P>
 <DD>
@@ -458,7 +459,7 @@ they should perhaps set oneline mode to stop at the end of that line.&nbsp;
 If F5 reads the rest of the screen or the rest of the buffer, it should clear oneline mode.&nbsp;
 But it's up to you of course.
 
-<DT>Autoread
+<P><DT>Autoread
 
 <P>
 <DD>
@@ -501,7 +502,7 @@ So it makes sense to disable oneline mode at this point.&nbsp;
 There is no trouble here,
 because your next reading command will probably enable or disable oneline mode as part of its functionality.
 
-<DT>Interrupt
+<P><DT>Interrupt
 
 <P>
 <DD>
@@ -513,7 +514,7 @@ that is, a key that causes Jupiter to take some action.&nbsp;
 At that point Jupiter will stop reading.&nbsp;
 This includes, of course, the shutup key.
 
-<DT>Echo
+<P><DT>Echo
 
 <P>
 <DD>
@@ -534,7 +535,7 @@ The &ntilde; that comes back on screen doesn't match n, the last key you typed, 
 This could be addressed, but it's not a high priority,
 since echo mode is rarely used.
 
-<DT>Literal
+<P><DT>Literal
 
 <P>
 <DD>
@@ -549,7 +550,7 @@ and in my brain it almost has the same effect as the corresponding pauses.&nbsp;
 Of course it isn't nearly as funny as Victor Borge's
 Phonetic Punctuation.
 
-<DT>Control Chars
+<P><DT>Control Chars
 
 <P>
 <DD>
@@ -557,7 +558,7 @@ Control characters, other than newline, tab, and bell, are typically culled from
 If this mode is enabled, they are retained.&nbsp;
 This is usually used for debugging.
 
-<DT>Override Signals
+<P><DT>Override Signals
 
 <P>
 <DD>
@@ -566,7 +567,7 @@ you can use this mode to override the cts and rts signals that are typically use
 In other words, we switch to software flow control using x-on and x-off.&nbsp;
 This is used for debugging serial connections, and is rarely needed.
 
-<DT>Debug
+<P><DT>Debug
 
 <P>
 <DD>
@@ -610,19 +611,267 @@ and if you want the 4 function keys on the right to load these 4 files,
 then your bindings will look like this.
 
 <P>
-f9 reload foo1
+F9 reload foo1
 <br>
-f10 reload foo2
+F10 reload foo2
 <br>
-f11 reload foo3
+F11 reload foo3
 <br>
-f12 reload foo4
+F12 reload foo4
 
 <P>
 These bindings should be the same in every config file, so you can switch between them in a consistent manner.&nbsp;
 Of course other keys will differ, from one config file to another, in their placement and functionality;
 else why would you have different config files?&nbsp;
 Key bindings will be described later, after I have presented the atomic speech commands.
+
+<H3 align=center> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </H3>
+
+The reading cursor is a location in the tty buffer (in line mode),
+or on screen (in screen mode),
+that corresponds to the letters or words you are reading or would like to read.&nbsp;
+This is independent of the visual cursor that is on the screen, where text is entered or modified.&nbsp;
+thus you can read the text anywhere on the screen,
+just as a sighted person might lift his eyes to read the text at the top of the screen,
+or lower his eyes to read the status message at the bottom of the screen.&nbsp;
+In line mode the effect is even more pronounced.&nbsp;
+You might wonder exactly what happened two hours ago,
+when you typed in rm *.&nbsp;
+Were you in the right directory?&nbsp;
+Did you accidentally delete something important?&nbsp;
+Use the search function to find rm * in the tty log,
+then read the line before to see what directory you were in,
+then read the line after to review the computer's response,
+exactly as it took place
+some two hours ago (assuming not a lot of output between then and now).&nbsp;
+Other screen readers refer to this roaming about as "screen review".&nbsp;
+Fair enough, but a bit misleading if you are in line mode,
+for then you are reading text out of the tty buffer and not off the screen.
+
+<P>
+Various atomic commands move the reading cursor about in the tty buffer or on screen.&nbsp;
+These are not typically issued on their own.&nbsp;
+Instead, they are often put together in a sequence, then bound to a key.&nbsp;
+For instance, F2 might move the reading cursor to the start of a line and then read the character
+at the beginning of that line.&nbsp;
+This is two atomic commands put together to make one composite command, which is then bound to F2.&nbsp;
+In this manner, relatively complicated commands can be built.&nbsp;
+You could construct a command that reads the top line of the screen, then the third line,
+then leaves the reading cursor at the end of the second line.&nbsp;
+That is a bit contrived, but it illustrates what can be done.
+
+<P>
+Here is a list of the atomic commands that relate to the reading cursor.&nbsp;
+Each command has a brief name, about 6 characters, that you will use in the config file,
+followed by a description of what that command does.
+
+<DL>
+<P><DT>cursor:
+<DD>
+Move the reading cursor to the visual cursor on screen.&nbsp;
+This is where the action is.&nbsp;
+A composite command might go down to the bottom of the screen, read the status message,
+then issue this command to return to the visual cursor.&nbsp;
+This command has no effect in line mode.
+
+<P><DT>clbuf:
+<DD>
+Clear the buffer.&nbsp;
+Now the buffer is empty.&nbsp;
+This generates an error (beep) in screen mode.
+
+<P><DT>sbuf:
+<DD>
+Place the cursor at the start of the buffer, or the upper left of the screen.&nbsp;
+If the bufffer is empty you will hear a couple quick high beeps indicating a boundary condition.&nbsp;
+The same sound occurs if you pull the cursor past the start of buffer, or push it past the end of buffer.
+
+<P><DT>ebuf:
+<DD>
+Place the cursor at the end of the buffer, or the lower right of the screen.
+
+<P><DT>sline:
+<DD>
+Place the cursor at the start of the current line.&nbsp;
+In line mode, lines are delimited by the newline character control J.&nbsp;
+Unless control char mode is enabled,
+Jupiter turns crlf into lf, so you don't have to worry about extra return characters (control M) cluttering up your tty buffer.
+
+<P><DT>eline:
+<DD>
+Place the cursor at the end of the current line.&nbsp;
+The cursor sits on the newline character that terminates the line.&nbsp;
+In screen mode the cursor sits on a mythical newline character that Jupiter inserts for you.&nbsp;
+Thus screen mode and line mode have the same look&amp;feel.
+
+<P><DT>sword:
+<DD>
+Place the cursor at the start of the current word.&nbsp;
+A word is a sequence of alphanumerics (in your language), and at most one apostrophe,
+or one unicode that is equivalent to an apostrophe, such as 0x99.&nbsp;
+Thus ni&ntilde;o looks like one word in Spanish, but three words in English.&nbsp;
+As mentioned earlier, Jupiter uses $LANG to determine your language.&nbsp;
+Hello3world is one word in any language.&nbsp;
+Many variables in computer programming, or in math, are a mix of letters and numbers,
+and it is convenient to treat these as compound words.
+
+<P><DT>eword:
+<DD>
+Place the cursor at the end of the current word.
+
+<P><DT>lspc:
+<DD>
+Move the cursor to the left through spaces,
+stopping at the last space.&nbsp;
+If there are no spaces to the left of the cursor then it remains in position.&nbsp;
+This command should perhaps skip past higher unicodes that are equivalent to a space, such as 0xa0.&nbsp;
+That is still under consideration.&nbsp;
+As you might imagine, this is rarely used on its own.&nbsp;
+Rather, it is used in sequence, to skip past whitespace and read the next word for example.
+
+<P><DT>rspc:
+<DD>
+Move the cursor to the right through spaces,
+stopping at the last space.&nbsp;
+If there are no spaces to the right of the cursor then it remains in position.
+
+<P><DT>back:
+<DD>
+Move the cursor back one character.
+
+<P><DT>for:
+<DD>
+Move the cursor forward one character.
+
+<P><DT>prow:
+<DD>
+Move the cursor up one row.&nbsp;
+Sound an error if there is no previous row, or if the previous row is too short
+to remain in your current column.&nbsp;
+Obviously this latter condition cannot occur in screen mode, since all rows are the same length.
+
+<P><DT>nrow:
+<DD>
+Move the cursor down one row.
+
+<P><DT>lcline:
+<DD>
+Put the cursor at the start of the last complete line.&nbsp;
+This is meant to read the last line of output, just before the prompt.&nbsp;
+In screen mode the cursor is at the start of the second to last line,
+assuming the last line is a prompt.
+
+<P><DT>column:
+<DD>
+Read the current column number.&nbsp;
+The first character in a line is in column 1.&nbsp;
+Remember that lines can be very long in line mode.&nbsp;
+A series of dots, indicating progress in a file transfer,
+could create a line that is hundreds or thousands of characters long.
+
+<P><DT>char:
+<DD>
+Read the current character.&nbsp;
+A letter or digit is simply passed to the speech synthesizer.&nbsp;
+Control G sounds the bell if sounds are enabled,
+or says the word bell if sounds are disabled.&nbsp;
+Control J issues a quick swooping sound that is specific to newline, if sounds are enabled,
+or says the word newline if sounds are disabled.&nbsp;
+Other control characters are typically culled from the buffer.&nbsp;
+If control K is present however, it is read as "control K".&nbsp;
+A punctuation mark is read using a default word or phrase,
+unless you override its pronunciation in your config file.&nbsp;
+The symbol ! might be read as exclamation point,
+but you may prefer the shorter word bang.&nbsp;
+Finally a higher unicode is spoken as directed by your config file,
+or it is simply said as the word code followed by the unicode in hex.&nbsp;
+If you do math, for instance, you may want to set the pronunciations of the Greek letters and the math symbols in your config file.
+
+<P><DT>capchar:
+<DD>
+This is the same as char, but a capital X is read as "cap X", rather than simply x.
+
+<P><DT>asword:
+<DD>
+This is the same as char,
+but a letter is read as a word, using the nato alphabet.&nbsp;
+This is used to distinguish between similar sounding letters such as m and n.&nbsp;
+The former is read as Mike, and the latter as November.&nbsp;
+An accented letter is downshifted to its unaccented version, then read as a nato word in that language.&nbsp;
+Thus &#243; in Portuguese is read as Oscar.
+
+<P><DT>word:
+<DD>
+Read the current word.&nbsp;
+The entire word is read, even if the cursor is in the middle of the word.&nbsp;
+The cursor is left at the end of the word.&nbsp;
+To aid in pronuncibility, spaces are inserted at letter-digit or case boundaries.&nbsp;
+ThusRedGreen3Blue is pronounced "red green 3 blue".&nbsp;
+This is usually what you want.
+
+<P><DT>read:
+<DD>
+Start continuous reading.&nbsp;
+Jupiter will begin reading, and will not stop until you interrupt it,
+or it reaches the end of a line and oneline mode is enabled.&nbsp;
+The cursor tracks the words you are hearing.&nbsp;
+Thus you can stop it at any time, using any of these commands,
+and the cursor will be on the word you last heard.&nbsp;
+If something doesn't sound right, stop reading and review the individual words and letters.&nbsp;
+You can then resume reading at this point if you like.
+
+<P><DT>shutup:
+<DD>
+Stop reading, but take no other action.&nbsp;
+This leaves the cursor on or near the word you last heard.
+
+<P><DT>label:
+<DD>
+This command waits for you to type a letter, then sets a label, using that letter,
+at the current location in the buffer.&nbsp;
+If you are at the start of the buffer you might issue this command, then type the letter t, to mark this as the top of the buffer.&nbsp;
+That's rather silly, since there is already a start of buffer command, but I present it as an example.&nbsp;
+Then jump t will take you back to this location.&nbsp;
+This is primarily used in line mode, where you may want to mark several locations in your tty buffer.
+
+<P><DT>jump:
+<DD>
+Enter a letter and jump to the location in your buffer that was set using that letter.
+
+<P><DT>markl:
+<DD>
+Mark this as the left edge of some text that you want to cut&amp;paste.
+
+<P><DT>markr:
+<DD>
+Mark this as the right edge of some text that you want to cut&amp;paste.&nbsp;
+You musst enter a follow-on letter, whence this block of text will be associated
+with the alt of that letter.&nbsp;
+You should probably leave most of your alt-letters unbound, so they can be used for cut&amp;paste.&nbsp;
+As an example, put your cursor on the h in hello world and issue mark left.&nbsp;
+Then move the cursor to the d in world and issue mark right, followed by h.&nbsp;
+Now alt-h will generate "hello world", as though you had typed it in.&nbsp;
+After you get use to using cut&amp;paste, you will become absolutely dependent on it.&nbsp;
+I'm getting older, and can hardly remember a 7 digit phone number any more,
+so I just use cut&amp;paste to copy it from one file to another.
+
+<P><DT>searchd:
+<DD>
+Search down the buffer for a string of text.&nbsp;
+Enter the string at the keyboard, using ascii only.&nbsp;
+The search is case insensitive, and letters will match their accented counterparts.&nbsp;
+There is no need to enter o umlaut (In German), just type o and it will match o umlaut.&nbsp;
+If this is the last command in the sequence, and a match is found,
+Jupiter will read the current line in oneline mode, or simply say ok otherwise.&nbsp;
+Of course you can follow this up with other commands,
+e.g. read the line just before the line that contains the phrase "oreo cooky".
+
+<P><DT>searchu:
+<DD>
+Search up the buffer for a string of text.&nbsp;
+The behavior is as above, except the cursor moves backwards rather thand forwards.
+
+</DL>
 
 <P>
 <A HREF=#top>Back to top</A>
