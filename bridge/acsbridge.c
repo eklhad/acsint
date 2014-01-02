@@ -38,10 +38,6 @@ int acs_fd = -1; /* file descriptor for /dev/acsint */
 static int vcs_fd; /* file descriptor for /dev/vcsa */
 
 static unsigned char vcs_header[4];
-#define nrows (int)vcs_header[0]
-#define ncols (int)vcs_header[1]
-#define csr (int)vcs_header[3] // cursor row
-#define csc (int)vcs_header[2] // cursor column
 /* Make cursor coordinates available to the adapter */
 int acs_vc_nrows, acs_vc_ncols;
 int acs_vc_row, acs_vc_col;
@@ -143,23 +139,34 @@ static const unsigned int *cp_lang[] = {0,
 cp437, cp437, cp850,
 };
 
+void acs_vcursor(void)
+{
+lseek(vcs_fd, 0, 0);
+read(vcs_fd, vcs_header, 4);
+screenBuf.area[0] = 0;
+screenBuf.start = screenBuf.area + 1;
+acs_vc_nrows = vcs_header[0];
+acs_vc_ncols = vcs_header[1];
+acs_vc_row = vcs_header[3];
+acs_vc_col = vcs_header[2];
+screenBuf.v_cursor = screenBuf.start + acs_vc_row * (acs_vc_ncols+1) + acs_vc_col;
+} /* acs_vcursor */
+
 static void screenSnap(void)
 {
 unsigned int *t;
 unsigned char *a, *s;
 int i, j;
 
-lseek(vcs_fd, 0, 0);
-read(vcs_fd, vcs_header, 4);
+acs_vcursor();
 
-screenBuf.area[0] = 0;
-screenBuf.start = t = screenBuf.area + 1;
+t = screenBuf.start;
 screenBuf.attribs = a = (unsigned char *) (screenBuf.area + ATTRIBOFFSET);
 s = (unsigned char *) (screenBuf.area + VCREADOFFSET);
-read(vcs_fd, s, 2*nrows*ncols);
+read(vcs_fd, s, 2*acs_vc_nrows*acs_vc_ncols);
 
-for(i=0; i<nrows; ++i) {
-for(j=0; j<ncols; ++j) {
+for(i=0; i<acs_vc_nrows; ++i) {
+for(j=0; j<acs_vc_ncols; ++j) {
 *t++ = cp_lang[acs_lang][*s++];
 *a++ = *s++;
 }
@@ -168,13 +175,6 @@ for(j=0; j<ncols; ++j) {
 }
 *t = 0;
 screenBuf.end = t;
-
-acs_vc_nrows = nrows;
-acs_vc_ncols = ncols;
-acs_vc_row = csr;
-acs_vc_col = csc;
-screenBuf.v_cursor = screenBuf.start + csr * (ncols+1) + csc;
-
 } // screenSnap
 
 static void screenBlank(void)
@@ -183,14 +183,14 @@ int i, j, top;
 unsigned int *s;
 
 if(!screenmode) return; // should never happen
-top = nrows * ncols + nrows;
+top = acs_vc_nrows * (acs_vc_ncols + 1);
 if(top > SCREENCELLS) return; // should never happen
 
 s = screenBuf.area;
 *s++ = 0;
-screenBuf.v_cursor = screenBuf.cursor = screenBuf.start = s;
-for(i=0; i<nrows; ++i) {
-for(j=0; j<ncols; ++j) *s++ = ' ';
+screenBuf.v_cursor = screenBuf.cursor = s;
+for(i=0; i<acs_vc_nrows; ++i) {
+for(j=0; j<acs_vc_ncols; ++j) *s++ = ' ';
 *s++ = '\n';
 }
 *s = 0;
@@ -235,9 +235,8 @@ acs_imark_start = 0;
 screenmode = 0;
 checkAlloc();
 if(!enabled) return 0;
-lseek(vcs_fd, 0, 0);
-read(vcs_fd, vcs_header, 4);
-if(nrows * ncols  + nrows > SCREENCELLS) return -1;
+acs_vcursor();
+if(acs_vc_nrows * (acs_vc_ncols + 1) > SCREENCELLS) return -1;
 screenmode = 1;
 acs_mb = &screenBuf;
 screenBlank();
