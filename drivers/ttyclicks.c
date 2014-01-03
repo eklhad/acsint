@@ -80,7 +80,7 @@ EXPORT_SYMBOL_GPL(ttyclicks_kmsg);
  * a cr sound. Not sure about that one.
  * escState holds the state of the escape sequence.
  * 0 regular output, 1 escape received, 2 escape [ received.
- * A letter ends the escape sequence and goes from state 2 back to state 0.
+ * A letter ends the escape sequence and goes from state 1 or 2 back to state 0.
  */
 
 static char escState;
@@ -601,6 +601,10 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 			escState = 2;
 			goto done;
 		}
+/* Anything else closes the sequence, that's wrong, but will do for now. */
+		if(c != '\33')
+			escState = 0;
+		goto done;
 	} else if (c == '\33' && !cursormotion) {
 		escState = 1;
 		goto done;

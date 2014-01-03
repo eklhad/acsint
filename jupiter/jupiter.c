@@ -59,16 +59,16 @@ static const struct cmd speechcommands[] = {
 	{"toggle bighnary mode","toggle",0,0,0,1},
 	{"search up","searchu",1,3,0,2},
 	{"search down","searchd",1,3,0,2},
-	{"set volume","volume",0,0,0,1},
-	{"increase volume", "incvol"},
-	{"decrease volume", "decvol"},
-	{"set speed","speed",0,0,0,1},
-	{"increase speed", "incspd"},
-	{"decrease speed", "decspd"},
-	{"set pitch","pitch",0,0,0,1},
-	{"increase pitch", "incpch"},
-	{"decrease pitch", "decpch"},
-	{"set voice", "voice",0, 0, 0, 1},
+	{"set volume","volume",0,0,2,1},
+	{"increase volume", "incvol",0,0,2},
+	{"decrease volume", "decvol",0,0,2},
+	{"set speed","speed",0,0,2,1},
+	{"increase speed", "incspd",0,0,2},
+	{"decrease speed", "decspd",0,0,2},
+	{"set pitch","pitch",0,0,2,1},
+	{"increase pitch", "incpch",0,0,2},
+	{"decrease pitch", "decpch",0,0,2},
+	{"set voice", "voice",0,0,2, 1},
 	{"key binding","bind",0,0,2,2},
 	{"last complete line","lcline",1,1},
 	{"mark left", "markl",1,3},
@@ -1533,6 +1533,7 @@ char newcmd[8];
 if(screenMode & autoRead) {
 acs_vc();
 lastrow = acs_vc_row, lastcol = acs_vc_col;
+acs_log("lc %d,%d\n", lastrow, lastcol);
 }
 
 acs_all_events();
@@ -1554,6 +1555,8 @@ runSpeechCommand(1, cmd_resume);
 if(goRead) {
 unsigned int c;
 goRead = 0;
+
+refetch:
 /* fetch the new stuff and start reading */
 // Pause, to allow a block of characters to print.
 usleep(100000);
@@ -1571,25 +1574,29 @@ if(!acs_rb) { acs_log("read off\n"); continue; }
 if(!readNextMark) { acs_rb = 0; acs_log("mark off\n"); continue; }
 acs_log("mark2 %d\n", readNextMark - acs_rb->start);
 
+if(!*readNextMark) goto autoscreen;
+
 while(c = *readNextMark) {
 if(c != ' ' && c != '\n' &&
 c != '\r' && c != '\7')
 break;
 ++readNextMark;
 }
-if(c) {
+if(!c) goto refetch;
+
 acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
 // autoread turns off oneLine mode.
 oneLine = 0;
 readNextPart();
 continue;
-}
 
+autoscreen:
 acs_rb = 0;
 if(!screenMode) continue;
 
 // read new character if you arrowed left or right one character
 acs_vc();
+acs_log("vc %d,%d\n", acs_vc_row, acs_vc_col);
 if(acs_vc_row == lastrow && (acs_vc_col == lastcol+1 || acs_vc_col == lastcol-1)) {
 acs_mb->cursor = acs_mb->v_cursor;
 autoletter:

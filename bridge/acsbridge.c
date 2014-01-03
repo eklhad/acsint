@@ -669,7 +669,7 @@ int j;
 if(!acs_postprocess) return;
 
 // in case we had part of an ansi escape code
-s -= 20;
+s -= 100;
 if(s < tl->start) s = tl->start;
 t = s;
 
@@ -710,11 +710,13 @@ continue;
 }
 
 /* ansi escape sequences */
-if(*s == '\33' && s[1] == '[' && acs_postprocess&ACS_PP_ESCB) {
-for(j=2; s[j] && j<20; ++j)
-if(s[j] < 256 && isalpha(s[j])) break;
-if(j < 20 && s[j]) {
-// a letter indicates end of escape sequence.
+if(*s == '\33' &&ACS_PP_ESCB) {
+for(++s; *s == '\33'; ++s)  ;
+--s;
+j = 1;
+if(!s[j]) goto advance;
+if(s[j] != '[') {
+cut_j:
 s += j+1;
 // Could the cursor have read into the escape sequence, then we pulled it back?
 // I assume you didn't have time to set a mark in the middle of the sequence.
@@ -722,6 +724,10 @@ if(tl->cursor && tl->cursor >= t)
 tl->cursor = (t > tl->start ? t-1 : t);
 continue;
 		}
+// escape [ stuff letter
+for(++j; s[j] && j<20; ++j)
+if(s[j] < 256 && isalpha(s[j])) goto cut_j;
+goto advance;
 }
 
 // control chars
@@ -731,6 +737,7 @@ acs_postprocess&ACS_PP_CTRL_OTHER) {
 continue;
 }
 
+advance:
 *t++ = *s++;
 }
 
