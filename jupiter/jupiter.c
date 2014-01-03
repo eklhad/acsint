@@ -1593,9 +1593,9 @@ continue;
 autoscreen:
 acs_rb = 0;
 if(!screenMode) continue;
+acs_screensnap();
 
 // read new character if you arrowed left or right one character
-acs_vc();
 acs_log("vc %d,%d\n", acs_vc_row, acs_vc_col);
 if(acs_vc_row == lastrow && (acs_vc_col == lastcol+1 || acs_vc_col == lastcol-1)) {
 acs_mb->cursor = acs_mb->v_cursor;
@@ -1605,7 +1605,7 @@ continue;
 }
 
 // read new word if you arrowed left or right one word
-if(acs_vc_row == lastrow) {
+if(acs_vc_row == lastrow && acs_vc_col != lastcol) {
 acs_mb->cursor = acs_mb->v_cursor;
 newcmd[0] = cmdByName("word");
 newcmd[1] = cmdByName("cursor");

@@ -152,7 +152,7 @@ acs_vc_col = vcs_header[2];
 screenBuf.v_cursor = screenBuf.start + acs_vc_row * (acs_vc_ncols+1) + acs_vc_col;
 } /* acs_vc */
 
-static void screenSnap(void)
+void acs_screensnap(void)
 {
 unsigned int *t;
 unsigned char *a, *s;
@@ -175,7 +175,7 @@ for(j=0; j<acs_vc_ncols; ++j) {
 }
 *t = 0;
 screenBuf.end = t;
-} // screenSnap
+} // acs_screensnap
 
 static void screenBlank(void)
 {
@@ -778,6 +778,7 @@ int diff;
 int m2;
 char refreshed = 0;
 unsigned int d;
+int lastrow = acs_vc_row, lastcol = acs_vc_col;
 
 errno = 0;
 if(acs_fd < 0) {
@@ -798,7 +799,7 @@ acs_log("key %d\n", inbuf[i+1]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
 if(screenmode && !refreshed) {
-screenSnap();
+acs_screensnap();
 if(!acs_mb->cursor)
 acs_mb->cursor = acs_mb->v_cursor;
 refreshed = 1;
@@ -873,27 +874,62 @@ acs_log("\n");
 if(nr-i < culen*4) break;
 
 // The reprint detector
-if(screenmode && culen <= 8) {
+if(screenmode && culen <= 10 &&
+acs_postprocess&ACS_PP_CTRL_OTHER) {
+sp = screenBuf.start + lastrow * (acs_vc_ncols+1) + lastcol;
 for(j=0; j<culen; ++j) {
 d = * (int*) (inbuf + i + 4*j);
-if(d < ' ' && d != '\b') break;
+if(d == '\b') {
+if(lastcol) --lastcol, --sp;
+continue;
+}
+if(d == '\r') {
+sp -= lastcol, lastcol = 0;
+continue;
+}
+if(d != '\33') break;
+// only 2 or 3 escape sequences do I recognize here.
+// Only the really short ones would be used anyways.
+// esc[A and esc[8d
+if(++j == culen) goto inbuffer;
+d = * (int*) (inbuf + i + 4*j);
+if(d != '[') goto inbuffer;
+if(++j == culen) goto inbuffer;
+d = * (int*) (inbuf + i + 4*j);
+if(d == 'A') {
+if(lastrow) --lastrow, sp -= (acs_vc_ncols+1);
+continue;
+}
+if(d >= 0x80) goto inbuffer;
+if(!isdigit(d)) goto inbuffer;
+diff = d - '0';
+if(++j == culen) goto inbuffer;
+d = * (int*) (inbuf + i + 4*j);
+if(d < 0x80 && isdigit(d)) {
+diff = 10*diff + d - '0';
+if(++j == culen) goto inbuffer;
+d = * (int*) (inbuf + i + 4*j);
+}
+if(d == 'd') {
+lastrow = diff - 1;
+sp = screenBuf.start + lastrow * (acs_vc_ncols+1) + lastcol;
+continue;
+}
+goto inbuffer; // unknown escape sequence
+}
+// little cursor motions are done
+for(; j<culen; ++j) {
+d = * (int*) (inbuf + i + 4*j);
+if(d != *sp++) break;
 }
 if(j == culen) {
-acs_vc();
-sp = screenBuf.v_cursor;
-for(j=culen-1; j>=0; --j) {
-d = * (int*) (inbuf + i + 4*j);
-if(d == '\b') { ++sp; continue; }
-if(d != *--sp) break;
-}
-if(j < 0) {
 acs_log("reprint %d\n", culen );
 i += culen*4;
 break;
 }
 }
-}
 
+inbuffer:
 tl = tty_log[m2 - 1];
 if(!tl || tl == &tty_nomem) {
 /* not allocated; no room for this data */
@@ -942,12 +978,6 @@ tl->end[0] = 0;
 }
 
 postprocess(custart);
-
-if(acs_debug) {
-/* Log the new characters, but they're in unicode, so convert back to ascii. */
-/* Not yet implemented. */
-;
-}
 
 /* If you're in screen mode, I haven't moved your reading cursor,
  * or imark _start, or the pointers in marks[], appropriately.

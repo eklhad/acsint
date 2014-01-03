@@ -1498,6 +1498,7 @@ char acs_unaccent(unsigned int uc);
 extern int acs_vc_nrows, acs_vc_ncols;
 extern int acs_vc_row, acs_vc_col;
 void acs_vc(void);
+void acs_screensnap(void);
 
 
 #endif
