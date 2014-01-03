@@ -44,7 +44,7 @@ Jupiter is unique among all adapters in that it does not (by default) transform 
 It is not typically used as a screen reader.&nbsp;
 It is capable of reading screen memory
 and interacting with certain curses programs,
-but it typically runs in line mode,
+but it typically runs in linear mode,
 capturing all tty output like a paper teletype and making it available to the blind user through speech.&nbsp;
 The buffer is 64K, and could represent several hours of work,
 depending on the nature and quantity of output during that time.&nbsp;
@@ -386,7 +386,7 @@ Most of these modes are global to all consoles.&nbsp;
 For example, if autoread is on, then it remains on even if you switch from console 2 to console 8.&nbsp;
 But some modes are per-console.&nbsp;
 For instance, you may have an application running on console 9 that has to operate in screen mode,
-while all the other consoles run happily in line mode.&nbsp;
+while all the other consoles run happily in linear mode.&nbsp;
 The modes are as follows.
 
 <DL>
@@ -443,7 +443,7 @@ and in those situations you just have to play along.
 
 <P>
 Due to some hard compiled limits, screen mode will not work at all if the screen has more than 20,000 cells.&nbsp;
-Jupiter will simply buzz for larger screens, and remain in line mode.&nbsp;
+Jupiter will simply buzz for larger screens and remain in linear mode.&nbsp;
 The largest screen I've run into so far is 48 by 170 = 8,160.
 
 <P><DT>Oneline
@@ -627,14 +627,14 @@ Key bindings will be described later, after I have presented the atomic speech c
 
 <H3 align=center> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </H3>
 
-The reading cursor is a location in the tty buffer (in line mode),
+The reading cursor is a location in the tty buffer (in linear mode),
 or on screen (in screen mode),
 that corresponds to the letters or words you are reading or would like to read.&nbsp;
 This is independent of the visual cursor that is on the screen, where text is entered or modified.&nbsp;
 thus you can read the text anywhere on the screen,
 just as a sighted person might lift his eyes to read the text at the top of the screen,
 or lower his eyes to read the status message at the bottom of the screen.&nbsp;
-In line mode the effect is even more pronounced.&nbsp;
+In linear mode the effect is even more pronounced.&nbsp;
 You might wonder exactly what happened two hours ago,
 when you typed in rm *.&nbsp;
 Were you in the right directory?&nbsp;
@@ -645,7 +645,7 @@ then read the line after to review the computer's response,
 exactly as it took place
 some two hours ago (assuming not a lot of output between then and now).&nbsp;
 Other screen readers refer to this roaming about as "screen review".&nbsp;
-Fair enough, but a bit misleading if you are in line mode,
+Fair enough, but a bit misleading if you are in linear mode,
 for then you are reading text out of the tty buffer and not off the screen.
 
 <P>
@@ -672,7 +672,7 @@ Move the reading cursor to the visual cursor on screen.&nbsp;
 This is where the action is.&nbsp;
 A composite command might go down to the bottom of the screen, read the status message,
 then issue this command to return to the visual cursor.&nbsp;
-This command has no effect in line mode.
+This command has no effect in linear mode.
 
 <P><DT>clbuf:
 <DD>
@@ -693,7 +693,7 @@ Place the cursor at the end of the buffer, or the lower right of the screen.
 <P><DT>sline:
 <DD>
 Place the cursor at the start of the current line.&nbsp;
-In line mode, lines are delimited by the newline character control J.&nbsp;
+In linear mode, lines are delimited by the newline character control J.&nbsp;
 Unless control char mode is enabled,
 Jupiter turns crlf into lf, so you don't have to worry about extra return characters (control M) cluttering up your tty buffer.
 
@@ -702,7 +702,7 @@ Jupiter turns crlf into lf, so you don't have to worry about extra return charac
 Place the cursor at the end of the current line.&nbsp;
 The cursor sits on the newline character that terminates the line.&nbsp;
 In screen mode the cursor sits on a mythical newline character that Jupiter inserts for you.&nbsp;
-Thus screen mode and line mode have the same look&amp;feel.
+Thus screen mode and linear mode have the same look&amp;feel.
 
 <P><DT>sword:
 <DD>
@@ -765,7 +765,7 @@ assuming the last line is a prompt.
 <DD>
 Read the current column number.&nbsp;
 The first character in a line is in column 1.&nbsp;
-Remember that lines can be very long in line mode.&nbsp;
+Remember that lines can be very long in linear mode.&nbsp;
 A series of dots, indicating progress in a file transfer,
 could create a line that is hundreds or thousands of characters long.
 
@@ -832,7 +832,7 @@ at the current location in the buffer.&nbsp;
 If you are at the start of the buffer you might issue this command, then type the letter t, to mark this as the top of the buffer.&nbsp;
 That's rather silly, since there is already a start of buffer command, but I present it as an example.&nbsp;
 Then jump t will take you back to this location.&nbsp;
-This is primarily used in line mode, where you may want to mark several locations in your tty buffer.
+This is primarily used in linear mode, where you may want to mark several locations in your tty buffer.
 
 <P><DT>jump:
 <DD>
@@ -870,6 +870,152 @@ e.g. read the line just before the line that contains the phrase "oreo cooky".
 <DD>
 Search up the buffer for a string of text.&nbsp;
 The behavior is as above, except the cursor moves backwards rather thand forwards.
+
+</DL>
+
+<P>
+While we're in the neighborhood, let's describe some other atomic commands.&nbsp;
+As you recall, Jupiter runs in several different modes.&nbsp;
+These modes can be set, cleared, and toggled using the
+stmode, clmode, and toggle commands.&nbsp;
+A follow-on letter determines the mode.&nbsp;
+Thus stmode s sets screen mode, and clmode a clears autoread mode.&nbsp;
+The letters and modes are as follows.
+
+<P>
+s screen mode versus linear mode
+<br>
+a autoread
+<br>
+n sounds (n is for noises)
+<br>
+t clicktty, clicks accompany program output
+<br>
+1 oneline mode
+<br>
+i interrupt speech with any key
+<br>
+e echo keys as typed
+<br>
+l literal reading of all punctuations
+<br>
+c control chars in buffer
+<br>
+o override rs232 signals, software flow control
+<br>
+d debug messages in /var/log/acslog
+
+<P>
+Most reading commands will start by setting or clearing oneline mode.&nbsp;
+To read the next line, and only the next line, do this.
+
+<P>
+stmode 1 eline for read
+
+<P>
+To read from your current location to the end of the bufffer, do this.
+
+<P>
+clmode 1 read
+
+<P>
+Several atomic commands control the speech synthesizer.&nbsp;
+Some of these may not be implemented, depending on your synthesizer.
+
+<P>
+The volume, speed, pitch, and voice can be set,
+using the volume, speed, pitch, and voice commands.&nbsp;
+Each command takes a follow-on digit from 0 to 9.&nbsp;
+0 is the slowest speed and 9 is the fastest, and similarly for volume and pitch.&nbsp;
+The voice command selects one of several voices, and then says "hello there",
+so you can hear how the voice sounds.&nbsp;
+However, this is only implemented for a couple of external synthesizers.&nbsp;
+Yes, espeakup has several voices to choose from, but you cannot change them on the fly.&nbsp;
+It is a -V option that is part of the espeakup command line.
+
+<P>
+Other commands increase or decrease these parameters as follows.
+
+<P>
+incvol increase volume
+<br>
+decvol decrease volume
+<br>
+incspd increase speed
+<br>
+decspd decrease speed
+<br>
+incpch increase pitch
+<br>
+decpch decrease pitch
+
+<P>
+It's nice to have some nearby keys to increase and decrease volume,
+commensurate with the background noise of your surroundings.
+
+<P>
+Here are a few more system commands.&nbsp;
+Like the synthesizer commands, these are run on their own,
+and not combined into larger commands.
+
+<DL>
+<DT>bypass:
+<DD>
+What happens if F2 reads the current line, and yet you have to pass F2 to your running program?&nbsp;
+The bypass command takes the next key and passes it through, as though it had no meaning.&nbsp;
+This is rarely needed in linear mode,
+except to pass control D through for EOF, and control C for interrupt.
+
+<P><DT>bind:
+<DD>
+Read a text string from the keyboard and pass it to Jupiter as though it had come from the config file.&nbsp;
+Thus you can change key bindings or pronunciations on the fly.&nbsp;
+This is generally used for testing.&nbsp;
+You should really keep your keyboard layouts and pronunciations in config files.
+
+<P><DT>reexec:
+<DD>
+Restart the adapter.&nbsp;
+This is for developers; after you havemade a change to the software you can restart the program with one button.&nbsp;
+The same arguments are passed to the program.
+
+<P><DT>reload:
+<DD>
+Reload a config file.&nbsp;
+The name of the file is entered at the keyboard,
+and is taken relative to /etc/jupiter, unless it begins with a slash.&nbsp;
+Issue this command if you have made a change to your config file,
+or you want to use another configuration
+that is better suited to your application.&nbsp;
+If the file cannot be found, or is unreadable,
+Jupiter sounds the error bell and retains the preexisting configuration.
+
+<P><DT>dump:
+<DD>
+Dump the current buffer, in utf8, to /tmp/bufn, where n is the number of your current console.&nbsp;
+This is a snapshot of the tty log or screen memory.
+
+<P><DT>suspend:
+<DD>
+Suspend the adapter.&nbsp;
+Activate transparent mode, as described in an earlier section.
+
+<P><DT>step:
+<DD>
+Play a chromatic scale on the pc speaker using parameters drawn froma file.&nbsp;
+The name of the file is entered at the keyboard,
+and is taken relative to /etc/jupiter, unless it begins with a slash.&nbsp;
+The file contains 4 numbers separated by commas.&nbsp;
+The first is a start frequency and the second is an end frequency.&nbsp;
+The third is a geometric step, as measured in percent.&nbsp;
+Thus 6 takes steps of 6%,
+which produces a traditional chromatic scale.&nbsp;
+A negative step gives a descending scale.&nbsp;
+The fourth number is the duration of each note in hundredths of a second.&nbsp;
+Here is a pretty sound.
+
+<P>
+8000,200,-10,40
 
 </DL>
 
