@@ -169,6 +169,11 @@ For instance, ACS_SS_LALT|ACS_SS_CTRL will capture
 the key when modified by the left alt and the control keys simultaneously.
 Any combinations not specifically intercepted will pass through to the console.
 
+The additional bit ACS_KEY_T will cause the key to tee back to your adapter
+and to the console. This is typically used to stop any reading in progress,
+and send the key to a running program, which you expect to produce
+new output that you want to hear.
+
 ACS_UNSET_KEY
 
 The parameters are the key code and the shift state.
@@ -178,15 +183,11 @@ and will pass through to the console.
 
 ACS_ISMETA
 
-This takes the key code,
-and 1 or 0, enabled or disabled.
-If enabled, the key is a meta key, like shift or alt etc.
-It always passes through to the console.
+This takes a key code and a shift state. If the shift state is nonzero,
+the key becomes a meta key, like shift or alt etc.
+Holding it down has the same effect as holding down the original modifier(s).
 For example, Speakup uses the insert key to modify other keys.
-To simulate this, use loadkeys to make insert the same as right alt,
-then call this function to tell the driver that insert is a meta key,
-and should always be passed through.
-		acs_ismeta(KEY_INSERT, 1);
+To simulate this, call acs_ismeta(KEY_INSERT, ACS_SS_RALT);
 You can then bind various speech functions to right alt keys,
 and use the insert key for right alt.
 

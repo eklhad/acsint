@@ -194,8 +194,7 @@ reset_meta(void)
 } /* reset_meta */
 
 
-/* Indicate which keys should be intercepted.
- * There is an intersception state, or istate, for each key.
+/* Indicate which keys should be captured by your running adapter.
  * This is an unsigned short, with a bit for each shift alt control combination.
  * This includes the first bit, which corresponds to a shift state of 0,
  * or the plain key.  You want that for function keys etc,
@@ -204,13 +203,17 @@ reset_meta(void)
  * But I don't place any restrictions on what is intercepted,
  * so do whatever you like. */
 
-static unsigned short istate[ACS_NUM_KEYS];
+static unsigned short capture[ACS_NUM_KEYS];
+
+/* If a key is captured, it can still be passed through to the console. */
+
+static unsigned short passt[ACS_NUM_KEYS];
 
 static void clear_keys(void)
 {
 	int i;
 	for (i = 0; i < ACS_NUM_KEYS; i++)
-		istate[i] = 0;
+		capture[i] = passt[i] = 0;
 }
 
 /* divert all keys to user space, to grab the next key or build a string. */
@@ -506,9 +509,14 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			len--;
 			get_user(shiftstate, p++);
 			len--;
-			if (key < ACS_NUM_KEYS)
-				istate[key] |=
+			if (key < ACS_NUM_KEYS) {
+				passt[key] = 0;
+				if(shiftstate & ACS_KEY_T)
+					passt[key] = 1;
+				shiftstate &= 0xf;
+				capture[key] |=
 				    ((unsigned short)1 << shiftstate);
+			}
 			break;
 
 		case ACS_UNSET_KEY:
@@ -519,9 +527,12 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			len--;
 			get_user(shiftstate, p++);
 			len--;
-			if (key < ACS_NUM_KEYS)
-				istate[key] &=
+			if (key < ACS_NUM_KEYS) {
+				passt[key] = 0;
+				shiftstate &= 0xf;
+				capture[key] &=
 				    ~((unsigned short)1 << shiftstate);
+			}
 			break;
 
 		case ACS_ISMETA:
@@ -1121,7 +1132,7 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 
 	action = 0;
 	if (key < ACS_NUM_KEYS)
-		action = istate[key];
+		action = capture[key];
 
 	divert = key_divert;
 	monitor = key_monitor;
@@ -1152,6 +1163,8 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 
 	if (action & (1 << ss)) {
 		keep = true;
+		if(passt[key] & (1<<ss))
+			send = true;
 		goto event;
 	}
 

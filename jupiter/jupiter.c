@@ -501,7 +501,7 @@ static char oneLine; /* read one line at a time */
 static char ctrack; /* track visual cursor in screen mode */
 static char overrideSignals = 0; // don't rely on cts rts etc
 static char keyInterrupt;
-static char goRead; /* read the next sentence */
+static char goRead, goRead2; /* read the next sentence */
 /* for cut&paste */
 #define markleft acs_mb->marks[26]
 static unsigned int *markright;
@@ -1296,12 +1296,11 @@ interrupt();
 speakChar(c, 1, soundsOn, 0);
 }
 
+if(!echo) goRead2 = 1;
 if(acs_rb) return;
 ctrack = 1;
 if(!autoRead) return;
-if(echo) return;
-
-goRead = 1;
+if(!echo) goRead = 1;
 } /* more_h */
 
 static void
@@ -1536,6 +1535,7 @@ lastrow = acs_vc_row, lastcol = acs_vc_col;
 acs_log("lc %d,%d\n", lastrow, lastcol);
 }
 
+goRead2 = 0;
 acs_all_events();
 
 key_command:
@@ -1574,7 +1574,7 @@ if(!acs_rb) { acs_log("read off\n"); continue; }
 if(!readNextMark) { acs_rb = 0; acs_log("mark off\n"); continue; }
 acs_log("mark2 %d\n", readNextMark - acs_rb->start);
 
-if(!*readNextMark) goto autoscreen;
+if(!*readNextMark) { acs_rb = 0; goto autoscreen; }
 
 while(c = *readNextMark) {
 if(c != ' ' && c != '\n' &&
@@ -1589,10 +1589,13 @@ acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
 oneLine = 0;
 readNextPart();
 continue;
+}
 
 autoscreen:
-acs_rb = 0;
 if(!screenMode) continue;
+if(!goRead2) continue;
+if(acs_rb) continue;
+
 acs_screensnap();
 
 // read new character if you arrowed left or right one character
@@ -1625,8 +1628,6 @@ newcmd[4] = cmdByName("cursor");
 newcmd[5] = 0;
 runSpeechCommand(0, newcmd);
 continue;
-}
-
 }
 
 }

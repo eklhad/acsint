@@ -60,4 +60,6 @@ enum acs_command {
 #define ACS_SS_LALT (1<<KG_ALT)
 #define ACS_SS_ALT (ACS_SS_LALT|ACS_SS_RALT)
 
+#define ACS_KEY_T 0x20
+
 #endif
