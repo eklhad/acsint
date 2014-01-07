@@ -569,6 +569,7 @@ acs_cursorset();
 break;
 case 'd':
 acs_debug = jdebug;
+if(jdebug) truncate("/var/log/acslog", 0);
 break;
 case 'c':
 if(*p) save_postprocess = acs_postprocess, acs_postprocess = 0;
@@ -1603,6 +1604,7 @@ acs_log("vc %d,%d\n", acs_vc_row, acs_vc_col);
 if(acs_vc_row == lastrow && (acs_vc_col == lastcol+1 || acs_vc_col == lastcol-1)) {
 acs_mb->cursor = acs_mb->v_cursor;
 autoletter:
+acs_log("autochar %c\n", acs_mb->cursor[0]);
 		speakChar(acs_mb->cursor[0], 1, soundsOn, 1);
 continue;
 }
@@ -1610,6 +1612,7 @@ continue;
 // read new word if you arrowed left or right one word
 if(acs_vc_row == lastrow && acs_vc_col != lastcol) {
 acs_mb->cursor = acs_mb->v_cursor;
+acs_log("autoword %c\n", acs_mb->cursor[0]);
 newcmd[0] = cmdByName("word");
 newcmd[1] = cmdByName("cursor");
 newcmd[2] = 0;
@@ -1620,6 +1623,7 @@ continue;
 // read new line if you arrowed up or down one line
 if(acs_vc_row == lastrow+1 || acs_vc_row == lastrow-1) {
 acs_mb->cursor = acs_mb->v_cursor;
+acs_log("autoline %c\n", acs_mb->cursor[0]);
 newcmd[0] = cmdByName("sline");
 newcmd[1] = cmdByName("stmode");
 newcmd[2] = '1';

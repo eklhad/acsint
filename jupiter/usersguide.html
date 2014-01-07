@@ -576,7 +576,10 @@ This is used for debugging serial connections, and is rarely needed.
 
 <P>
 <DD>
-When debug is enabled, status messages are written to /var/log/acslog.&nbsp;
+When debug is enabled,
+the file /var/log/acslog is truncated (not removed),
+and status messages are written to /var/log/acslog,
+until debug mode is turned off.&nbsp;
 This helps me debug the acsint system and the Jupiter adapter.&nbsp;
 A typical user will never activate this mode.
 
