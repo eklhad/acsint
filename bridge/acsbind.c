@@ -466,7 +466,7 @@ static char *speechcommandlist[MK_RANGE];
 static unsigned char ismetalist[ACS_NUM_KEYS];
 
 /* a mirror of passt in the device driver */
-static unsigned char passt[ACS_NUM_KEYS];
+static unsigned short passt[ACS_NUM_KEYS];
 
 void acs_clearmacro(int mkcode)
 {

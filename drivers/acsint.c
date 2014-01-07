@@ -481,7 +481,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 {
 	char c;
 	const char *p = buf;
-	int j, key, shiftstate, bytes_write;
+	int j, key, shiftstate, teebit, bytes_write;
 	int nn;			/* number of notes */
 	short notes[2 * (10 + 1)];
 	int isize;		/* size of input to inject */
@@ -510,12 +510,16 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			get_user(shiftstate, p++);
 			len--;
 			if (key < ACS_NUM_KEYS) {
-				passt[key] = 0;
-				if(shiftstate & ACS_KEY_T)
-					passt[key] = 1;
+				teebit = (shiftstate & ACS_KEY_T);
 				shiftstate &= 0xf;
 				capture[key] |=
-				    ((unsigned short)1 << shiftstate);
+				    (1 << shiftstate);
+				if(teebit)
+					passt[key] |=
+					    (1 << shiftstate);
+				else
+					passt[key] &=
+					    ~(1 << shiftstate);
 			}
 			break;
 
