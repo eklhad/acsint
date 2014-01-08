@@ -20,12 +20,14 @@
 #include <linux/version.h>
 #include <linux/poll.h>
 
-#if defined(CONFIG_TTYCLICKS) || defined(CONFIG_TTYCLICKS_MODULE)
+#ifndef NO_TTYCLICKS
 #include "ttyclicks.h"
 #else
+
 static bool ttyclicks_on;
 static bool ttyclicks_tty;
 static bool ttyclicks_kmsg;
+
 static void ttyclicks_notes(const short *a)
 {
 }
@@ -45,6 +47,7 @@ static void ttyclicks_click(void)
 static void ttyclicks_cr(void)
 {
 }
+
 #endif
 
 #include "acsint.h"
