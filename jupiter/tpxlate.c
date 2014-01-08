@@ -58,6 +58,7 @@ const char *millionWord;
 const char *billionWord;
 const char *trillionWord;
 const char *bigNumbers[5];
+const char *hundWords[10];
 const char *hundredthWord;
 /*Sometimes it's more portable to use words than numbers. */
 /*Especially if you're adding 's on the end, such as 5 Boing 707's. */
@@ -258,6 +259,7 @@ static const struct OUTWORDS outwords[5] = {
 {"twenty", "thirdy", "fordy", "fifdy", "sixdy", "sevendy", "eighty", "ninety"},
 "hundred", "thousand", "million", "billion", "trillion",
 {"thousand", "million", "billion", "trillion", 0},
+{0},
 "hundredth",
 {"0", /* I haven't found a good portable word for zero */
 "one", "too", "three", "four", "five", "six", "seven", "ate", "nine"},
@@ -367,6 +369,7 @@ static const struct OUTWORDS outwords[5] = {
 {"zwansig", "dreizig", "vierzig", "fünfzig", "sechzig", "sebzig", "ochtzig", "neunzig"},
 "hundert", "tausand", "million", "billion", "trillion",
 {"tausand", "million", "billion", "trillion", 0},
+{0},
 "hundert",
 {"0", /* I haven't found a good portable word for zero */
 "einz", "zwei", "drei", "vier", "fünf", "sechs", "seben", "ocht", "neun"},
@@ -477,6 +480,7 @@ static const struct OUTWORDS outwords[5] = {
 "oitenta", "noventa"},
 "cem", "mil", "milhão", "bilhão", "trilhão",
 {"mil", "milhão", "bilhão", "trilhão", 0},
+{0, "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"},
 "centésimo",
 {"0", /* I haven't found a good portable word for zero */
 "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"},
@@ -947,6 +951,13 @@ static int append3num(int n, int dohundred, int zero)
 		if(zero) return appendIdigit(0);
 		return 0;
 	}
+
+// PT complicated; just feed to the synth.
+if(acs_lang == ACS_LANG_PT_BR) {
+char buf[4];
+sprintf(buf, "%d", n);
+return appendString(buf);
+}
 
 	if(n >= 100) {
 		rc |= appendIdigit(n/100);
