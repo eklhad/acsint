@@ -25,14 +25,14 @@ struct cmd {
 	const char brief[12]; // brief name for the command
 	char cact; /* some kind of reading cursor action */
 	char nonempty; // buffer must be nonempty and perhaps a valid cursor
-	char endstring; // must be last or alone in a command sequence
+	char alone; // must be alone in a command sequence
 	char nextchar; // needs next key or string to complete command
 };
 
 /* the available speech commands */
 static const struct cmd speechcommands[] = {
 	{0,""}, // 0 is not a function
-	{"clear buffer","clbuf",0,0,2},
+	{"clear buffer","clbuf"},
 	{"visual cursor","cursor",1,1},
 	{"start of buffer","sbuf",1,1},
 	{"end of buffer","ebuf",1,1},
@@ -52,34 +52,34 @@ static const struct cmd speechcommands[] = {
 	{"current cohllumm number","colnum",1,3},
 	{"reed the current word","word",1,3},
 	{"start reeding","read",1,3},
-	{"stop speaking","shutup",0,0,2},
-	{"pass next karecter through","bypass",0,0,2},
+	{"stop speaking","shutup",0,0,1},
+	{"pass next karecter through","bypass",0,0,1},
 	{"clear bighnary mode","clmode",0,0,0,1},
 	{"set bighnary mode","stmode",0,0,0,1},
 	{"toggle bighnary mode","toggle",0,0,0,1},
 	{"search up","searchu",1,3,0,2},
 	{"search down","searchd",1,3,0,2},
-	{"set volume","volume",0,0,2,1},
-	{"increase volume", "incvol",0,0,2},
-	{"decrease volume", "decvol",0,0,2},
-	{"set speed","speed",0,0,2,1},
-	{"increase speed", "incspd",0,0,2},
-	{"decrease speed", "decspd",0,0,2},
-	{"set pitch","pitch",0,0,2,1},
-	{"increase pitch", "incpch",0,0,2},
-	{"decrease pitch", "decpch",0,0,2},
-	{"set voice", "voice",0,0,2, 1},
-	{"key binding","bind",0,0,2,2},
+	{"set volume","volume",0,0,0,1},
+	{"increase volume", "incvol"},
+	{"decrease volume", "decvol"},
+	{"set speed","speed",0,0,0,1},
+	{"increase speed", "incspd"},
+	{"decrease speed", "decspd"},
+	{"set pitch","pitch",0,0,0,1},
+	{"increase pitch", "incpch"},
+	{"decrease pitch", "decpch"},
+	{"set voice", "voice",0,0,0, 1},
+	{"key binding","bind",0,0,1,2},
 	{"last complete line","lcline",1,1},
 	{"mark left", "markl",1,3},
 	{"mark right", "markr",1,3, 0, 1},
-	{"obsolete", "x@y`",0, 0, 0, 1},
+	{"obsolete", "x@y`"},
 	{"label", "label",1,3, 0, 1},
 	{"jump", "jump",1, 1, 0, 1},
-	{"restart the adapter","reexec",0,0,2},
-	{"reload the config file","reload",0,0,2,2},
-	{"dump buffer","dump",0,0,2},
-	{"suspend the adapter","suspend",0,0,2},
+	{"restart the adapter","reexec",0,0,1},
+	{"reload the config file","reload",0,0,1,2},
+	{"dump buffer","dump",0,0,1},
+	{"suspend the adapter","suspend",0,0,1},
 	{"chromatic scale","step",0,0,0,2},
 	{0,""}
 };
@@ -372,8 +372,7 @@ compStatus(int cmd)
 	unsigned compstat;
 	const struct cmd *cmdp = speechcommands + cmd;
 compstat = cmdp->nextchar;
-	if(cmdp->endstring == 1) compstat |= 4;
-	if(cmdp->endstring == 2) compstat |= 12;
+	if(cmdp->alone) compstat |= 12;
 	return compstat;
 } // compStatus
 
@@ -451,8 +450,9 @@ static const char *acsdriver = "/dev/acsint";
 /* configure the jupiter system from a config file. */
 static const char default_config[] = "/etc/jupiter/start.cfg";
 static const char *start_config = default_config;
+static void runSpeechCommand(int input, const char *cmdlist);
 static void
-j_configure(const char *my_config)
+j_configure(const char *my_config, int istest)
 {
 FILE *f;
 char line[200];
@@ -475,7 +475,16 @@ if(s > line && s[-1] == '\n') --s;
 if(s > line && s[-1] == '\r') --s;
 *s = 0;
 
+// special execute now code
+if(line[0] == ':' && line[1] == ':') {
+rc = cfg_syntax(line+2);
+if(rc) goto syn_error;
+else if(!istest) runSpeechCommand(0, line+2);
+continue;
+}
+
 if(rc = acs_line_configure(line, cfg_syntax)) {
+syn_error:
 fprintf(stderr, "%s %s %d: ",
 my_config, lineword[acs_lang], lineno);
 fprintf(stderr, configError[acs_lang][-rc], last_atom);
@@ -827,6 +836,7 @@ static 	char lasttext[256]; /* supporting text */
 const char *t;
 char *cut8;
 
+acs_log("runSpeech\n");
 interrupt();
 cmd_resume = 0;
 
@@ -837,6 +847,7 @@ acs_cursorset();
 
 top:
 	cmd = *cmdlist;
+acs_log("cmd %d\n", cmd);
 if(cmd) ++cmdlist;
 	cmdp = &speechcommands[cmd];
 if(cmdp->cact) ctrack = 0;
@@ -1181,7 +1192,7 @@ if(access(jfile, 4)) goto error_bell;
 acs_cr();
 acs_reset_configure();
 acs_say_string(reloadword[acs_lang]);
-j_configure(jfile);
+j_configure(jfile, 0);
 return;
 
 case 47: /* dump tty buffer to a file */
@@ -1276,9 +1287,15 @@ suspend();
 /* fifo input still works, even if suspended */
 static void fifo_h(char *msg)
 {
+int rc;
 /* stop reading, and speak the message */
 interrupt();
-acs_say_string(msg);
+// special execute now code
+if(msg[0] == ':' && msg[1] == ':') {
+rc = cfg_syntax(msg+2);
+if(rc) acs_bell();
+else runSpeechCommand(0, msg+2);
+} else acs_say_string(msg);
 } /* fifo_h */
 
 static void more_h(int echo, unsigned int c)
@@ -1328,7 +1345,7 @@ char *out;
 /* This doesn't go through the normal acs_open() process */
 acs_reset_configure();
 /* key bindings don't matter here, but let's load our pronunciations */
-j_configure(start_config);
+j_configure(start_config, 1);
 
 while(fgets(line, sizeof(line), stdin)) {
 out = acs_uni2utf8(prepTTSmsg(line));
@@ -1443,7 +1460,7 @@ return 0;
 }
 
 if(argc && stringEqual(argv[0], "tc")) {
-j_configure(start_config);
+j_configure(start_config, 1);
 return 0;
 }
 
@@ -1489,10 +1506,6 @@ acs_more_h = more_h;
 acs_fifo_h = fifo_h;
 acs_imark_h = imark_h;
 
-// this has to run after the device is open,
-// because it sends "key capture" commands to the acsint driver
-j_configure(start_config);
-
 if (cmd && acs_pipe_system(cmd) == -1) {
 fprintf(stderr, execSoft[acs_lang], cmd);
 exit(1);
@@ -1509,11 +1522,6 @@ openSound();
 if(synths[i].initstring)
 acs_say_string(synths[i].initstring);
 
-/* Adjust rate and voice, then greet. */
-acs_setvoice(4);
-acs_setspeed(9);
-acs_say_string(readyword[acs_lang]);
-
 acs_startfifo("/etc/jupiter/fifo");
 
 /* I have a low usage machine, so a small gap in output
@@ -1523,6 +1531,17 @@ acs_obreak(4);
 /* This is the same as the default, but I set it here for clarity. */
 acs_postprocess = ACS_PP_CTRL_H | ACS_PP_CRLF |
 ACS_PP_CTRL_OTHER | ACS_PP_ESCB;
+
+// First event sets the console, in case config file has execution commands.
+acs_all_events();
+
+/* this has to run after the device is open,
+ * because it sends key capture commands to the acsint driver,
+ * and after the first event sets up the console. */
+j_configure(start_config, 0);
+
+// jupiter ready
+acs_say_string(readyword[acs_lang]);
 
 /* This runs forever, you have to hit interrupt to kill it,
  * or kill it from another console. */
