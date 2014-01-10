@@ -20,36 +20,7 @@
 #include <linux/version.h>
 #include <linux/poll.h>
 
-#ifndef NO_TTYCLICKS
 #include "ttyclicks.h"
-#else
-
-static bool ttyclicks_on;
-static bool ttyclicks_tty;
-static bool ttyclicks_kmsg;
-
-static void ttyclicks_notes(const short *a)
-{
-}
-
-static void ttyclicks_steps(int start, int end, int step, int duration)
-{
-}
-
-static void ttyclicks_bell(void)
-{
-}
-
-static void ttyclicks_click(void)
-{
-}
-
-static void ttyclicks_cr(void)
-{
-}
-
-#endif
-
 #include "acsint.h"
 
 #define ACS_DEVICE "/dev/acsint"
@@ -101,7 +72,7 @@ static int user_bufsize = 256;
 /* jiffies value for the last output character. */
 /* This is reset if the last output character is echo. */
 static unsigned long last_oj;
-/* How many tenths of a second separate one stream of output from the next? */
+/* How many tenths of a second separate one burst of output from the next? */
 static int outputbreak = 5;
 
 /* Initialize / reset the variables in the circular buffer. */
@@ -740,7 +711,7 @@ static struct miscdevice acsint_dev = {
 };
 
 /* Variables to remember the entered keystrokes, to watch for echo.
- * If these keys reappear on screen in a timely fashion,
+ * If these keys reappear on screen in a timely fashion, without other output,
  * they are considered echo chars. */
 
 #define MAXKEYPENDING 8
@@ -815,7 +786,7 @@ static int isEcho(unsigned int c)
 			return 0;
 	}
 
-/* to jump into the state machine we need to match on the first character */
+/* we need to match on the first character */
 	d = keystack[0].unicode;
 	if (d == '\t' && c == ' ') {
 		dropKeysPending(1);
@@ -838,20 +809,12 @@ static int isEcho(unsigned int c)
 		return 2;
 	}
 
-	for (j = 0; j < nkeypending; ++j) {
-		if (keystack[j].unicode != c)
-			continue;
-/* straight echo match */
-		dropKeysPending(j + 1);
+	if(d == c) {
+		dropKeysPending(1);
 		return 1;
 	}
 
-/* Because of tab completion in many programs, bash in particular,
- * I don't want to match tab with space unless space comes
- * back to me immediately.  It didn't, so drop tab. */
-	if (d == '\t')
-		dropKeysPending(1);
-
+	flushInKeyBuffer();
 	return 0;
 }				/* isEcho */
 

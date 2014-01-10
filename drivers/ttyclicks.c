@@ -163,15 +163,17 @@ static int charIsEcho(char c)
 			ectail = j;
 			continue;
 		}
+/* This one has to match, or other output is getting in the way. */
 		d = echochars[j].inkey;
 		if (++j == ECHOMAX)
 			j = 0;
-		if (d != c)
-			continue;
-		ectail = j;
-		return 1;
+		if (d == c) {
+			ectail = j;
+			return 1;
+		}
 	}
 
+	ectail = echead;
 	return 0;
 }				/* charIsEcho */
 
