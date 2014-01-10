@@ -86,8 +86,6 @@ static const struct cmd speechcommands[] = {
 
 #define CMD_SUSPEND 48
 
-static short const max_cmd = sizeof(speechcommands)/sizeof(struct cmd) - 1;
-
 /* messages in the languages supported. */
 
 static const char *usageMessage[] = {
@@ -847,9 +845,12 @@ acs_cursorset();
 
 top:
 	cmd = *cmdlist;
-acs_log("cmd %d\n", cmd);
 if(cmd) ++cmdlist;
+// range check
+if((unsigned char)cmd >= sizeof(speechcommands)/sizeof(struct cmd))
+goto error_bell;
 	cmdp = &speechcommands[cmd];
+acs_log("cmd %s\n", cmdp->brief);
 if(cmdp->cact) ctrack = 0;
 asword = 0;
 
@@ -906,6 +907,7 @@ break;
 		if(!screenMode) break;
 acs_mb->cursor = acs_mb->v_cursor;
 acs_cursorset();
+ctrack = 1;
 		break;
 
 	case 3: acs_startbuf(); break;
