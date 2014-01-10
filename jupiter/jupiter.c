@@ -683,13 +683,6 @@ char *w = acs_uni2utf8(tp_in->buf+1);
 if(w) {
 acs_log("insentence %s\n", w);
 free(w);
-#if 0
-/* show offsets as returned by getsentence() */
-tp_in->len = 1 + acs_unilen(tp_in->buf+1);
-for(i=1; i<=tp_in->len; ++i)
-if(tp_in->offset[i])
-acs_log("%d=%d\n", i, tp_in->offset[i]);
-#endif
 }
 }
 
@@ -1316,7 +1309,7 @@ interrupt();
 speakChar(c, 1, soundsOn, 0);
 }
 
-if(!echo) goRead2 = 1;
+goRead2 = (echo == 0);
 if(acs_rb) return;
 ctrack = 1;
 if(!autoRead) return;
@@ -1414,6 +1407,7 @@ main(int argc, char **argv)
 int i, port;
 char serialdev[20];
 char *cmd = NULL;
+int lastrow, lastcol;
 
 /* remember the arg vector, before we start marching along. */
 argvector = argv;
@@ -1545,19 +1539,18 @@ j_configure(start_config, 0);
 // jupiter ready
 acs_say_string(readyword[acs_lang]);
 
-/* This runs forever, you have to hit interrupt to kill it,
- * or kill it from another console. */
-while(1) {
-int lastrow, lastcol;
-char newcmd[8];
-
 if(screenMode & autoRead) {
 acs_vc();
 lastrow = acs_vc_row, lastcol = acs_vc_col;
 acs_log("lc %d,%d\n", lastrow, lastcol);
 }
 
-goRead2 = 0;
+/* This runs forever, you have to hit interrupt to kill it,
+ * or kill it from another console. */
+
+while(1) {
+char newcmd[8];
+
 acs_all_events();
 
 key_command:
@@ -1609,14 +1602,26 @@ if(!c) goto refetch;
 acs_log("mark3 %d %c\n", readNextMark - acs_rb->start, c);
 // autoread turns off oneLine mode.
 oneLine = 0;
+if(screenMode) {
+acs_vc();
+lastrow = acs_vc_row, lastcol = acs_vc_col;
+acs_log("lc %d,%d\n", lastrow, lastcol);
+}
 readNextPart();
 continue;
 }
 
 autoscreen:
 if(!screenMode) continue;
-if(!goRead2) continue;
-if(acs_rb) continue;
+if(!autoRead) continue;
+
+if(!goRead2 || acs_rb) {
+// note the (possibly new) position of the cursor; that's it.
+acs_vc();
+lastrow = acs_vc_row, lastcol = acs_vc_col;
+acs_log("lc %d,%d\n", lastrow, lastcol);
+continue;
+}
 
 acs_screensnap();
 
@@ -1627,7 +1632,7 @@ acs_mb->cursor = acs_mb->v_cursor;
 autoletter:
 acs_log("autochar %c\n", acs_mb->cursor[0]);
 		speakChar(acs_mb->cursor[0], 1, soundsOn, 1);
-continue;
+goto updatecursor;
 }
 
 // read new word if you arrowed left or right one word
@@ -1638,7 +1643,7 @@ newcmd[0] = cmdByName("word");
 newcmd[1] = cmdByName("cursor");
 newcmd[2] = 0;
 runSpeechCommand(0, newcmd);
-continue;
+goto updatecursor;
 }
 
 // read new line if you arrowed up or down one line
@@ -1652,9 +1657,11 @@ newcmd[3] = cmdByName("read");
 newcmd[4] = cmdByName("cursor");
 newcmd[5] = 0;
 runSpeechCommand(0, newcmd);
-continue;
+// fall through
 }
 
+updatecursor:
+lastrow = acs_vc_row, lastcol = acs_vc_col;
 }
 
 acs_close();
