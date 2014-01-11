@@ -610,7 +610,7 @@ You can have many different config files in /etc/jupiter,
 tailored to specific applications.&nbsp;
 These can be loaded at run time.&nbsp;
 You can type in the name of a file to load, or preset a key to load a given config file.&nbsp;
-If a preset filename does not begin with a slash, it is taken relative to /etc/jupiter.&nbsp;
+If an entered or preset filename does not begin with a slash, it is taken relative to /etc/jupiter.&nbsp;
 This is different from the -c option,
 where the filename is taken relative to the current directory.&nbsp;
 If you have 4 different config files in /etc/jupiter,
@@ -628,10 +628,17 @@ F11 reload foo3
 F12 reload foo4
 
 <P>
-These bindings should be the same in every config file, so you can switch between them in a consistent manner.&nbsp;
-Of course other keys will differ, from one config file to another, in their placement and functionality;
-else why would you have different config files?&nbsp;
+These four bindings should be the same in every config file, so you can switch between them in a consistent manner.&nbsp;
+Of course other keys will differ from one config file to another, in their placement and functionality;
+else why would you have different config files in the first place?&nbsp;
 Key bindings will be described later, after I have presented the atomic speech commands.
+
+<P>
+A config file can include another, like #include in C.&nbsp;
+Thus common configurations, like your replacement dictionary, can be written once
+and pulled into every config file.&nbsp;
+Again these files are taken relative to /etc/jupiter,
+and the syntax of the include statement will be given later.
 
 <H3 align=center> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </H3>
 
