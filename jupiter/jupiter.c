@@ -432,7 +432,8 @@ nextchar = (compstat & 3);
 } // cfg_syntax
 
 /* prepend directory /etc/jupiter */
-static char jfile[256+20];
+#define SUPPORTLEN 200
+static char jfile[SUPPORTLEN+20];
 static void etcjup(const char *s)
 {
 if(*s == '/') {
@@ -453,13 +454,15 @@ static void
 j_configure(const char *my_config, int istest)
 {
 FILE *f;
-char line[200];
+char line[SUPPORTLEN];
 char *s;
 int lineno, rc;
+char filename[SUPPORTLEN+20];
 
-f = fopen(my_config, "r");
+strcpy(filename, my_config);
+f = fopen(filename, "r");
 if(!f) {
-fprintf(stderr, openConfig[acs_lang], my_config);
+fprintf(stderr, openConfig[acs_lang], filename);
 return;
 }
 
@@ -481,14 +484,25 @@ else if(!istest) runSpeechCommand(0, line+2);
 continue;
 }
 
+// include another file
+if(line[0] == '<' && line[1] == '<') {
+s = line + 2;
+while(*s == ' ' || *s == '\t') ++s;
+if(!*s) continue;
+etcjup(s);
+j_configure(jfile, istest);
+continue;
+}
+
 if(rc = acs_line_configure(line, cfg_syntax)) {
 syn_error:
 fprintf(stderr, "%s %s %d: ",
-my_config, lineword[acs_lang], lineno);
+filename, lineword[acs_lang], lineno);
 fprintf(stderr, configError[acs_lang][-rc], last_atom);
 fprintf(stderr, "\n");
 }
 }
+
 fclose(f);
 } // j_configure
 
@@ -817,8 +831,8 @@ static const char *cmd_resume;
 static void runSpeechCommand(int input, const char *cmdlist)
 {
 	const struct cmd *cmdp;
-	char suptext[256]; /* supporting text */
-static 	char lasttext[256]; /* supporting text */
+	char suptext[SUPPORTLEN]; /* supporting text */
+static 	char lasttext[SUPPORTLEN]; /* supporting text */
 	char support; /* supporting character */
 	int i, n;
 	int asword, quiet, rc, gsprop;
