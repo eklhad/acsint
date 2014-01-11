@@ -25,6 +25,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#cfg> Config Files </A>
 <LI><A HREF=#rc> The Reading Cursor and Atomic Commands </A>
 <LI><A HREF=#vc> The Visual Cursor and Autoread </A>
+<LI><A HREF=#cfs> Config File Syntax </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -1125,6 +1126,149 @@ You will hear the character that the cursor was on before,
 rather than the character that the cursor is on now.&nbsp;
 The T function should only be used with the shutup command;
 then Jupiter can perform autoread as it was programmed to do.
+
+<H3 align=center> <A NAME=cfs> Config File Syntax </A> </H3>
+
+Each line in a config file is one of the following.
+
+<UL>
+<P><LI>
+A line consisting of white space, or a line whose first nonblank character is a pound sign.&nbsp;
+These are ignored.
+
+<P><LI>
+key command1 command2 command3 &#8230;&nbsp;
+This is a key binding.&nbsp;
+The commands are the atomic commands described in an earlier section.&nbsp;
+These move the reading cursor about, read letters words or lines,
+set and clear modes, control the synthesizer, or modify the system in some way.&nbsp;
+Letters or strings can be included inline for those commands that require follow-on input.&nbsp;
+Here f6 toggles autoread, and f7 searches for the worrd banana in the buffer.
+
+<P>
+f6 toggle a
+<br>
+f7 searchu banana
+
+<P>
+Use quotes for a follow-on string, like this.
+
+<P>
+f7 searchu "my favorite martian"
+
+<P>
+The key is f1 through f12 for the function keys, #0 through #9 for the digits on the keypad,
+#. #+ #- #* #/ for the remaining numpad keys,
+up down left right for the arrows,
+and home, end, pageup, pagedown, insert, delete, leftmeta, rightmeta, scroll, pause, and sysrq.&nbsp;
+Don't worry, Jupiter knows that a line like this is not a comment.&nbsp;
+Instead, it causes numpad 7 to read the previous line,
+and then leave the reading cursor at the start of that line.
+
+<P>
+#7 stmode 1 sline back sline read sline
+
+<P>
+Keys can be modified by shift, control, or alt, in all combinations.&nbsp;
+The designators are +, ^, and @ respectively.&nbsp;
+Thus @home is alt home key, and +^f3 is shift control f3.&nbsp;
+You can specify the left alt key with l@ or the right alt key with r@.&nbsp;
+Thus r@u is right alt u, but not left alt u.&nbsp;
+Using @ by itself implies either alt key,
+just as + implies either shift key.
+
+<P>
+Map plain function keys or plain numpad keys to the reading functions that you perform often.&nbsp;
+Or - you may wish to assign some of these to control letters, so you don't have to leave the home row,
+but bear in mind, certain applications like nano and vi use control characters to perform their functions,
+so you would have to bypass the speech function in order to pass the control character to the application.&nbsp;
+Even 99% linear users like myself must remember that standard tty uses ^c for interrupt and ^d for EOF.
+
+<P>
+Rarely used commands, like restarting the adapter, can safely be assigned to awkward key chords like control alt #+.&nbsp;
+It's all a matter of taste.
+
+<P><LI>
+Make a key act like a modifier.&nbsp;
+It is sometimes convenient to let the large 0 key on the numpad modify the other keys.&nbsp;
+In other words, hold down 0, and the other keys take on different functions,
+as though you were holding down shift or alt.&nbsp;
+Speakup users will be familiar with this behavior.&nbsp;
+The following line causes numpad 0 to simulate the right alt key.
+
+<P>
+#0 r@
+
+<P>
+If @#5 reads the current line,
+you can accomplish the same thing by holding down #0 and hitting #5.
+
+<P>
+A key can also simulate a modifier combination, such as #0 +r@, for shift and right alt together.
+
+<P><LI>
+Set the pronunciation of a punctuation mark.&nbsp;
+The syntax is the punctuation mark, whitespace, and the word or words to say.
+
+<P>
+( left parenthesis
+<br>
+) right parenthesis
+
+<P>
+The words can be international, in utf8.&nbsp;
+However the punctuation mark must be in ascii.&nbsp;
+To set the pronunciation of a high unicode,
+you must specify the unicode in hex or in decimal.&nbsp;
+Set alpha beta gamma like this.
+
+<P>
+x3b1	alpha
+<br>
+x3b2	beta
+<br>
+x3b3	gamma
+
+<P>
+Or like this.
+
+<P>
+u945	alpha
+<br>
+u946	beta
+<br>
+u947	gamma
+
+<P><LI>
+Replace one word with another as text is being read.&nbsp;
+The word must consist of letters in your language, in utf8.&nbsp;
+It can be replaced with any string, again in utf8.
+
+<P>
+syzygy sizijee
+<br>
+sleight slite
+<br>
+czech check
+
+<P><LI>
+Include another config file.&nbsp;
+The file is taken relative to /etc/jupiter, unless it begins with a slash.
+
+<P>
+<< high-unicodes
+<br>
+<< dictionary
+
+<P><LI>
+Execute some commands right now, indicated by two leading colons.&nbsp;
+This is used to put Jupiter in an initial state.&nbsp;
+Set the volume and speed of the synthesizer, for example.
+
+<P>
+:: volume 5 speed 8 stmode l
+
+</UL>
 
 <P>
 <A HREF=#top>Back to top</A>
