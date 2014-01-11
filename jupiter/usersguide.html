@@ -24,6 +24,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#modes> Modes </A>
 <LI><A HREF=#cfg> Config Files </A>
 <LI><A HREF=#rc> The Reading Cursor and Atomic Commands </A>
+<LI><A HREF=#vc> The Visual Cursor and Autoread </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -636,9 +637,13 @@ Key bindings will be described later, after I have presented the atomic speech c
 <P>
 A config file can include another, like #include in C.&nbsp;
 Thus common configurations, like your replacement dictionary, can be written once
-and pulled into every config file.&nbsp;
-Again these files are taken relative to /etc/jupiter,
-and the syntax of the include statement will be given later.
+and pulled into every config file,like this.
+
+<P>
+<< dictionary
+
+<P>
+Again these files are taken relative to /etc/jupiter.
 
 <H3 align=center> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </H3>
 
@@ -1033,6 +1038,93 @@ Here is a pretty sound.
 8000,200,-10,40
 
 </DL>
+
+<H3 align=center> <A NAME=vc> The Visual Cursor and Autoread </A> </H3>
+
+This section has no meaning in linear mode; it only applies to screen mode.
+
+<P>
+The visual cursor is the location on the screen where new text is entered, or preexisting text is modified, or settings are changed, or other work is done.&nbsp;
+The sighted user has his eyes on the visual cursor most of the time,
+and in the same way, the blind user is reading the text at or near the visual cursor, most of the time.&nbsp;
+To support this, the reading cursor jumps to the visual cursor whenever the cursor moves, or when any new output is generated.&nbsp;
+In other words, the reading cursor is the visual cursor, unless you are specifically roaming about the screen.
+
+<P>
+Autoread will read any new output in thhe order it is generated.&nbsp;
+In fact autoread still acts like you are in linear mode.&nbsp;
+If a program updates the status message at the bottom, then the file line at the top,
+you will hear these two "sentences" in that order; then the reading cursor will return to the visual cursor on screen,
+wherever that is.&nbsp;
+If you interrupt reading with any key, the reading cursor is on the visual cursor, rather then the word you last heard.&nbsp;
+This is different from linear mode.&nbsp;
+However, if you initiate reading yourself, in screen review mode,
+then the reading cursor once again tracks the words you are hearing.&nbsp;
+You can stop and focus in on specific words or letters on the screen.&nbsp;
+Remember however that there are occasional non-ascii errors that I have no way to correct.&nbsp;
+Autoread is always right, because it reads out of the linear buffer,
+but screen review mode will sometimes lose the accent off of a vowel,
+or even replace a high unicode with another.&nbsp;
+On my system the German s-zet is replaced with the Greek beta, for example.&nbsp;
+That's just one more reason to run command line programs whenever possible.
+
+<P>
+There is another form of autoread that is unique to screen mode.&nbsp;
+If the cursor moves one character left or right,
+usually because you have hit the left or right arrow key,
+then Jupiter reads the character under the cursor in its new location.&nbsp;
+If the cursor jumps several spaces left or right,
+Jupiter reads the word under the cursor in its new location.&nbsp;
+If the cursor moves up or down a row,
+Jupiter reads the line of text on the new row.&nbsp;
+This gives you feedback as you move the visual cursor about on screen.&nbsp;
+It is one more way that Jupiter tracks the visual cursor for you.
+
+<P>
+Remember that this is a form of autoread, so the reading cursor is not tracking the words you are hearing;
+it is sitting on top of the visual cursor in its new location.
+
+<P>
+On its own, this system is not as responsive as you would like.&nbsp;
+You cannot hit down arrow rapidly in succession to move through several lines on the screen.&nbsp;
+Yes, the visual cursor moves down, but Jupiter is still reading the second line of text.&nbsp;
+You have not specifically interrupted speech, and autoread does not interrupt autoread.&nbsp;
+So you are still hearing the line of text that is several lines above the new location of the visual cursor.&nbsp;
+The secret is the T function, named after /usr/bin/tee.&nbsp;
+This replicates the arrow key and sends it to the running program,
+such as a text editor, and back to jupiter for processing.&nbsp;
+Jupiter will simply interrupt speech; then when the cursor moves,
+autoread will read the next line.&nbsp;
+In this way you can move up or down through the lines on the screen quickly and efficiently.&nbsp;
+The arrow bindings in your config file might look like this.
+
+<P>
+#  arrows move cursors, so it's a good idea for them to interrupt speech.
+<br>
+up T shutup
+<br>
+down T shutup
+<br>
+left T shutup
+<br>
+right T shutup
+
+<P>
+Don't try to perform the autoread function yourself.&nbsp;
+Don't ask jupiter to read the next character like this.
+
+<P>
+right T char
+
+<P>
+There is a race condition here that cannot be predicted or resolved.&nbsp;
+Jupiter may receive the key first,
+whence it stops reading and speaks the current character.&nbsp;
+Then the program receives the arrow key and moves right.&nbsp;
+You will hear the character that the cursor was on before,
+rather than the character that the cursor is on now.&nbsp;
+The T function should only be used with the shutup command;
+then Jupiter can perform autoread as it was programmed to do.
 
 <P>
 <A HREF=#top>Back to top</A>
