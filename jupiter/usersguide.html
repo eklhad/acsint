@@ -26,6 +26,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#rc> The Reading Cursor and Atomic Commands </A>
 <LI><A HREF=#vc> The Visual Cursor and Autoread </A>
 <LI><A HREF=#cfs> Config File Syntax </A>
+<LI><A HREF=#fifo> Jupiter fifo </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -1269,6 +1270,56 @@ Set the volume and speed of the synthesizer, for example.
 :: volume 5 speed 8 stmode l
 
 </UL>
+
+<H3 align=center> <A NAME=fifo> Jupiter fifo </A> </H3>
+
+In unix or linux, a fifo is a virtual file that carries data from one running program to another.&nbsp;
+A particular fifo is used to pass text or instructions from other programs into Jupiter.&nbsp;
+Create the fifo like this.
+
+<P>
+mkfifo -m 666 /etc/jupiter/fifo
+
+<P>
+Any text sent to this fifo is passed directly to the synthesizer without processing.&nbsp;
+Verify the fifo like this.
+
+<P>
+echo hello world > /etc/jupiter/fifo
+
+<P>
+If you cat a large file into the fifo, you may have to listen to the entire file,
+with no way to interrupt it.&nbsp;
+That's not a great idea.&nbsp;
+You will typically echo small text fragments or synthesizer commands into this channel.&nbsp;
+It is used for debugging, or to verify the behavior of the synthesizer.
+
+<P>
+If a line begins with two colons,
+then it is interpreted by Jupiter as speech commands.&nbsp;
+An external program could cause Jupiter to jump to the start of the buffer and start reading.
+
+<P>
+echo :: clmode 1 sbuf read > /etc/jupiter/fifo
+
+<P>
+Of more interest, perhaps, is the ability to load a config file based on the particular application.&nbsp;
+Consider a bash function like this.
+
+<P>
+function foo() {
+<br>
+echo :: reload foo.speach > /etc/jupiter/fifo
+<br>
+#  run the application with the given arguments
+<br>
+/usr/bin/foo $@
+<br>
+#  return to the standard bash settings
+<br>
+echo :: reload bash.speech > /etc/jupiter/fifo
+<br>
+}
 
 <P>
 <A HREF=#top>Back to top</A>
