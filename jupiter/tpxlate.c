@@ -1005,6 +1005,12 @@ static int appendYear(int y)
 {
 	int rc = 0;
 
+if(acs_lang == ACS_LANG_PT_BR) {
+char buf[6];
+sprintf(buf, "%d", y);
+return appendString(buf);
+}
+
 	if(!((y%1000) / 100)) {
 		if(y >= 1000) {
 			rc |= appendIdigit(y/1000);
@@ -1836,6 +1842,8 @@ static int expandAlphaNumeric(unsigned int **sp)
 	int i, j, value;
 	int zeroflag, oneflag, hundredflag;
 	int rc;
+char nbc = " ,,.,"[acs_lang]; // number block character
+char ndc = " ..,."[acs_lang]; // number decimal character
 
 	e = 0; /* quiet gcc */
 
@@ -1883,7 +1891,7 @@ if(			(g == '0' && e == 't') ||
 	if(c == '0') comma = start;
 	for(end=start+1; (e = *end); ++end) {
 		if(acs_isdigit(e)) continue;
-		if(e != ',') break;
+		if(e != nbc) break;
 		if(!acs_isdigit(end[1])) break;
 		if(comma == start) continue;
 		if(!comma) { /* first comma */
@@ -1908,7 +1916,7 @@ if(			(g == '0' && e == 't') ||
 	/* Bad comma arrangement?  Read each component. */
 	if(comma == start) {
 		for(q=start; q<end; ++q)
-			if(*q == ',') { end = q; break; }
+			if(*q == nbc) { end = q; break; }
 		comma = 0;
 	}
 
@@ -1962,7 +1970,7 @@ if(			(g == '0' && e == 't') ||
 	if(c == '0' && (end - start == 4 || d != '$')) goto copydigits;
 
 	/* read digits after the decimal point */
-	if(d == '.') {
+	if(d == ndc) {
 		/* Unless we are in the mids of 192.168.9.3 */
 		if(e == '.' && acs_isdigit(end[1])) goto copynumber;
 		q = start-2;
