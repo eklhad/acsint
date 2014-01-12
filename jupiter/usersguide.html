@@ -27,6 +27,7 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#vc> The Visual Cursor and Autoread </A>
 <LI><A HREF=#cfs> Config File Syntax </A>
 <LI><A HREF=#fifo> Jupiter fifo </A>
+<LI><A HREF=#sum> Summary </A>
 </UL>
 
 <H3 align=center> <A NAME=auth> Author </A> </H3>
@@ -58,7 +59,7 @@ I call this a linear adapter, rather than a screen reader,
 because it maintains a linear buffer of tty output,
 and allows the blind user to move about within this buffer and read the accumulated text.&nbsp;
 This is part of a larger philosophy,
-wherein editers, browsers, mail clients, spreadsheets, and other critical applications
+wherein editors, browsers, mail clients, spreadsheets, and other critical applications
 are rewritten from the ground up if necessary
 to support various disabilities.&nbsp;
 Once this is done,
@@ -145,7 +146,7 @@ However, the name of the serial device might not be /dev/ttyS0.&nbsp;
 More research is needed here.
 
 <P>
-The only software synthesizer currrently supported is espeak,
+The only software synthesizer currently supported is espeak,
 although espeak comes in a variety of languages.&nbsp;
 (Most of the external synths are English, or perhaps English and Spanish.)&nbsp;
 Jupiter connects to espeakup through a pipe, sending text to be spoken,
@@ -284,7 +285,7 @@ Grub, for instance, beeps when it brings up the menu,
 provided I put a control G in the first title in grub.conf.&nbsp;
 This tells me that I have ten seconds to cursor up and down
 and select a target, if I want something other than the default.&nbsp;
-Beyound this, it tells me that the machine has gotten to grub successfully,
+Beyond this, it tells me that the machine has gotten to grub successfully,
 and is not stuck in bios for some bizarre reason.&nbsp;
 Thus a multi-boot system becomes practical.&nbsp;
 It is difficult to overstate the importance of this little in-built speaker
@@ -404,7 +405,7 @@ The modes are as follows.
 <DD>
 If it is the middle of the night and your roommate is asleep, you can disable all the chirps and clicks and beeps from the pc speaker.&nbsp;
 This includes the clicks that accompany tty output,
-and the short beeps that Jupiter uses to convy status or error conditions.&nbsp;
+and the short beeps that Jupiter uses to convey status or error conditions.&nbsp;
 They can all be turned off in one go.
 
 <P><DT>Clicktty
@@ -551,7 +552,7 @@ When literal mode is on, all punctuation marks are read.&nbsp;
 Programmers typically run with literal mode enabled, because every comma, every semicolon, might be important.&nbsp;
 When literal mode is off, punctuation marks are passed directly to the synthesizer,
 as though you are reading a story.&nbsp;
-A smart synthesizer will pause for a comma, paus and lower pitch for a period, and pause and raise the pitch for a question mark.&nbsp;
+A smart synthesizer will pause for a comma, pause and lower pitch for a period, and pause and raise the pitch for a question mark.&nbsp;
 However, even when reading English text, I usually leave literal mode on.&nbsp;
 I have become accustom to hearing commas and periods spoken,
 and in my brain it almost has the same effect as the corresponding pauses.&nbsp;
@@ -637,6 +638,12 @@ else why would you have different config files in the first place?&nbsp;
 Key bindings will be described later, after I have presented the atomic speech commands.
 
 <P>
+Configurations run per console,
+as you would want with different applications running under different consoles.&nbsp;
+when you switch consoles, Jupiter uses the key bindings last associated with that console,
+i.e. the config file last loaded under that console.
+
+<P>
 A config file can include another, like #include in C.&nbsp;
 Thus common configurations, like your replacement dictionary, can be written once
 and pulled into every config file,like this.
@@ -705,7 +712,7 @@ This generates an error (beep) in screen mode.
 <P><DT>sbuf:
 <DD>
 Place the cursor at the start of the buffer, or the upper left of the screen.&nbsp;
-If the bufffer is empty you will hear a couple quick high beeps indicating a boundary condition.&nbsp;
+If the buffer is empty you will hear a couple quick high beeps indicating a boundary condition.&nbsp;
 The same sound occurs if you pull the cursor past the start of buffer, or push it past the end of buffer.
 
 <P><DT>ebuf:
@@ -828,7 +835,7 @@ Read the current word.&nbsp;
 The entire word is read, even if the cursor is in the middle of the word.&nbsp;
 The cursor is left at the end of the word.&nbsp;
 To aid in pronuncibility, spaces are inserted at letter-digit or case boundaries.&nbsp;
-ThusRedGreen3Blue is pronounced "red green 3 blue".&nbsp;
+Thus RedGreen3Blue is pronounced "red green 3 blue".&nbsp;
 This is usually what you want.
 
 <P><DT>read:
@@ -867,7 +874,7 @@ Mark this as the left edge of some text that you want to cut&amp;paste.
 <P><DT>markr:
 <DD>
 Mark this as the right edge of some text that you want to cut&amp;paste.&nbsp;
-You musst enter a follow-on letter, whence this block of text will be associated
+You must then enter a follow-on letter, whence this block of text will be associated
 with the alt of that letter.&nbsp;
 You should probably leave most of your alt-letters unbound, so they can be used for cut&amp;paste.&nbsp;
 As an example, put your cursor on the h in hello world and issue mark left.&nbsp;
@@ -891,7 +898,7 @@ e.g. read the line just before the line that contains the phrase "oreo cooky".
 <P><DT>searchu:
 <DD>
 Search up the buffer for a string of text.&nbsp;
-The behavior is as above, except the cursor moves backwards rather thand forwards.
+The behavior is as above, except the cursor moves backwards rather than forwards.
 
 </DL>
 
@@ -935,7 +942,7 @@ To read the next line, and only the next line, do this.
 stmode 1 eline for read
 
 <P>
-To read from your current location to the end of the bufffer, do this.
+To read from your current location to the end of the buffer, do this.
 
 <P>
 clmode 1 read
@@ -998,7 +1005,7 @@ You should really keep your keyboard layouts and pronunciations in config files.
 <P><DT>reexec:
 <DD>
 Restart the adapter.&nbsp;
-This is for developers; after you havemade a change to the software you can restart the program with one button.&nbsp;
+This is for developers; after you have made a change to the software you can restart the program with one button.&nbsp;
 The same arguments are passed to the program.
 
 <P><DT>reload:
@@ -1024,7 +1031,7 @@ Activate transparent mode, as described in an earlier section.
 
 <P><DT>step:
 <DD>
-Play a chromatic scale on the pc speaker using parameters drawn froma file.&nbsp;
+Play a chromatic scale on the pc speaker using parameters drawn from a file.&nbsp;
 The name of the file is entered at the keyboard,
 and is taken relative to /etc/jupiter, unless it begins with a slash.&nbsp;
 The file contains 4 numbers separated by commas.&nbsp;
@@ -1053,7 +1060,7 @@ To support this, the reading cursor jumps to the visual cursor whenever the curs
 In other words, the reading cursor is the visual cursor, unless you are specifically roaming about the screen.
 
 <P>
-Autoread will read any new output in thhe order it is generated.&nbsp;
+Autoread will read any new output in the order it is generated.&nbsp;
 In fact autoread still acts like you are in linear mode.&nbsp;
 If a program updates the status message at the bottom, then the file line at the top,
 you will hear these two "sentences" in that order; then the reading cursor will return to the visual cursor on screen,
@@ -1320,6 +1327,32 @@ echo :: reload foo.speach > /etc/jupiter/fifo
 echo :: reload bash.speech > /etc/jupiter/fifo
 <br>
 }
+
+<H3 align=center> <A NAME=sum> Summary </A> </H3>
+
+Jupiter is written in three layers.&nbsp;
+The modules (1) provide audio feedback as output is generated,
+and pass keystrokes and tty output back to user space.&nbsp;
+This layer is well documented in ttyclicks.txt and acsint.txt,
+but is a bit like a raw block device - impractical to use.&nbsp;
+The bridge layer (2) places, metaphorically, a file system on top of the modules.&nbsp;
+It is documented in acsbridge.h.&nbsp;
+Adapters such as Jupiter will want to use the bridge layer, rather than the device driver itself.&nbsp;
+Finally, Jupiter (3) is an example of such an adapter.&nbsp;
+To validate this layered approach,
+Tyler started writing his own adapter using the bridge layer,
+and made considerable progress,
+but soon concluded,
+"Jupiter was just too far along; it was easier to just use Jupiter.&nbsp;
+Besides, Jupiter is extremely configurable;
+you can make it be just about anything you want it to be."
+
+<P>
+writing the config file, or files, is the key.&nbsp;
+It takes some practice, some trial and error.&nbsp;
+The sample config file may be of some help.&nbsp;
+As always, you can
+<A href=mailto:eklhad@gmail.com>contact me</A> with any questions.
 
 <P>
 <A HREF=#top>Back to top</A>

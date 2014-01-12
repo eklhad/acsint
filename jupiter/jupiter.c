@@ -449,9 +449,18 @@ static const char *acsdriver = "/dev/acsint";
 /* configure the jupiter system from a config file. */
 static const char default_config[] = "/etc/jupiter/start.cfg";
 static const char *start_config = default_config;
+
+static char * cloneString(const char *s)
+{
+int l = strlen(s);
+char *t = malloc(l+1);
+strcpy(t, s);
+return t;
+} /* cloneString */
+
 static void runSpeechCommand(int input, const char *cmdlist);
 static void
-j_configure(const char *my_config, int istest)
+j_configure(const char *my_config, int docolon)
 {
 FILE *f;
 char line[SUPPORTLEN];
@@ -480,7 +489,7 @@ if(s > line && s[-1] == '\r') --s;
 if(line[0] == ':' && line[1] == ':') {
 rc = cfg_syntax(line+2);
 if(rc) goto syn_error;
-else if(!istest) runSpeechCommand(0, line+2);
+else if(docolon) runSpeechCommand(0, line+2);
 continue;
 }
 
@@ -490,7 +499,7 @@ s = line + 2;
 while(*s == ' ' || *s == '\t') ++s;
 if(!*s) continue;
 etcjup(s);
-j_configure(jfile, istest);
+j_configure(jfile, docolon);
 continue;
 }
 
@@ -528,6 +537,7 @@ static char goRead, goRead2; /* read the next sentence */
 static unsigned int *markright;
 static char screenMode = 0;
 static char smlist[MAX_NR_CONSOLES+1];
+static char *cfglist[MAX_NR_CONSOLES+1];
 static char jdebug;
 static char cc_buffer = 0; // control chars in the buffer
 static char echoMode; // echo keys as they are typed
@@ -778,6 +788,7 @@ return (n < l ? -1 : 0);
 } /* dumpBuffer */
 
 
+
 /*********************************************************************
 Suspend or unsuspend the adapter.
 This is invoked by a speech command,
@@ -799,7 +810,9 @@ acs_sounds(0);
 
 static void unsuspend(void)
 {
-acs_resumekeys();
+acs_reset_configure();
+etcjup(cfglist[acs_fgc]);
+j_configure(jfile, 0);
 if(suspendClicks) {
 soundsOn = 1;
 acs_sounds(1);
@@ -1198,18 +1211,24 @@ case 46: /* reload config file */
 if(!*suptext) goto error_bell;
 etcjup(suptext);
 if(access(jfile, 4)) goto error_bell;
+if(cfglist[acs_fgc]) free(cfglist[acs_fgc]);
+cfglist[acs_fgc] = cloneString(suptext);
+if(!quiet) {
 acs_cr();
-acs_reset_configure();
 acs_say_string(reloadword[acs_lang]);
-j_configure(jfile, 0);
+}
+acs_reset_configure();
+j_configure(jfile, 1);
 return;
 
 case 47: /* dump tty buffer to a file */
 if(dumpBuffer()) goto error_bell;
+if(!quiet) {
 acs_cr();
 sprintf(shortPhrase, "%s %d",
 bufword[acs_lang], acs_fgc);
 		acs_say_string_uc(prepTTSmsg(shortPhrase));
+}
 return;
 
 case 48: /* suspend */
@@ -1278,7 +1297,6 @@ acs_screenmode(screenMode);
 ctrack = 1;
 }
 
-last_fgc = acs_fgc;
 /* kill any pending keystroke command; we just switched consoles */
 last_key = last_ss = 0;
 
@@ -1287,10 +1305,28 @@ interrupt();
 sprintf(shortPhrase, "%s %d", consword[acs_lang], acs_fgc);
 		acs_say_string_uc(prepTTSmsg(shortPhrase));
 
-if(suspended && !suspendlist[acs_fgc])
-unsuspend();
-if(!suspended && suspendlist[acs_fgc])
+// If firsst time to this console, assume the start config file.
+if(!cfglist[acs_fgc])
+cfglist[acs_fgc] = cloneString(start_config);
+
+if(!suspended && suspendlist[acs_fgc]) {
 suspend();
+goto done;
+}
+
+if(suspended && !suspendlist[acs_fgc]) {
+unsuspend();
+goto done;
+}
+
+if(!stringEqual(cfglist[last_fgc], cfglist[acs_fgc])) {
+acs_reset_configure();
+etcjup(cfglist[acs_fgc]);
+j_configure(jfile, 0);
+}
+
+done:
+last_fgc = acs_fgc;
 } /* fgc_h */
 
 /* fifo input still works, even if suspended */
@@ -1354,7 +1390,7 @@ char *out;
 /* This doesn't go through the normal acs_open() process */
 acs_reset_configure();
 /* key bindings don't matter here, but let's load our pronunciations */
-j_configure(start_config, 1);
+j_configure(start_config, 0);
 
 while(fgets(line, sizeof(line), stdin)) {
 out = acs_uni2utf8(prepTTSmsg(line));
@@ -1470,7 +1506,7 @@ return 0;
 }
 
 if(argc && stringEqual(argv[0], "tc")) {
-j_configure(start_config, 1);
+j_configure(start_config, 0);
 return 0;
 }
 
@@ -1548,7 +1584,8 @@ acs_all_events();
 /* this has to run after the device is open,
  * because it sends key capture commands to the acsint driver,
  * and after the first event sets up the console. */
-j_configure(start_config, 0);
+cfglist[acs_fgc] = cloneString(start_config);
+j_configure(start_config, 1);
 
 // jupiter ready
 acs_say_string(readyword[acs_lang]);
