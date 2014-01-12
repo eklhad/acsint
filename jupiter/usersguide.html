@@ -147,7 +147,7 @@ More research is needed here.
 
 <P>
 The only software synthesizer currently supported is espeak,
-although espeak comes in a variety of languages.&nbsp;
+which, fortunately, comes in a variety of languages.&nbsp;
 (Most of the external synths are English, or perhaps English and Spanish.)&nbsp;
 Jupiter connects to espeakup through a pipe, sending text to be spoken,
 and receiving index markers in return.&nbsp;
@@ -167,7 +167,8 @@ using the male voice klatt4.&nbsp;
 Finally the -a option tells espeakup to operate through a pipe,
 as required by Jupiter,
 and that's where we run into trouble.&nbsp;
-The distributed version of espeakup doesn't recognize the -a option, and doesn't work with jupiter.&nbsp;
+The distributed version of espeakup doesn't recognize the -a option,
+and thus doesn't work with jupiter.&nbsp;
 Instead, you must fetch the source from github and compile it yourself.
 
 <P>
@@ -201,7 +202,7 @@ In other words, /dev/acsint is the connector between Jupiter and the Linux kerne
 You must compile and install two modules to bring /dev/acsint to life.&nbsp;
 These modules are ttyclicks.ko and acsint.ko.&nbsp;
 Unfortunately I can't distribute these modules in binary,
-because a new module must be compiled for each kernel version.&nbsp;
+because a separate module must be compiled for each kernel version.&nbsp;
 Run `uname -r' to see your kernel version.&nbsp;
 If yours is 3.12.3.2, and mine is 3.12.3.1, then my modules won't run on your kernel, and vice versa.&nbsp;
 This is intentional,
@@ -239,7 +240,7 @@ So just let them run all the time.
 You'll notice that ttyclicks
 generates clicks as output is sent to the screen.&nbsp;
 This is exactly what it is suppose to do;
-it is the primary function of the ttyclicks module.&nbsp;
+it is the primary function of the ttyclicks module (though it can be disabled with a module parameter).&nbsp;
 This can be extremely helpful, especially if your adapter is not running for any reason.&nbsp;
 I can tell, by clicks alone, when the computer responds to a command,
 and I can discern the quantity and format of that response,
@@ -405,7 +406,7 @@ The modes are as follows.
 <DD>
 If it is the middle of the night and your roommate is asleep, you can disable all the chirps and clicks and beeps from the pc speaker.&nbsp;
 This includes the clicks that accompany tty output,
-and the short beeps that Jupiter uses to convey status or error conditions.&nbsp;
+and also the short beeps that Jupiter uses to convey status or error conditions.&nbsp;
 They can all be turned off in one go.
 
 <P><DT>Clicktty
@@ -445,7 +446,7 @@ This is useful if a program uses curses to arrange text on the screen in a certa
 and you need to read it exactly as it appears on screen.&nbsp;
 I try to avoid programs like this,
 because (A) I don't like them, and (B) Jupiter is not as efficient in this mode.&nbsp;
-The reading cursor does not stay with the text as it scrolls up or down,
+The reading cursor does not track the visual cursor as efficiently as one might like,
 and some international characters are misrepresented in screen memory.&nbsp;
 Still, there are times when a screen program is the only game in town,
 and in those situations you just have to play along.
@@ -639,7 +640,7 @@ Key bindings will be described later, after I have presented the atomic speech c
 
 <P>
 Configurations run per console,
-as you would want with different applications running under different consoles.&nbsp;
+as you would expect with different applications running under different consoles.&nbsp;
 when you switch consoles, Jupiter uses the key bindings last associated with that console,
 i.e. the config file last loaded under that console.
 
@@ -700,7 +701,7 @@ followed by a description of what that command does.
 Move the reading cursor to the visual cursor on screen.&nbsp;
 This is where the action is.&nbsp;
 A composite command might go down to the bottom of the screen, read the status message,
-then issue this command to return to the visual cursor.&nbsp;
+then issue this command to go back to the visual cursor.&nbsp;
 This command has no effect in linear mode.
 
 <P><DT>clbuf:
@@ -756,7 +757,7 @@ If there are no spaces to the left of the cursor then it remains in position.&nb
 This command should perhaps skip past higher unicodes that are equivalent to a space, such as 0xa0.&nbsp;
 That is still under consideration.&nbsp;
 As you might imagine, this is rarely used on its own.&nbsp;
-Rather, it is used in sequence, to skip past whitespace and read the next word for example.
+Rather, it is used in sequence to skip past whitespace and read the next word.
 
 <P><DT>rspc:
 <DD>
@@ -1147,7 +1148,7 @@ These are ignored.
 <P><LI>
 key command1 command2 command3 &#8230;&nbsp;
 This is a key binding.&nbsp;
-The commands are the atomic commands described in an earlier section.&nbsp;
+The commands are the atomic commands described above.&nbsp;
 These move the reading cursor about, read letters words or lines,
 set and clear modes, control the synthesizer, or modify the system in some way.&nbsp;
 Letters or strings can be included inline for those commands that require follow-on input.&nbsp;
