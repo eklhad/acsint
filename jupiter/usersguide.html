@@ -1066,7 +1066,7 @@ In fact autoread still acts like you are in linear mode.&nbsp;
 If a program updates the status message at the bottom, then the file line at the top,
 you will hear these two "sentences" in that order; then the reading cursor will return to the visual cursor on screen,
 wherever that is.&nbsp;
-If you interrupt reading with any key, the reading cursor is on the visual cursor, rather then the word you last heard.&nbsp;
+If you interrupt reading with any key, the reading cursor is on the visual cursor, rather then the words you last heard.&nbsp;
 This is different from linear mode.&nbsp;
 However, if you initiate reading yourself, in screen review mode,
 then the reading cursor once again tracks the words you are hearing.&nbsp;
@@ -1091,8 +1091,10 @@ This gives you feedback as you move the visual cursor about on screen.&nbsp;
 It is one more way that Jupiter tracks the visual cursor for you.
 
 <P>
-Remember that this is a form of autoread, so the reading cursor is not tracking the words you are hearing;
-it is sitting on top of the visual cursor in its new location.
+This is a cursor-induced form of screen review,
+so once again the reading cursor tracks the words you are hearing.&nbsp;
+If you don't interrupt speech, then the reading cursor jumps back to the visual cursor
+in its new location.
 
 <P>
 On its own, this system is not as responsive as you would like.&nbsp;
@@ -1101,8 +1103,8 @@ Yes, the visual cursor moves down, but Jupiter is still reading the second line 
 You have not specifically interrupted speech, and autoread does not interrupt autoread.&nbsp;
 So you are still hearing the line of text that is several lines above the new location of the visual cursor.&nbsp;
 The secret is the T function, named after /usr/bin/tee.&nbsp;
-This replicates the arrow key and sends it to the running program,
-such as a text editor, and back to jupiter for processing.&nbsp;
+This replicates the arrow key and sends it to the running program
+(such as a text editor) and back to jupiter for processing.&nbsp;
 Jupiter will simply interrupt speech; then when the cursor moves,
 autoread will read the next line.&nbsp;
 In this way you can move up or down through the lines on the screen quickly and efficiently.&nbsp;
@@ -1127,7 +1129,8 @@ Don't ask jupiter to read the next character like this.
 right T char
 
 <P>
-There is a race condition here that cannot be predicted or resolved.&nbsp;
+This works if the application receives the arrow key first, before Jupiter,
+but there is a race condition here that cannot be predicted or resolved.&nbsp;
 Jupiter may receive the key first,
 whence it stops reading and speaks the current character.&nbsp;
 Then the program receives the arrow key and moves right.&nbsp;
