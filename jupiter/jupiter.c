@@ -446,6 +446,10 @@ strcat(jfile, s);
 
 static const char *acsdriver = "/dev/acsint";
 
+/* cut&paste macros; preserve these across all reloads */
+static char *cp_macro[26];
+static char cutbuf[10000];
+
 /* configure the jupiter system from a config file. */
 static const char default_config[] = "/etc/jupiter/start.cfg";
 static const char *start_config = default_config;
@@ -465,8 +469,15 @@ j_configure(const char *my_config, int docolon)
 FILE *f;
 char line[SUPPORTLEN];
 char *s;
-int lineno, rc;
+int i, lineno, rc;
 char filename[SUPPORTLEN+20];
+
+/* everything has been cleared; start with the cut&paste strings */
+for(i=0; i<26; ++i) {
+if(!cp_macro[i]) continue;
+sprintf(cutbuf, "@%c<%s", 'a'+i, cp_macro[i]);
+acs_line_configure(cutbuf, 0);
+}
 
 strcpy(filename, my_config);
 f = fopen(filename, "r");
@@ -545,7 +556,6 @@ static char suspended;
 static char suspendClicks;
 static char suspendlist[MAX_NR_CONSOLES+1];
 /* buffer for cut&paste */
-static char cutbuf[10000];
 
 static void binmode(int action, int c, int quiet)
 {
@@ -1157,11 +1167,17 @@ cut8 = acs_uni2utf8(markleft);
 *markright = c; // put it back
 if(!cut8) goto error_bell;
 if(n + strlen(cut8) >= sizeof(cutbuf)) { free(cut8); goto error_bound; }
+i = support - 'a';
+if(cp_macro[i]) free(cp_macro[i]);
+cp_macro[i] = cut8;
 strcpy(cutbuf + n, cut8);
-free(cut8);
 /* Stash it in the macro */
-if(acs_line_configure(cutbuf, cfg_syntax) < 0)
+if(acs_line_configure(cutbuf, cfg_syntax) < 0) {
+// this should never happen
+free(cut8);
+cp_macro[i] = 0;
 goto error_bell;
+}
 markleft = 0;
 if(!quiet) acs_tone_onoff(0);
 return;
