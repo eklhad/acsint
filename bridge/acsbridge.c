@@ -795,7 +795,7 @@ i = 0;
 while(i <= nr-4) {
 switch(inbuf[i]) {
 case ACS_KEYSTROKE:
-acs_log("key %d\n", inbuf[i+1]);
+acs_log("key %d,%d\n", inbuf[i+1], inbuf[i+2]);
 // keystroke refreshes automatically in line mode;
 // we have to do it here for screen mode.
 if(screenmode && !refreshed) {
