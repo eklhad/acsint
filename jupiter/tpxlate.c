@@ -48,6 +48,7 @@ but we hope most of the changes are captured in these strings.
 *********************************************************************/
 
 struct OUTWORDS {
+const char *natoWords[26];
 const char *real2;
 const char *real3[26];
 const char *contractions[60];
@@ -110,9 +111,12 @@ const char *oreqWord;
 const char *months[12];
 const char *zones[30];
 const char *nohundred[30];
+const char *slashOrPhrases[8];
+/* The following are not used; they remain as legacy
+ * from a time when I thought I could do a lot more text processing
+ * than is actually feasible, especially for multiple languages. */
 const char *articles[32];
 const char *verbs[20];
-const char *slashOrPhrases[8];
 const char *areaWord;
 const char *extWord;
 const char *states[54];
@@ -125,7 +129,6 @@ const char *locUnder;
 const char *fileUnder;
 const char *pageUnder;
 const char *flowInto[12];
-const char *natoWords[26];
 };
 
 static const struct OUTWORDS outwords[5] = {
@@ -135,6 +138,12 @@ static const struct OUTWORDS outwords[5] = {
 
 },{ /* English */
 
+// nato standard alphabet
+{"alpha", "brohvo", "charlie", "delta", "echo",
+"foxtrot", "gawlf", "hotell", "india", "juleyet",
+"killo", "liema", "mike", "noavember", "oscar",
+"popa", "kebeck", "romeo", "seeara", "tango",
+"uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
 // 2 letter words
 "adahalamanasatauawaxhalamapaedehelemenbedehemereweyeidifinisithipiofohonorowoxozcodogohojolonosotouhumunupusbymy",
 // 3 letter words
@@ -304,12 +313,10 @@ static const struct OUTWORDS outwords[5] = {
 "part", "piece", "site", "box",
 "car", "flight", "number",
 0},
+{"he/she", "she/he", "him/her", "her/him", "his/her", "her/his", 0},
 {"a", "an", "the", "this", "that", "my", "your", "his", "her", "our", "their", 0},
 {"is", "was", "should", "could", "might", "may", "can", "has", "had",
 "would", "will", "came", "arrived", "gave", "made",
-0},
-{"he/she", "she/he", "him/her", "her/him",
-"his/her", "her/his",
 0},
 ", area code", "extension",
 {0,
@@ -351,15 +358,15 @@ static const struct OUTWORDS outwords[5] = {
 "F T P site", "goapher server"},
 "a location under", "a file under", "a web page under",
 {"site", "at", "from", "to", "on", "visit", "is", 0},
+
+},{ /* German */
+
+/* not entirely complete */
 {"alpha", "brohvo", "charlie", "delta", "echo",
 "foxtrot", "gawlf", "hotell", "india", "juleyet",
 "killo", "liema", "mike", "noavember", "oscar",
 "popa", "kebeck", "romeo", "seeara", "tango",
 "uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
-
-},{ /* German */
-
-/* not entirely complete */
 // 2 letter words
 "andedueresinjamaumzu",
 // 3 letter words
@@ -414,13 +421,11 @@ static const struct OUTWORDS outwords[5] = {
 "part", "piece", "site", "box",
 "car", "flug", "numer",
 0},
+{"er/sie", "sie/er", "ihm/ihr", "ihr/ihm", "sein/ihr", "ihr/sein", 0},
 {"ein","eine","einen","einem","der","die","das","des","den","dem","diese","diesen",
 "mein","meine","meinen","sein","seine","seinen","usere","useren","dein","deine","deinen",0},
 {"ist", "war", "solle", "könne", "möchte", "bin", "kannst", "habe", "hat",
 "wölle", "will", "kam", "kam", "gabe", "macht",
-0},
-{"er/sie", "sie/er", "ihm/ihr", "ihr/ihm",
-"sein/ihr", "ihr/sein",
 0},
 ", area code", "extension",
 {0,
@@ -462,14 +467,14 @@ static const struct OUTWORDS outwords[5] = {
 "F T P site", "goapher server"},
 "a location under", "a file under", "a web page under",
 {"site", "at", "from", "to", "on", "visit", "is", 0},
-{"alpha", "brohvo", "charlie", "delta", "echo",
-"foxtrot", "gawlf", "hotell", "india", "juleyet",
-"killo", "liema", "mike", "noavember", "oscar",
-"popa", "kebeck", "romeo", "seeara", "tango",
-"uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
 
 },{ /* Portuguese */
 
+{"alfa", "bravo", "carlos", "delta", "eco",
+"fox", "golfe", "hotel", "índia", "julieta",
+"kilo", "lima", "maique", "novembro", "oscar",
+"papa", "quebeque", "romeu", "serra", "tango",
+"uniforme", "vítor", "wisque", "x raio", "yanque", "zulu"},
 // 2 letter words
 0,
 // 3 letter words
@@ -575,11 +580,6 @@ static const struct OUTWORDS outwords[5] = {
 "sítio F T P", "servidor gófer"},
 "local em", "arquivo em", "página web em",
 {"sítio", "em", "de", "para", "em", "visitar", "é", 0},
-{"alfa", "bravo", "carlos", "delta", "eco",
-"fox", "golfe", "hotel", "índia", "julieta",
-"kilo", "lima", "maique", "novembro", "oscar",
-"papa", "quebeque", "romeu", "serra", "tango",
-"uniforme", "vítor", "wisque", "x raio", "yanque", "zulu"},
 
 },{ /* French */
 
@@ -1632,6 +1632,7 @@ Return 1 on overflow.
 Pass back the updated pointer, just after the second code delimiter.
 *********************************************************************/
 
+#if 0
 static int expandCode(const unsigned int **sp)
 {
 	const unsigned int *start = *sp;
@@ -1823,6 +1824,7 @@ static int expandCode(const unsigned int **sp)
 overflow:
 	return 1;
 } /* expandCode */
+#endif
 
 
 /*********************************************************************
@@ -2778,7 +2780,9 @@ passThrough:
 		if(c == '\n' && !tp_oneSymbol)goto passThrough;
 
 		if(c == SP_MARK) {
+/* this should never happen
 			if(expandCode((const unsigned int **)&s)) goto overflow;
+*/
 			continue;
 		} /* coded construct */
 
