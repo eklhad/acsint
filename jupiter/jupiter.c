@@ -86,11 +86,47 @@ static const struct cmd speechcommands[] = {
 
 #define CMD_SUSPEND 48
 
-/* messages in the languages supported. */
+/*********************************************************************
+Strings that are folded into the output text.
+There is one structure of strings for each language supported.
+*********************************************************************/
 
-static const char *usageMessage[] = {
-"",
-// English
+struct OUTWORDS {
+const char *usage;
+const char *openConfig;
+const char *openDriver;
+const char *openSerial;
+const char *execSoft;
+const char *busyDriver;
+const char *permDriver;
+const char *makeDriver;
+const char *configError[10];
+const char *bufword;
+const char *lineword;
+const char *yesword;
+const char *noword;
+const char *consword;
+const char *readyword;
+const char *setvolword;
+const char *louderword;
+const char *softerword;
+const char *setrateword;
+const char *fasterword;
+const char *slowerword;
+const char *setpitchword;
+const char *higherword;
+const char *lowerword;
+const char *helloword;
+const char *reloadword;
+const char *okword;
+};
+
+static const struct OUTWORDS const outwords[5] = {
+
+{ /* no output words for the zero language */
+0
+
+},{ /* English */
 "usage:  jupiter [-d] [-c configfile] synthesizer port\n"
 "-d is daemon mode, run in background.\n"
 "Synthesizer is: dbe = doubletalk external,\n"
@@ -98,7 +134,33 @@ static const char *usageMessage[] = {
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
 "port is 0 1 2 or 3, for the serial device.\n"
 "jupiter tc    to test the configuration file.\n",
-// German (but still English)
+"cannot open config file %s\n",
+"cannot open the device driver %s;\n%s.\n",
+"cannot open the serial port %s\n",
+"cannot execute command %s\n",
+"Acsint can only be opened by one program at a time.\n"
+"Another program is currently using the acsint device driver.\n",
+"Check the permissions on /dev/vcsa and %s\n",
+"Did you make %s character special,\n"
+"and did you install the acsint module?\n",
+{0, "syntax error",
+"%s cannot be in the middle of a composite speech command",
+"%s must be followed by a letter or digit",
+"%s is not a recognized speech command",
+"%s cannot be mixed with any other commands",
+"dictionary word or replacement word is too long",
+"too many words in the replacement dictionary",
+"cannot leave a punctuation or unicode with no pronunciation",
+"cannot set the pronunciation of a letter, digit, or low or high unicode",
+},
+"buffer", "line", "yes", "no", "console", "jupiter ready",
+"set volume", "louder", "softer",
+"set rate", "faster", "slower",
+"set pitch", "lower", "higher",
+"hello there", "reload", "o k",
+
+},{ /* German, but still mostly English */
+
 "usage:  jupiter [-d] [-c configfile] synthesizer port\n"
 "-d is daemon mode, run in background.\n"
 "Synthesizer is: dbe = doubletalk external,\n"
@@ -106,7 +168,33 @@ static const char *usageMessage[] = {
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
 "port is 0 1 2 or 3, for the serial device.\n"
 "jupiter tc    to test the configuration file.\n",
-// Portuguese
+"nicht öfnen config file %s\n",
+"nicht öfnen die device driver %s;\n%s.\n",
+"nicht öfnen die serial port %s\n",
+"nicht execute command %s\n",
+"Acsint can only be opened by one program at a time.\n"
+"Another program is currently using the acsint device driver.\n",
+"Check the permissions on /dev/vcsa and %s\n",
+"Did you make %s character special,\n"
+"and did you install the acsint module?\n",
+{0, "syntax error",
+"%s cannot be in the middle of a composite speech command",
+"%s must be followed by a letter or digit",
+"%s is not a recognized speech command",
+"%s cannot be mixed with any other commands",
+"dictionary word or replacement word is too long",
+"too many words in the replacement dictionary",
+"cannot leave a punctuation or unicode with no pronunciation",
+"cannot set the pronunciation of a letter, digit, or low or high unicode",
+},
+"buffer", "linia", "ja", "nein", "console", "jupiter fertig",
+"set volume", "louder", "ruhig",
+"set rate", "schnell", "langsam",
+"set pitch", "lower", "higher",
+"guten tag", "reload", "o k",
+
+},{ /* Brazilian Portuguese */
+
 "uso: jupiter [-d] [-c arq. de config.] sintetizador porta\n"
 "-d é modo daemon, roda em segundo plano.\n"
 "Sintetizador é: dbe = doubletalk externo,\n"
@@ -114,98 +202,16 @@ static const char *usageMessage[] = {
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
 "porta é 0 1 2 ou 3, para o dispositivo serial.\n"
 "jupiter tc    para testar o arquivo de configuração.\n",
-// French
-"",
-};
-
-static void
-usage(void)
-{
-fprintf(stderr, "%s", usageMessage[acs_lang]);
-exit(1);
-}
-
-static const char *openConfig[] = {"",
-"cannot open config file %s\n",
-"nicht öfnen config file %s\n",
 "impossível abrir arquivo de configuração %s\n",
-"impossible d'ouvrir fichier de configuration %s\n",
-};
-
-static const char *openDriver[] = {0,
-"cannot open the device driver %s;\n%s.\n",
-"nicht öfnen die device driver %s;\n%s.\n",
 "impossível abrir arquivo de dráiver do dispositivo %s;\n%s.\n",
-"impossible d'ouvrir device driver %s;\n%s.\n",
-};
-
-static const char *openSerial[] = {0,
-"cannot open the serial port %s\n",
-"nicht öfnen die serial port %s\n",
 "impossível abrir arquivo de porta do serial %s\n",
-"impossible d'ouvrir auto port %s\n",
-};
-
-static const char *execSoft[] = {0,
-"cannot execute command %s\n",
-"nicht execute command %s\n",
 "impossível executar comando %s\n",
-"impossible de lancer commande %s\n",
-};
-
-static const char *busyDriver[] = {0,
-"Acsint can only be opened by one program at a time.\n"
-"Another program is currently using the acsint device driver.\n",
-"Acsint can only be opened by one program at a time.\n"
-"Another program is currently using the acsint device driver.\n",
 "O acsint só pode ser aberto por um programa de cada vez.\n"
 "Outro programa está usando o dispositivo acsint no momento.\n",
-"Acsint can only be opened by one program at a time.\n"
-"Another program is currently using the acsint device driver.\n",
-};
-
-static const char *permDriver[] = {0,
-"Check the permissions on /dev/vcsa and %s\n",
-"Check the permissions on /dev/vcsa and %s\n",
 "Verifique as permissões para /dev/vcsa e %s\n",
-"Check the permissions on /dev/vcsa and %s\n",
-};
-
-static const char *makeDriver[] = {0,
-"Did you make %s character special,\n"
-"and did you install the acsint module?\n",
-"Did you make %s character special,\n"
-"and did you install the acsint module?\n",
 "Já criou o dispositivo especial de caractere %s\n"
 "e instalou o módulo acsint?\n",
-"Did you make %s character special,\n"
-"and did you install the acsint module?\n",
-};
-
-static const char *configError[][10] = {
-{0, // no language
-},{ // English
-0, "syntax error",
-"%s cannot be in the middle of a composite speech command",
-"%s must be followed by a letter or digit",
-"%s is not a recognized speech command",
-"%s cannot be mixed with any other commands",
-"dictionary word or replacement word is too long",
-"too many words in the replacement dictionary",
-"cannot leave a punctuation or unicode with no pronunciation",
-"cannot set the pronunciation of a letter, digit, or low or high unicode",
-},{ // German
-0, "syntax error",
-"%s cannot be in the middle of a composite speech command",
-"%s must be followed by a letter or digit",
-"%s is not a recognized speech command",
-"%s cannot be mixed with any other commands",
-"dictionary word or replacement word is too long",
-"too many words in the replacement dictionary",
-"cannot leave a punctuation or unicode with no pronunciation",
-"cannot set the pronunciation of a letter, digit, or low or high unicode",
-},{ // Portuguese
-0, "erro de sintaxe",
+{0, "erro de sintaxe",
 "%s não pode estar no meio dum comando de fala composto",
 "%s tem que ser seguido por uma letra ou dígito",
 "%s não é um comando de fala conhecido",
@@ -214,136 +220,32 @@ static const char *configError[][10] = {
 "palavras demais no dicionário de substituição",
 "não é possível deixar uma pontuação ou unicode sem pronúncia",
 "não é possível determinar a pronúncia duma letra, algarismo, ou unicode baixo ou alto",
-},{ // French
-0, "erreur de syntaxe",
-"%s cannot be in the middle of a composite speech command",
-"%s must be followed by a letter or digit",
-"%s is not a recognized speech command",
-"%s cannot be mixed with any other commands",
-"dictionary word or replacement word is too long",
-"too many words in the replacement dictionary",
-"cannot leave a punctuation or unicode with no pronunciation",
-"cannot set the pronunciation of a letter, digit, or low or high unicode",
+},
+"buffer", "linha", "sim", "não", "console", "jupiter ativado",
+"determinar volume", "mais alto", "mais baixo",
+"determinar velocidade", "mais rápido", "mais lento",
+"determinar tom", "mais baixo", "mais alto",
+"olá", "recarregar", "o k",
+
+},{ /* French, just a placeholder for now */
+
+"",
+"impossible d'ouvrir fichier de configuration %s\n",
+"impossible d'ouvrir device driver %s;\n%s.\n",
+"impossible d'ouvrir auto port %s\n",
+"impossible de lancer commande %s\n",
+/* no more */
+
 }};
 
-static const char *bufword[] = {0,
-"buffer",
-"buffer",
-"buffer",
-"tampon",
-};
+static const struct OUTWORDS *o;
 
-static const char *lineword[] = {0,
-"line",
-"linia",
-"linha",
-"ligne",
-};
-
-static const char *yesword[] = {0,
-"yes",
-"ja",
-"sim",
-"uix",
-};
-
-static const char *noword[] = {0,
-"no",
-"nein",
-"não",
-"no",
-};
-
-static const char *consword[] = {0,
-"console",
-"console",
-"console",
-"console",
-};
-
-static const char *readyword[] = {0,
-"jupiter ready",
-"jupiter fertig",
-"jupiter ativado",
-"jupiter prêt",
-};
-
-static const char *setvolword[] = {0,
-"set volume",
-"set volume",
-"determinar volume",
-"set volume",
-};
-
-static const char *louderword[] = {0,
-"louder",
-"louder",
-"mais alto",
-"louder",
-};
-
-static const char *softerword[] = {0,
-"softer",
-"ruhig",
-"mais baixo",
-"softer",
-};
-
-static const char *setrateword[] = {0,
-"set rate",
-"set rate",
-"determinar velocidade",
-"set rate",
-};
-
-static const char *fasterword[] = {0,
-"faster",
-"schnell",
-"mais rápido",
-"faster",
-};
-
-static const char *slowerword[] = {0,
-"slower",
-"langsam",
-"mais lento",
-"slower",
-};
-
-static const char *setpitchword[] = {0,
-"set pitch",
-"set pitch",
-"determinar tom",
-"set pitch",
-};
-
-static const char *lowerword[] = {0,
-"lower",
-"lower",
-"mais baixo",
-"lower",
-};
-
-static const char *higherword[] = {0,
-"higher",
-"higher",
-"mais alto",
-"higher",
-};
-
-static const char *helloword[] = {0,
-"hello there",
-"guten tag",
-"olá",
-"bon jour",
-};
-
-static const char *reloadword[] = {0,
-"reload",
-"reload",
-"recarregar",
-"reload",
-};
+static void
+usage(void)
+{
+fprintf(stderr, "%s", o->usage);
+exit(1);
+}
 
 // derive a command code from its brief name
 static int
@@ -482,7 +384,7 @@ acs_line_configure(cutbuf, 0);
 strcpy(filename, my_config);
 f = fopen(filename, "r");
 if(!f) {
-fprintf(stderr, openConfig[acs_lang], filename);
+fprintf(stderr, o->openConfig, filename);
 return;
 }
 
@@ -517,8 +419,8 @@ continue;
 if(rc = acs_line_configure(line, cfg_syntax)) {
 syn_error:
 fprintf(stderr, "%s %s %d: ",
-filename, lineword[acs_lang], lineno);
-fprintf(stderr, configError[acs_lang][-rc], last_atom);
+filename, o->lineword, lineno);
+fprintf(stderr, o->configError[-rc], last_atom);
 fprintf(stderr, "\n");
 }
 }
@@ -584,7 +486,7 @@ case 'i': p = &keyInterrupt; break;
 if(soundsOn || c == 'n')
 acs_tone_onoff(*p);
 else
-acs_say_string(*p ? yesword[acs_lang] : noword[acs_lang]);
+acs_say_string(*p ? o->yesword : o->noword);
 }
 
 switch(c) {
@@ -1053,7 +955,7 @@ if(*cmdlist) break; // more to do
 		acs_cursorsync();
 if(!quiet) acs_cr();
 		if(!oneLine) {
-			acs_say_string("o k");
+			acs_say_string(o->okword);
 acs_mb->cursor -= (strlen(suptext)-1);
 			return;
 		}
@@ -1064,7 +966,7 @@ acs_startline();
 	case 28: /* volume */
 		if(!isdigit(support)) goto error_bell;
 rc = acs_setvolume(support-'0');
-t = setvolword[acs_lang];
+t = o->setvolword;
 speechparam:
 if(rc == -1) goto error_bound;
 if(rc == -2) goto error_bell;
@@ -1074,50 +976,50 @@ if(rc == -2) goto error_bell;
 
 	case 29: /* inc volume */
 rc = acs_incvolume();
-t = louderword[acs_lang];
+t = o->louderword;
 goto speechparam;
 
 	case 30: /* dec volume */
 rc = acs_decvolume();
-t = softerword[acs_lang];
+t = o->softerword;
 goto speechparam;
 
 	case 31: /* speed */
 		if(!isdigit(support)) goto error_bell;
 rc = acs_setspeed(support-'0');
-t = setrateword[acs_lang];
+t = o->setrateword;
 goto speechparam;
 
 	case 32: /* inc speed */
 rc = acs_incspeed();
-t = fasterword[acs_lang];
+t = o->fasterword;
 goto speechparam;
 
 	case 33: /* dec speed */
 rc = acs_decspeed();
-t = slowerword[acs_lang];
+t = o->slowerword;
 goto speechparam;
 
 	case 34: /* pitch */
 		if(!isdigit(support)) goto error_bell;
 rc = acs_setpitch(support-'0');
-t = setpitchword[acs_lang];
+t = o->setpitchword;
 goto speechparam;
 
 	case 35: /* inc pitch */
 rc = acs_incpitch();
-t = higherword[acs_lang];
+t = o->higherword;
 goto speechparam;
 
 	case 36: /* dec pitch */
 rc = acs_decpitch();
-t = lowerword[acs_lang];
+t = o->lowerword;
 goto speechparam;
 
 	case 37: /* set voice */
 		if(support < '0' || support > '9') goto error_bell;
 		rc = acs_setvoice(support-'0');
-t = helloword[acs_lang];
+t = o->helloword;
 goto speechparam;
 
 	case 38: /* key binding */
@@ -1231,7 +1133,7 @@ if(cfglist[acs_fgc]) free(cfglist[acs_fgc]);
 cfglist[acs_fgc] = cloneString(suptext);
 if(!quiet) {
 acs_cr();
-acs_say_string(reloadword[acs_lang]);
+acs_say_string(o->reloadword);
 }
 acs_reset_configure();
 j_configure(jfile, 1);
@@ -1242,7 +1144,7 @@ if(dumpBuffer()) goto error_bell;
 if(!quiet) {
 acs_cr();
 sprintf(shortPhrase, "%s %d",
-bufword[acs_lang], acs_fgc);
+o->bufword, acs_fgc);
 		acs_say_string_uc(prepTTSmsg(shortPhrase));
 }
 return;
@@ -1318,7 +1220,7 @@ last_key = last_ss = 0;
 
 /* stop reading, and speak the new console */
 interrupt();
-sprintf(shortPhrase, "%s %d", consword[acs_lang], acs_fgc);
+sprintf(shortPhrase, "%s %d", o->consword, acs_fgc);
 		acs_say_string_uc(prepTTSmsg(shortPhrase));
 
 // If firsst time to this console, assume the start config file.
@@ -1452,6 +1354,7 @@ acs_lang = ACS_LANG_PT_BR;
 
     fprintf(stderr, "Sorry, language %s is not implemented\n", buf);
 }				/* selectLanguage */
+
 /* Supported synthesizers */
 struct synth {
 const char *name;
@@ -1480,6 +1383,7 @@ argvector = argv;
 ++argv, --argc;
 
 selectLanguage();
+o = outwords + acs_lang;
 
 if(setupTTS()) {
 fprintf(stderr, "Could not malloc space for text preprocessing buffers.\n");
@@ -1548,17 +1452,16 @@ sprintf(serialdev, "/dev/ttyS%d", port);
 acs_nodecheck(acsdriver);
 
 if(acs_open(acsdriver) < 0) {
-fprintf(stderr, openDriver[acs_lang],
-acsdriver, strerror(errno));
+fprintf(stderr, o->openDriver, acsdriver, strerror(errno));
 if(errno == EBUSY) {
-fprintf(stderr, busyDriver[acs_lang]);
+fprintf(stderr, o->busyDriver);
 exit(1);
 }
 if(errno == EACCES) {
-fprintf(stderr, permDriver[acs_lang], acsdriver);
+fprintf(stderr, o->permDriver, acsdriver);
 exit(1);
 }
-fprintf(stderr, makeDriver[acs_lang], acsdriver);
+fprintf(stderr, o->makeDriver, acsdriver);
 exit(1);
 }
 
@@ -1569,12 +1472,12 @@ acs_fifo_h = fifo_h;
 acs_imark_h = imark_h;
 
 if (cmd && acs_pipe_system(cmd) == -1) {
-fprintf(stderr, execSoft[acs_lang], cmd);
+fprintf(stderr, o->execSoft, cmd);
 exit(1);
 }
 
 if(!cmd && acs_serial_open(serialdev, 9600)) {
-fprintf(stderr, openSerial[acs_lang], serialdev);
+fprintf(stderr, o->openSerial, serialdev);
 exit(1);
 }
 
@@ -1604,7 +1507,7 @@ cfglist[acs_fgc] = cloneString(start_config);
 j_configure(start_config, 1);
 
 // jupiter ready
-acs_say_string(readyword[acs_lang]);
+acs_say_string(o->readyword);
 
 if(screenMode & autoRead) {
 acs_vc();
