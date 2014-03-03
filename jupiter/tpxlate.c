@@ -21,16 +21,15 @@ reasonably sized sentence.
 
 #include "tp.h"
 
+#define appendBackup() (--tp_out->len)
+#define case_different(x, y) (acs_isupper(x) ^ acs_isupper(y))
+
 
 /*********************************************************************
 A few global variables.
 These can be adjusted based on your synthesizer.
 *********************************************************************/
 
-char tp_alnumPrep = 0;
-char tp_relativeDate = 0;
-char tp_showZones = 0;
-int tp_myZone = -5; /* offset from gmt */
 char tp_acronUpper = 1; /* acronym letters in upper case? */
 char tp_acronDelim = ' ';
 char tp_oneSymbol; /* read one symbol - not a sentence */
@@ -109,26 +108,8 @@ const char *greaterWord;
 const char *equalsWord;
 const char *oreqWord;
 const char *months[12];
-const char *zones[30];
 const char *nohundred[30];
 const char *slashOrPhrases[8];
-/* The following are not used; they remain as legacy
- * from a time when I thought I could do a lot more text processing
- * than is actually feasible, especially for multiple languages. */
-const char *articles[32];
-const char *verbs[20];
-const char *areaWord;
-const char *extWord;
-const char *states[54];
-const char *bible[73];
-const char *chapterWord;
-const char *verseWord;
-const char *versesWord;
-const char *protocols[8];
-const char *locUnder;
-const char *fileUnder;
-const char *pageUnder;
-const char *flowInto[12];
 };
 
 static const struct OUTWORDS outwords[5] = {
@@ -299,65 +280,12 @@ static const struct OUTWORDS outwords[5] = {
 "aiprle", "may", "june",
 "juligh", "august", "september",
 "october", "noavember", "december"},
-{0,
-"pacific standard time", "pacific daylight time",
-"mountain standard time", "mountain daylight time",
-"central standard time", "central daylight time",
-"eastern standard time", "eastern daylight time",
-"hawaiian standard time",
-"british standard time", "british daylight time",
-"grenich mean time", "universal time", "universal time",
-0},
 {"room", "suite", "apartment", "apt",
 "dept", "department", "box", "pobox",
 "part", "piece", "site", "box",
 "car", "flight", "number",
 0},
 {"he/she", "she/he", "him/her", "her/him", "his/her", "her/his", 0},
-{"a", "an", "the", "this", "that", "my", "your", "his", "her", "our", "their", 0},
-{"is", "was", "should", "could", "might", "may", "can", "has", "had",
-"would", "will", "came", "arrived", "gave", "made",
-0},
-", area code", "extension",
-{0,
-"ahlebama", "alaska", "arizoana", "arkansaw",
-"californya", "colurrado", "connetiket", "dellawair",
-"floridda", "jorja", "hohwighey", "ighdaho",
-"illinoy", "indeeana", "ighowa", "kansis",
-"kintucky", "looeeseeana", "main", "maralend",
-"massichusitts", "michigan", "minnassoada", "mississippy",
-"missoory", "mohntana", "nubraska", "nuvvada",
-"new hampsher", "new jerzy", "new mexico", "new york",
-"north carolighna", "north deckoada", "oahigho", "oakla hoama",
-"oragohn", "pensle vainya", "rode ighlend", "south carolighna",
-"south deckoada", "tennessee", "texis", "utaw",
-"vermont", "verginya", "washington", "wisconsen",
-"west verginya", "wyoming", "D C", "porta reeko",
-"vergin ighlends"},
-{0,
-"genisis", "exidis", "levitikis", "numbers", "duterronomy",
-"joshua", "judges", "rooth", "first samule", "second samule",
-"first kings", "second kings", "first chronicles", "second chronicles",
-"ezra", "neeamigha", "esther", "jobe", "salms", "prohverbs",
-"ekleaziasties", "solomon", "ighzaia", "jeramigha",
-"lamentations", "izeakyal", "dannyal", "hoazaya", "jole",
-"aimus", "oabedigha", "joana", "mighka", "naium", "habekuk",
-"zephannigha", "haggigh", "zakirrigha", "malikigh",
-"matheu", "mark", "luke", "john", "acts", "romens",
-"first corinthians", "second corinthians",
-"galaytiens", "epheesions", "philippians", "colossions",
-"first thessalonians", "second thessalonians",
-"first timithy", "second timithy", "tightis",
-"phighleamen", "heebrews", "james",
-"first peater", "second peater",
-"first john", "second john", "third john", "jude",
-"rehvalations"},
-"chapter", "verse", "verses",
-{0,
-"web site", "telnet server", "R login server", "mail server",
-"F T P site", "goapher server"},
-"a location under", "a file under", "a web page under",
-{"site", "at", "from", "to", "on", "visit", "is", 0},
 
 },{ /* German */
 
@@ -407,66 +335,12 @@ static const struct OUTWORDS outwords[5] = {
 "aiprle", "mei", "june",
 "juligh", "august", "september",
 "october", "noavember", "december"},
-{0,
-"pasifik ganz zeit", "pasifik tages zeit",
-"berge ganz zeit", "berge tages zeit",
-"sentralisch ganz zeit", "sentralisch tages zeit",
-"osternn ganz zeit", "osternn tages zeit",
-"hawaiian ganz zeit",
-"britisches ganz zeit", "britisches tages zeit",
-"grenich mean zeit", "weld zeit", "weld zeit",
-0},
 {"zimmer", "suite", "apartment", "apt",
 "dept", "department", "box", "pobox",
 "part", "piece", "site", "box",
 "car", "flug", "numer",
 0},
 {"er/sie", "sie/er", "ihm/ihr", "ihr/ihm", "sein/ihr", "ihr/sein", 0},
-{"ein","eine","einen","einem","der","die","das","des","den","dem","diese","diesen",
-"mein","meine","meinen","sein","seine","seinen","usere","useren","dein","deine","deinen",0},
-{"ist", "war", "solle", "könne", "möchte", "bin", "kannst", "habe", "hat",
-"wölle", "will", "kam", "kam", "gabe", "macht",
-0},
-", area code", "extension",
-{0,
-"ahlebama", "alaska", "arizoana", "arkansaw",
-"californya", "colurrado", "connetiket", "dellawair",
-"floridda", "jorja", "hohwighey", "ighdaho",
-"illinoy", "indeeana", "ighowa", "kansis",
-"kintucky", "looeeseeana", "main", "maralend",
-"massichusitts", "michigan", "minnassoada", "mississippy",
-"missoory", "mohntana", "nubraska", "nuvvada",
-"new hampsher", "new jerzy", "new mexico", "new york",
-"north carolighna", "north deckoada", "oahigho", "oakla hoama",
-"oragohn", "pensle vainya", "rode ighlend", "south carolighna",
-"south deckoada", "tennessee", "texis", "utaw",
-"vermont", "verginya", "washington", "wisconsen",
-"west verginya", "wyoming", "D C", "porta reeko",
-"vergin ighlends"},
-{0,
-"genisis", "exidis", "levitikis", "numbers", "duterronomy",
-"joshua", "judges", "rooth", "first samule", "second samule",
-"first kings", "second kings", "first chronicles", "second chronicles",
-"ezra", "neeamigha", "esther", "jobe", "salms", "prohverbs",
-"ekleaziasties", "solomon", "ighzaia", "jeramigha",
-"lamentations", "izeakyal", "dannyal", "hoazaya", "jole",
-"aimus", "oabedigha", "joana", "mighka", "naium", "habekuk",
-"zephannigha", "haggigh", "zakirrigha", "malikigh",
-"matheu", "mark", "luke", "john", "acts", "romens",
-"first corinthians", "second corinthians",
-"galaytiens", "epheesions", "philippians", "colossions",
-"first thessalonians", "second thessalonians",
-"first timithy", "second timithy", "tightis",
-"phighleamen", "heebrews", "james",
-"first peater", "second peater",
-"first john", "second john", "third john", "jude",
-"rehvalations"},
-"chapter", "verse", "verses",
-{0,
-"web site", "telnet server", "R login server", "mail server",
-"F T P site", "goapher server"},
-"a location under", "a file under", "a web page under",
-{"site", "at", "from", "to", "on", "visit", "is", 0},
 
 },{ /* Portuguese */
 
@@ -519,67 +393,12 @@ static const struct OUTWORDS outwords[5] = {
 "abril", "maio", "junho",
 "julho", "agosto", "setembro",
 "outubro", "novembro", "dezembro"},
-{0,
-// Don't know what to do with us time zones in other countries.
-"","","","","","","","","",
-"","",
-"grenich mean time", "universal time", "universal time",
-0},
 {"sala", "suite", "apartamento", "apê",
 "depto", "departamento", "caixa", "caixa postal",
 "parte", "bloco", "local", "caixa",
 "carro", "vôo", "número",
 0},
 {0},
-{0},
-{0},
-", código de área", "extensão",
-{0,
-"ahlebama", "alaska", "arizoana", "arkansaw",
-"californya", "colurrado", "connetiket", "dellawair",
-"floridda", "jorja", "hohwighey", "ighdaho",
-"illinoy", "indeeana", "ighowa", "kansis",
-"kintucky", "looeeseeana", "main", "maralend",
-"massichusitts", "michigan", "minnassoada", "mississippy",
-"missoory", "mohntana", "nubraska", "nuvvada",
-"new hampsher", "new jerzy", "new mexico", "new york",
-"north carolighna", "north deckoada", "oahigho", "oakla hoama",
-"oragohn", "pensle vainya", "rode ighlend", "south carolighna",
-"south deckoada", "tennessee", "texis", "utaw",
-"vermont", "verginya", "washington", "wisconsen",
-"west verginya", "wyoming", "D C", "porta reeko",
-"vergin ighlends"},
-{0,
-"gênesis", "êxodo", "levítico", "números", "deuteronômio",
-"josué", "juizes", "rute", "primeiro Samuel", "segundo Samuel",
-"primeiro reis", "segundo reis", "primeiro crônicas", "segundo crônicas",
-"esdras", "Neemias", "ester", "jó", "salmos", "provérbios",
-"eclesiastes", "Salomão", "Isaías", "Jeremias",
-"lamentações", "Ezequiel", "Daniel", "Oséias", "Joel",
-"Amós", "Abdias", "Jonas", "Miquéias", "Naum", "Habacuc",
-"Sofonias", "Ageu", "Zacarias", "Malaquias",
-"Mateus", "Marcos", "Lucas", "João", "Atos", "Romanos",
-"primeiro Coríntios", "segundo Coríntios",
-"gálatas", "efésios", "filipenses", "colossenses",
-"primeiro tessalonicenses", "segundo tessalonicenses",
-"primeiro timóteo", "segundo timóteo", "Tito",
-"filêmon", "hebreus", "Tiago",
-"primeiro Pedro", "segundo Pedro",
-"primeiro João", "segundo João", "terceiro João", "Judas",
-"apocalipse"},
-/* other books...
-"Tobias", "Judite",
-"primeiro Macabeus", "segundo Macabeus",
-"Cântico dos Cânticos",
-"Sabedoria", "Eclesiástico",
-"Baruc",
-*/
-"capítulo", "verso", "versos",
-{0,
-"sítio na web", "servidor telnet", "servidor R loguin", "servidor de correio",
-"sítio F T P", "servidor gófer"},
-"local em", "arquivo em", "página web em",
-{"sítio", "em", "de", "para", "em", "visitar", "é", 0},
 
 },{ /* French */
 
@@ -589,7 +408,6 @@ static const struct OUTWORDS outwords[5] = {
 }};
 
 static const struct OUTWORDS *ow;
-const char * const * articles;
 static const char *andWord;
 
 /* Set things up for tts preprocessing */
@@ -607,7 +425,6 @@ tp_in->room = room;
 tp_out->room = room;
 
 	ow = outwords + acs_lang;
-	articles = ow->articles;
 	andWord = ow->andWord;
 
 //  sortReservedWords();
@@ -644,7 +461,6 @@ static void ascify(void)
 		}
 
 add_c:
-		if(c == SP_MARK) c = ' '; /* this one's reserved */
 		*s = c;
 	} /* end loop over characters in the input message. */
 } /* ascify */
@@ -751,7 +567,7 @@ void textBufSwitch(void)
 	tp_out->len = 1;
 } /* textBufSwitch */
 
-void carryOffsetForward(const unsigned int *s)
+static void carryOffsetForward(const unsigned int *s)
 {
 	acs_ofs_type offset = tp_in->offset[s - tp_in->buf];
 	tp_out->offset[tp_out->len] = offset;
@@ -778,27 +594,6 @@ If we're talking about yesterday, we can just say "yesterday",
 rather than month day year.
 *********************************************************************/
 
-static int nowyear; /* years past 1970 */
-static long nowday; /* days past 1970 */
-
-static void time_checkpoint(void)
-{
-	int days;
-	unsigned long ulsec;
-	time_t sec;
-	time(&sec);
-	ulsec = (unsigned long)sec;
-	ulsec += tp_myZone*3600; /* convert from gmt */
-	ulsec /= (24*3600L);
-	nowday = (int)ulsec + 1;
-	nowyear = (int)(ulsec / 366);
-	ulsec -= 365*nowyear;
-	ulsec -= (nowyear+1)/4;
-	days = 365;
-	if((nowyear%4) == 2) days = 366;
-	if(ulsec >= days) ulsec -= days, ++nowyear;
-} /* time_checkpoint */
-
 
 /*********************************************************************
 Check to see whether a word is contained in a list of words.
@@ -809,7 +604,7 @@ Returns the index of the matching string,
 or -1 if there is no match.
 *********************************************************************/
 
-int wordInList(const char * const *list, const unsigned int *s, int s_len)
+static int wordInList(const char * const *list, const unsigned int *s, int s_len)
 {
 	const char *x;
 	int i, len;
@@ -846,7 +641,7 @@ tp_out->room = room;
 	return 0;
 } /* roomCheck */
 
-int appendChar(unsigned int c)
+static int appendChar(unsigned int c)
 {
 	if(roomCheck(1)) return 1;
 	tp_out->buf[tp_out->len++] = c;
@@ -863,7 +658,7 @@ static int appendIchar(unsigned int c)
 } /* appendIchar */
 
 /* Input is lower case utf8, output is the unicode buffer. */
-int appendString(const char *s)
+static int appendString(const char *s)
 {
 	int n = strlen(s);
 	if(roomCheck(n+1)) return 1;
@@ -893,7 +688,7 @@ static int appendDigitString(const unsigned int *s, int n)
 	return 0;
 } /* appendDigitString */
 
-void lastUncomma(void)
+static void lastUncomma(void)
 {
 	int len = tp_out->len;
 	acs_ofs_type offset = tp_out->offset[len];
@@ -1146,100 +941,6 @@ static int appendXxxx(int n)
 	return rc;
 } /* appendXxxx */
 
-/* Zero parameters are missing, such as February 16, with no year. */
-/* relativeDate will read yesterday as "yesterday", rather than the date. */
-static int appendDate(int m, int d, int y, int z)
-{
-	static int const ndays[] = {0,
-	31,29,31,30,31,30,31,31,30,31,30,31};
-	static int const ntdays[] = {0,
-	0,31,59,90,120,151,181,212,243,273,304,334};
-	int rc = 0;
-
-	/* See about reading "yesterday" */
-	if(tp_relativeDate &&
-	y >= 1970 && y < 2400 &&
-	m > 0 && m <= 12 &&
-	d > 0 && d <= ndays[m] &&
-	(m != 2 || d < 29 || y%4 == 0)) {
-		int diff, dayval;
-		y -= 1970; /* I'll put it back later */
-		dayval = y * 365;
-		dayval += (y+1)/4;
-		dayval += ntdays[m];
-		if(y%4 == 2 && m > 2) ++dayval;
-		dayval += d;
-		diff = nowday - dayval;
-		if(diff >= 0 && diff < 7) { /* within the last week */
-			if(diff == 0) rc |= appendString(ow->todayWord);
-			else if(diff == 1) rc |= appendString(ow->yesterdayWord);
-			else rc |= appendString(ow->weekdays[(dayval+3)%7]);
-			return rc;
-		} /* within a week */
-
-		/* If the date is close to today, don't read the year. */
-		if(diff >= -90 && diff <= 90 &&
-		y <= nowyear)
-			y = 0;
-		else
-			y += 1970; /* told you I'd put it back */
-	} /* valid date somewhere near the present */
-
-	if(m > 0 && m <= 12) rc |= appendString(ow->months[m-1]);
-	if(d > 0 && d < 1000) rc |= appendOrdinal(d);
-	/* should we inject a comma here? */
-	if(y > 0 && y <= 9999) rc |= appendYear(y);
-
-	if(z && tp_showZones) {
-		rc |= appendIchar(',');
-		rc |= appendString(ow->zones[z]);
-		rc |= appendIchar(',');
-	}
-	return rc;
-} /* appendDate */
-
-/* Negative parameters are unspecified fields. */
-static int appendTime(int h, int m, int s, char ampm, int z)
-{
-	int rc = 0;
-	char ampmString[3];
-
-	ampm = toupper(ampm);
-	if(h > 12) ampm = 'P';
-	if(h == 24 || h == 0) ampm = 'A';
-	if(ampm == 'M') { /* military */
-		if(h == 12) ampm = 'P'; else ampm = 'A';
-	}
-	if(h > 12) h -= 12;
-	if(h == 0) h = 12;
-
-	/* detect noon and midnight */
-	if(m == 0 && h == 12) {
-		if(ampm == 'A') { rc |= appendString(ow->midnightWord); goto zoneCheck; }
-		if(ampm == 'P') { rc |= appendString(ow->noonWord); goto zoneCheck; }
-	} /* 12:00:00 */
-
-	rc |= append3num(h, 0, 0);
-	if(m) {
-		rc |= appendOX(m);
-	} else {
-		if(!ampm) rc |= appendString(ow->oclockWord);
-	} /* minutes or not */
-	if(ampm) {
-		ampmString[0] = ampm;
-		ampmString[1] = 'm';
-		ampmString[2] = 0;
-		rc |= appendAcronString(ampmString);
-	}
-
-zoneCheck:
-	if(z && tp_showZones) {
-		rc |= appendString(ow->zones[z]);
-		rc |= appendIchar(',');
-	}
-	return rc;
-} /* appendTime */
-
 static int appendFraction(int num, int den, int preand)
 {
 	int rc = 0;
@@ -1253,7 +954,7 @@ static int appendFraction(int num, int den, int preand)
 	return rc;
 } /* appendFraction */
 
-int alphaLength(const unsigned int *s)
+static int alphaLength(const unsigned int *s)
 {
 	int len = 0;
 	while(acs_isalpha(*s)) ++s, ++len;
@@ -1261,7 +962,7 @@ int alphaLength(const unsigned int *s)
 } /* alphaLength */
 
 static const unsigned int *atoi_s;
-int atoiLength(const unsigned int *s, int len)
+static int atoiLength(const unsigned int *s, int len)
 {
 	int n = 0;
 	while(len--) {
@@ -1293,38 +994,6 @@ static int appendMoney(int zeroflag, int oneflag, int cents, const unsigned int 
 	int j, len;
 	unsigned int c;
 	const unsigned int *s = q;
-
-	/* Let's dive into the hard part;
-	 * figure out if $5 is five dollars.
-	 * Actually it's too hard, especially in many languages. */
-#if 0
-	if(*q == ' ') ++q;
-	if(acs_isalpha(*q)) {
-		/* back up to $ */
-		for(; *s != '$'; --s)  ;
-		c = *--s;
-		if(c == ' ') c = *--s;
-		if(c == 0) c = ' ';
-		j = -1;
-if(c < 0x80) {
-		if(strchr(".!?,:;", (char)c)) j = 2;
-		else if(tolower(c) == 's' && s[-1] == '\'') j = 2;
-		else if(isalpha(c)) {
-			/* back up and check the word */
-			len = 1;
-			while(acs_isalpha(s[-1])) --s, ++len;
-			j = wordInList(ow->articles, s, len);
-		} /* prior word */
-}
-		if(j >= 0) {
-			pluralflag = 0;
-			if(j > 1) {
-				if(wordInList(ow->verbs, q, alphaLength(q)) >= 0)
-					pluralflag = 1;
-			} /* preceding article is not "a" or "an" */
-		} /* the $5 something */
-	} /* word follows money */
-#endif
 
 	if(zeroflag && cents <= 0)
 		rc |= appendIdigit(0);
@@ -1624,207 +1293,6 @@ if(i >= 0) return i;
 	if ((len+2)/3 <= cnt) return 0;
 	return 1;
 } /* isPronounceable */
-
-
-/*********************************************************************
-Expand a coded construct.
-Return 1 on overflow.
-Pass back the updated pointer, just after the second code delimiter.
-*********************************************************************/
-
-#if 0
-static int expandCode(const unsigned int **sp)
-{
-	const unsigned int *start = *sp;
-	const unsigned int *end;
-	const unsigned int *t;
-	char code = *++start;
-	char badcode[12];
-	unsigned int c;
-	int m, d, y; /* for a date */
-	int i;
-	int zone; /* time zone encoded */
-
-	if(code) ++start;
-	for(end = start; *end; ++end)
-		if(*end == SP_MARK) break;
-
-	switch(code) {
-	case SP_REPEAT:
-		/* We wouldn't be here unless tp_readLiteral were 1 */
-		c = *start++;
-		if(c == ' ') c = 0;
-		if(c == '\n') c = SP_MARK;
-		speakChar(c, 0, 0, 0);
-		if(appendString(shortPhrase)) goto overflow;
-		if(appendString(ow->lengthWord)) goto overflow;
-		if(append6num(atoiLength(start, -1))) goto overflow;
-		break;
-
-	case SP_DATE:
-		m = *start++ - 'A';
-		d = *start++ - 'A';
-		y = 0;
-		if(acs_isdigit(*start)) {
-			y = atoiLength(start, 4);
-			start += 4;
-		}
-		zone = 0;
-		if(start < end) zone = *start - 'A';
-		if(appendDate(m, d, y, zone)) goto overflow;
-		t = end+1;
-		if(acs_isspace(*t)) ++t;
-		if(*t == SP_MARK &&
-		t[1] == SP_TIME &&
-		appendString(ow->atWord)) goto overflow;
-		break;
-
-	case SP_TIME:
-		y = *start++ - 'A';
-		m = *start++ - 'A';
-		/* seconds are neither encoded nore read */
-		/* let d hold the am pm indicator */
-		d = *start++;
-		if(d == '?') d = 0;
-		zone = 0;
-		if(start < end) zone = *start - 'A';
-		if(appendTime(y, m, -1, d, zone)) goto overflow;
-	break;
-
-	case SP_PHONE:
-		y = atoiLength(start, 3);
-		start += 3;
-		if(y) {
-			if(appendString(ow->areaWord) ||
-			appendNxx(y) ||
-			appendIchar(',')) goto overflow;
-		} /* area code given */
-		m = atoiLength(start, 3);
-		start += 3;
-		d = atoiLength(start, 4);
-		start += 4;
-		if(appendNxx(m) ||
-		appendIchar(',') ||
-		appendXxxx(d)) goto overflow;
-		d = end - start;
-		if(d) { /* extension */
-			/* extensions are no more than 6 digits */
-			m = atoiLength(start, d);
-			if(appendIchar(',') || appendString(ow->extWord)) goto overflow;
-			if(d > 4 || *start == '0') {
-				if(appendDigitString(start, d)) goto overflow;
-			} else {
-				if(appendYear(m)) goto overflow;
-			}
-		} /* extension */
-		break;
-
-	case SP_FRAC:
-		/* numerator and denominator */
-		m = *start++ - 'A';
-		d = *start++ - 'A';
-		if(code == SP_FRAC) {
-			if(appendFraction(m, d, (*start == '&'))) goto overflow;
-		} else {
-	if(append3num(m, 0, 0) ||
-			appendString(ow->slashWord) ||
-			append3num(d, 0, 0)) goto overflow;
-		}
-		break;
-
-	case SP_WDAY:
-		d = *start;
-		if(islower(d)) { /* abbreviation */
-			/* suppress, if followed by date */
-			t = end+1;
-			if(*t == ' ') ++t;
-			if(*t == SP_MARK && t[1] == SP_DATE) break;
-		}
-		d = toupper(d);
-		d -= 'A';
-		if(appendString(ow->weekdays[d])) goto overflow;
-		t = end+1;
-		if(acs_isspace(*t)) ++t;
-		if(*t == SP_MARK &&
-		t[1] == SP_DATE)
-			tp_out->buf[tp_out->len-1] = ',';
-		break;
-
-	case SP_STATE:
-		if(appendString(ow->states[*start - 'A'])) goto overflow;
-		break;
-
-	case SP_BIBLE:
-		if(appendString(ow->bible[*start-'0'])) goto overflow;
-		++start;
-		d = end - start; /* should be a multiple of 3 */
-		if(!d) { appendBackup(); break; }
-		if(appendString(ow->chapterWord)) goto overflow;
-		m = atoiLength(start, 3);
-		if(append3num(m, 0, 0)) goto overflow;
-		if(d == 3) break;
-		start += 3;
-		if((d == 6 || d == 12) && appendString(ow->verseWord)) goto overflow;
-		if(d == 9 && appendString(ow->versesWord)) goto overflow;
-		m = atoiLength(start, 3);
-		if(append3num(m, 0, 0)) goto overflow;
-		if(d == 6) break;
-		start += 3;
-		if(appendString(ow->throughWord)) goto overflow;
-		if(d == 12 && appendString(ow->chapterWord)) goto overflow;
-		m = atoiLength(start, 3);
-		if(append3num(m, 0, 0)) goto overflow;
-		if(d == 9) break;
-		start += 3;
-		if(appendString(ow->verseWord)) goto overflow;
-		m = atoiLength(start, 3);
-		if(append3num(m, 0, 0)) goto overflow;
-		break;
-
-	case SP_URL:
-		if(!tp_readLiteral) {
-			/* prepend a comma, unless there is a flowing keyword */
-			zone = 0;
-			t = start - 3;
-			c = *t;
-			if(acs_isspace(c)) c = *--t;
-			i = 0;
-			while(acs_isalpha(c)) c = *--t, ++i;
-			if(i && wordInList(ow->flowInto, t+1, i) >= 0) zone = 1;
-			if(!zone && appendIchar(',')) goto overflow;
-		}
-			c = tolower(*start);
-			if(c >= 'm') {
-				const char *msg = ow->locUnder;
-				c -= 12;
-				if(c == 'b') msg = ow->pageUnder;
-				if(c == 'h') msg = ow->fileUnder;
-				if(appendString(msg)) goto overflow;
-			}
-			c = *start;
-			if(tolower(c) >= 'm') c -= 12;
-			/* no need to say web site if we start with www */
-			if(c == 'b') break;
-			c = tolower(c);
-			c -= 'a';
-			if(!ow->protocols[c]) break;
-			if(appendString(ow->protocols[c])) goto overflow;
-		break;
-
-	default:
-		if(code) sprintf(badcode, "code %02x", code);
-		else strcpy(badcode, "code");
-		if(appendString((char*)badcode)) goto overflow;
-	} /* switch on code */
-
-	if(*end) ++end;
-	*sp = end;
-	return 0;
-
-overflow:
-	return 1;
-} /* expandCode */
-#endif
 
 
 /*********************************************************************
@@ -2373,7 +1841,7 @@ static int expandPunct(const unsigned int **sp)
 	const unsigned int *end = s+1;
 	const unsigned int *t;
 	char spaceAround;
-	int len, leftnum, rightnum, leftcode, rightcode, leftlen, rightlen;
+	int len, leftnum, rightnum, leftlen, rightlen;
 
 	c = s[0];
 	d = s[-1];
@@ -2466,12 +1934,6 @@ do_punct:
 		spaceAround = 0;
 		if(d == ' ') { spaceAround = 2; d = *--t; }
 		if(e == ' ') { spaceAround |= 1; e = *++s; }
-		leftcode = rightcode = 0;
-		if(e == SP_MARK) rightcode = s[1];
-		if(d == SP_MARK) {
-			while((d = *--t)) if(d == SP_MARK) break;
-			leftcode = t[1];
-		}
 		leftnum = rightnum = -1;
 		leftlen = rightlen = 0; /* quiet gcc warning */
 		if(acs_isdigit(e) && e != '0') {
@@ -2490,38 +1952,15 @@ do_punct:
 			c = t[-len];
 			if(acs_isalpha(c) || c == '-') rightnum = -1;
 		}
-		if(leftcode == rightcode) {
-			if(leftcode == SP_WDAY) {
-				if(appendString(ow->throughWord)) goto overflow;
-				break;
-			}
-			if(leftcode == SP_DATE || leftcode == SP_TIME) {
-do_to_word:
-				lastUncomma();
-				if(appendString(ow->toWord)) goto overflow;
-				break;
-			}
-		}
-		if(leftcode == SP_DATE && rightnum > 0) {
-			if(rightnum <= 31) {
-				if(appendString(ow->toTheWord)) goto overflow;
-				if(appendOrdinal(rightnum)) goto overflow;
-				end = s + rightlen;
-				break;
-			}
-			if(rightnum >= 1900 && rightnum < 2100) goto do_to_word;
-		}
-		if(leftcode == SP_TIME && rightnum > 0 && rightnum <= 12) goto do_to_word;
-		if(rightcode == SP_TIME && leftnum > 0 && leftnum <= 12) goto do_to_word;
-		if((leftcode == SP_DATE || leftcode == SP_FRAC) &&
-		(rightcode == SP_DATE || rightcode == SP_FRAC))
-			goto do_to_word;
-		if(leftcode|rightcode) goto do_comma;
 		if(spaceAround == 2) break;
 		if(spaceAround == 1) goto do_comma;
 		if(leftnum > 0 && rightnum > leftnum &&
 		(rightlen == leftlen ||
-		(spaceAround && rightlen == leftlen+1))) goto do_to_word;
+		(spaceAround && rightlen == leftlen+1))) {
+				lastUncomma();
+				if(appendString(ow->toWord)) goto overflow;
+				break;
+			}
 		if(spaceAround) goto do_comma;
 		if(!acs_isdigit(e)) goto do_comma;
 		if(appendString(ow->dashWord)) goto overflow;
@@ -2738,14 +2177,6 @@ overflow:
 /*********************************************************************
 Expand encoded constructs and render words and numbers.
 This is generally the last phase of translation.
-Prior phases may remove mail headers or
-strip HTML tags; we don't worry about that here.
-Another earlier phase (optional) encodes certain structures,
-such as dates and times.
-If we encounter one of these, we'll render it in standard speech
-via expandCode().
-If we don't find any encoded constructs, that's ok too.
-Other pre-phases are not optional.
 We assume there are no control characters,
 except those that denote flavors of white space,
 as described in another module.
@@ -2778,13 +2209,6 @@ passThrough:
 		} /* formfeed */
 
 		if(c == '\n' && !tp_oneSymbol)goto passThrough;
-
-		if(c == SP_MARK) {
-/* this should never happen
-			if(expandCode((const unsigned int **)&s)) goto overflow;
-*/
-			continue;
-		} /* coded construct */
 
 		if(acs_isalnum(c)) {
 			if(expandAlphaNumeric(&s)) goto overflow;
@@ -2902,22 +2326,9 @@ void prepTTS(void)
 	tp_out->len = 1;
 
 	if(!tp_oneSymbol) {
-		time_checkpoint();
 		ascify();
 		debugCheck('b', tp_in);
 	} /* tp_oneSymbol */
-
-#if 0
-	/* Encode constructs such as date and time.
-	 * There are some word replacements that can take place even when
-	 * reading symbol by symbol. */
-	if(tp_alnumPrep &&
-		(!tp_oneSymbol || isalpha(tp_in->buf[1]))) {
-		doEncode();
-		debugCheck('h', tp_out);
-		textBufSwitch();
-	}
-#endif
 
 	/* translate everything to alphanum text */
 	expandSentence();
