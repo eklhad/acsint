@@ -547,6 +547,8 @@ unsigned int first; /* first character of the sentence */
 static int flip = 1; /* flip between two ranges of numbers */
 
 acs_refresh(); /* whether we need to or not */
+/* on console switch acs_rb could drop to 0 */
+	if(!acs_rb) return;
 
 if(readNextMark) {
 /* could be past the buffer */
