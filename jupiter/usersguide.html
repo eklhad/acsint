@@ -159,7 +159,7 @@ On my system it looks like this.
 jupiter esp "|espeakup -V en-us+klatt4 -a 2>/dev/null"
 
 <P>
-espeakup is the program to run, and even though it launches and operates correctly,
+Espeakup is the program to run, and even though it launches and operates correctly,
 it generates error messages, which is why standard error is sent to /dev/null.&nbsp;
 The -V option specifies the language and the voice,
 in this case English, as pronounced in the United States,
@@ -214,22 +214,32 @@ After all, most people don't build the kernel or kernel modules.&nbsp;
 But you may have to, as part of the Jupiter installation process,
 so make sure you have the source for your running kernel.&nbsp;
 Then descend into the drivers directory in the acsint package and type `make modules'.&nbsp;
-Then as root, type `make modules_install'.&nbsp;
+Then as root, type `make modules_install',
+or simply copy the ko files to any location under /lib/modules/version/kernel.&nbsp;
 If these two steps run without error, run `depmod -a'.&nbsp;
 This tells the modprobe system about the two new modules that you just built.&nbsp;
-You will be able to load them into the kernel at any time,
+Now you will be able to load them into the kernel at any time,
 and of course you will want to load them very early in the boot sequence,
 because Jupiter will not run without them.&nbsp;
-I have this near the top of /etc/rc.sysinit.
-
-<P>
-modprobe acsint
-
-<P>
-That brings in the acsint module, and the ttyclicks module, since the former depends on the latter.&nbsp;
-See /lib/modules/version/modules.dep for module dependencies.&nbsp;
-With acsint loaded, we are ready for Jupiter -
-with a few caveats that will be described below.
+I use to load the modules and run jupiter from the top of /etc/rc.sysinit,
+whence my computer was talking as early as possible.&nbsp;
+That was before systemd came on the scene.&nbsp;
+As my friend summarized, "Resistance is Futile".&nbsp;
+I have indeed been assimilated into the systemd world,
+but I still don't understand the labyrinth of the boot sequence, and probably never will.&nbsp;
+Failing this, I load the modules by
+putting the word acsint in /etc/modules-load.d/access.conf,
+and then I use /etc/rc.local to create /dev/acsint and launch jupiter.&nbsp;
+This does not bring jupiter up as early as I might like,
+but the computer is talking before the multi-user target places gettys on the virtual consoles,
+and I guess that's good enough.&nbsp;
+If there is something wrong with the computer
+and it throws me into an emergency maintenance shell,
+I will have to enter the root password and run a speech script,
+without clicks or speech.&nbsp;
+As rare as that is, I think I can cope.&nbsp;
+So the computer is accessible,
+and I didn't have to trace through all the targets and services of the boot sequence.
 
 <P>
 There is no harm in installing and running ttyclicks and acsint, whether you use Jupiter or not.&nbsp;
@@ -298,7 +308,7 @@ It responds to text characters that pass through the standard tty,
 and as mentioned earlier, X bypasses this channel.&nbsp;
 Even the terminal emulator running under a desktop still runs through X,
 and probably won't work with ttyclicks.&nbsp;
-You really need to be at run level 3.&nbsp;
+You really need to be in multi-user mode.&nbsp;
 See /etc/inittab for the run level.&nbsp;
 The ttyclicks module is for command line users,
 or users who will stay in command mode long enough to make sure their
@@ -349,34 +359,7 @@ And yet there are still speedbumps.&nbsp;
 At startup, /dev is mounted readonly, so I can't make any changes to it.&nbsp;
 One way around this is to start udev first.&nbsp;
 Then /dev becomes a virtual file system that is writable.&nbsp;
-But bear in mind, I want Jupiter to start speaking as soon as possible,
-so I can read any error messages that might occur.&nbsp;
-Starting a lot of other services before Jupiter is not ideal,
-but we don't always have a choice.&nbsp;
-As mentioned above, starting udev before Jupiter might make sense.&nbsp;
-Beyond this, you have to install acsint, and your sound card modules, or Jupiter won't talk at all.&nbsp;
-Thus the order of commands in /etc/rc.sysinit is something like this.
-
-<P>
-#  Get the clicks running right away, so you have some audio feedback.
-<br>
-modprobe acsint
-<br>
-#  If you are using a software synth, get the sound card ready.
-<br>
-modprobe sound
-<br>
-sleep 1
-<br>
-/sbin/alsactl init 0 >/dev/null 2>&1
-<br>
-aumix -v 60 -w 100 -c 100 -p 50
-<br>
-#  Optionally start udev, and perhaps that will create /dev/acsint for you.
-<br>
-mount /sys
-<br>
-/usr/local/bin/jupiter -d esp "|espeakup -V en-us -a 2>/dev/null"
+That solves the problem as long as everything works up to the point of udev, which it usually does.
 
 <P>
 If you don't start udev at this point, or if you don't use udev at all,
@@ -641,7 +624,7 @@ Key bindings will be described later, after I have presented the atomic speech c
 <P>
 Configurations run per console,
 as you would expect with different applications running under different consoles.&nbsp;
-when you switch consoles, Jupiter uses the key bindings last associated with that console,
+When you switch consoles, Jupiter uses the key bindings last associated with that console,
 i.e. the config file last loaded under that console.&nbsp;
 However, any macros you have set for the purposes of cut&amp;paste are retained.&nbsp;
 See the markl and markr functions below.&nbsp;
@@ -664,7 +647,7 @@ The reading cursor is a location in the tty buffer (in linear mode),
 or on screen (in screen mode),
 that corresponds to the letters or words you are reading or would like to read.&nbsp;
 This is independent of the visual cursor that is on the screen, where text is entered or modified.&nbsp;
-thus you can read the text anywhere on the screen,
+Thus you can read the text anywhere on the screen,
 just as a sighted person might lift his eyes to read the text at the top of the screen,
 or lower his eyes to read the status message at the bottom of the screen.&nbsp;
 In linear mode the effect is even more pronounced.&nbsp;
@@ -1355,7 +1338,7 @@ Besides, Jupiter is extremely configurable;
 you can make it be just about anything you want it to be."
 
 <P>
-writing the config file, or files, is the key.&nbsp;
+Writing the config file, or files, is the key.&nbsp;
 It takes some practice, some trial and error.&nbsp;
 The sample config file may be of some help.&nbsp;
 As always, you can
@@ -1365,3 +1348,4 @@ As always, you can
 <A HREF=#top>Back to top</A>
 
 </BODY></font>
+</html>
