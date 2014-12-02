@@ -1,0 +1,6 @@
+You can use these patches to integrate the ttyclicks and acsint modules
+into the kernel source tree.
+You need to apply the kdsounds patch, then the ttyclicks patch.
+Run make config, then build the kernel and/or the modules.
+At present, ttyclicks and acsint have to be modules.
+If you say y, for builtin, I'm not sure what will happen.
