@@ -1,17 +1,7 @@
 /* ttyclicks.c: generate clicks as output is sent to the screen.
- * If you are old enough, this will remind you of the sounds of a mechanical
- * teletype running at 1200 baud.
- * Why would you want such a thing?
- * You might not, but a blind person might.
- * The clicks provide valuable audio feedback to blind users.
- * They know when the computer responds to a command,
- * and they can discern the quantity and format of that response,
- * before the speech synthesizer has uttered a word.
- * It also throttles the output, which would otherwise fly by the screen
- * faster than any blind person could even so much as hit control s.
  * Please see Documentation/accessibility/ttyclicks.txt for more details.
  *
- * Copyright (C) Karl Dahlke, 2004-2013.
+ * Copyright (C) Karl Dahlke, 2004-2014.
  * This software may be freely distributed under the GPL,
  * general public license, as articulated by the Free Software Foundation.
  */
@@ -26,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/io.h>		/* for inb() outb() */
 #include <linux/delay.h>
+#include <linux/i8253.h>
 
 #include "ttyclicks.h"
 
@@ -57,9 +48,6 @@ MODULE_PARM_DESC(kmsg,
 static int sleep;
 module_param(sleep, int, 0);
 MODULE_PARM_DESC(sleep, "sleep between the clicks of the output characters - not yet implemented.");
-
-/* Define NO_KDS if your kernel does not yet support kd_mkpulse etc */
-#define NO_KDS
 
 /*
  * Here are some symbols that we export to other modules
@@ -230,12 +218,7 @@ static struct notifier_block nb_key = {
 #define TICKS_CLICK 600
 #define TICKS_CHARWAIT 4000
 
-#ifdef NO_KDS
-
-/* This stuff belongs in drivers/input/misc/pcspkr.c */
-
 /* Use the global PIT lock ! */
-#include <linux/i8253.h>
 
 /* Toggle the speaker, but not if a tone is sounding */
 static void speaker_toggle(void)
@@ -275,20 +258,14 @@ static void speaker_sing(unsigned int freq)
 
 static void my_mksteps(int f1, int f2, int step, int duration);
 
-#endif
-
 /* the sound of a character click */
 void ttyclicks_click(void)
 {
 	if (!ttyclicks_on)
 		return;
-#ifndef NO_KDS
-	kd_mkpulse(TICKS_CLICK);
-#else
 	speaker_toggle();
 	udelay(TICKS_CLICK);
 	speaker_toggle();
-#endif
 }				/* ttyclicks_click */
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
@@ -296,23 +273,12 @@ void ttyclicks_cr(void)
 {
 	if (!ttyclicks_on)
 		return;
-#ifndef NO_KDS
-	kd_mksteps(2900, 3600, 10, 10);
-#else
 	my_mksteps(2900, 3600, 10, 10);
-#endif
 }				/* ttyclicks_cr */
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
 
-#ifdef NO_KDS
-
-/* This stuff belongs in drivers/tty/vt/keyboard.c */
-
 /*
  * Push notes onto a sound fifo and play them via an asynchronous thread.
- * kd_mksound is a single tone, but kd_mknotes is a series of notes.
- * this is used primarily by the accessibility modules, to sound
- * various alerts and conditions for blind users.
  * This is particularly helpful when the adapter is not working,
  * for whatever reason.  These functions are central to the kernel,
  * and do not depend on sound cards, loadable modules, etc.
@@ -488,18 +454,12 @@ done:
 		pop_soundfifo(0);
 }
 
-#endif
-
 /* Put a string of notes into the sound fifo. */
 void ttyclicks_notes(const short *p)
 {
 	if (!ttyclicks_on)
 		return;
-#ifdef NO_KDS
 	my_mknotes(p);
-#else
-	kd_mknotes(p);
-#endif
 }				/* ttyclicks_notes */
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
@@ -507,11 +467,7 @@ void ttyclicks_steps(int f1, int f2, int step, int duration)
 {
 	if (!ttyclicks_on)
 		return;
-#ifdef NO_KDS
 	my_mksteps(f1, f2, step, duration);
-#else
-	kd_mksteps(f1, f2, step, duration);
-#endif
 }				/* ttyclicks_steps */
 EXPORT_SYMBOL_GPL(ttyclicks_steps);
 
@@ -583,6 +539,7 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 
 	if (param->vc->vc_mode == KD_GRAPHICS)
 		goto done;
+/* Sorry, n-tilde doesn't click, for now. */
 	if (unicode >= 128) {
 		escState = 0;
 		goto done;
@@ -628,29 +585,24 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	if (!usecs)
 		goto done;
 
-/* Tell the process to sleep. */
+/*
+Tell the process to sleep.
+Can't suspend in the middle of a notifier.
+Best approach is to return NOTIFY_SLEEP, but that isn't implemented yet.
+*/
+
 	msecs = (usecs + 800) / 1000;
 	jifpause = msecs_to_jiffies(msecs);
-/* jifpause should always be positive */
+/* jifpause should always be positive, but let's make sure */
 	if (sleep && jifpause > 0) {
-
 		/*
 		 * This magical line of code only works if you edit vt.c
 		 * and recompile the kernel.
-		 * A patch for 3.12.3 can be found in the patch directory.
+		 * A patch is available from the acsint project.
+		 * Again, NOTIFY_SLEEP is a better solution.
 		 */
-
 		param->c = 0xac97;
-
 	} else {
-
-/*
- * no sleep, spin in a cpu cycle.
- * It's easy, and works,
- * but will suspend the music you are playing in the background.
- * You won't here the rest of Hey Jude until output has ceased.
- */
-
 		udelay(usecs);
 	}
 
@@ -696,11 +648,9 @@ static void __exit click_exit(void)
 	unregister_keyboard_notifier(&nb_key);
 	unregister_vt_notifier(&nb_vt);
 
-#ifdef NO_KDS
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
 	pop_soundfifo(0);
-#endif
 }				/* click_exit */
 
 module_init(click_init);
