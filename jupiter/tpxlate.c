@@ -402,8 +402,59 @@ static const struct OUTWORDS outwords[5] = {
 
 },{ /* French */
 
-/* not yet implemented */
+// nato standard alphabet
+{"alpha", "bravo", "charli", "delta", "echo",
+"foxtrote", "golf", "hôtel", "inndia", "djouliette",
+"kilô", "lima", "maïk", "novembe", "oscar",
+"popa", "kèbèk", "rômïô", "sïèra", "tanngo",
+"youniform", "victor", "wiski", "èks rè", "yannki", "zoulou"},
+// 2 letter words
 0,
+// 3 letter words
+{0},
+// contractions, none in this language
+{0},
+
+{"vingt", "trente", "quarante", "cinquante", "soixante", "soixante-dix", "quatre-vingt", "quatre-vingt-dix"},
+"cent", "mille", "million", "milliard", "billion",
+{"mille", "million", "milliard", "billion", 0},
+{0},
+"centième",
+{"0", /* I haven't found a good portable word for zero */
+"un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf"},
+"o",
+{"dix", "onze", "douze", "treize", "quatorze",
+"quinze", "seize", "dix-sept", "dix-huit", "dix-neuf"},
+{"zeroième", "premier", "deuxième", "troisième", "quatrième",
+"cinquième", "sixième", "septième", "huitième", "neuvième",
+"dixième", "onzième", "douzième", "treizième", "quatorième",
+"quinzième", "seizième", "dix-septième", "dix-huitième", "dix-neuvième"},
+{"vingtième", "trentième", "quarantième", "cinquantième", "soixantième", "soixante-dixième", "quatre-vingtième", "quatre-vingt-dixième"},
+"aujourd'hui", "hier", "demain",
+{"dimanche", "lundi", "mardi", "mercredi",
+"jeudi", "vendredi", "samedi"},
+"midi", "minuit", "heure",
+"et", "ou",
+"cap ",
+"code",
+"demi",
+"à", "carré", "cube",
+"tiret", "deux points", "point d'exclamation", "moins", "dollar", "dollars", "centime", "centimes",
+"c'est à dire,", "par exemple,",
+"la", "longueur", "par",
+"point", "point", "à", "à", "via",
+"slash", "nombre", "nombres",
+"inférieur à", "supérieur à", "égal", "ou égal à",
+{"janvier", "février", "mars",
+"avril", "mai", "juin",
+"juillet", "août", "septembre",
+"octobre", "novembre", "décembre"},
+{"chambre", "suite", "appartement", "apt",
+"dept", "département", "boîte", "boîte postale",
+"partie", "pièce", "site", "boîte",
+"voiture", "vol", "numéro",
+0},
+{"il/elle", "elle/il", "lui/elle", "elle/lui", "son/sa", "sa/son", 0},
 
 }};
 

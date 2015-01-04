@@ -229,11 +229,40 @@ static const struct OUTWORDS const outwords[5] = {
 
 },{ /* French, just a placeholder for now */
 
-"",
+"usage:  jupiter [-d] [-c configfile] synthesizer port\n"
+"-d est le mode démon, lancé en tâche de fond.\n"
+"Synthesizer vaut: dbe = doubletalk externe,\n"
+"dte = dectalk externe, dtp = dectalk pc,\n"
+"bns = braille n speak, ace = accent, esp = espeakup.\n"
+"port vaut 0 1 2 ou 3, pour le périphérique série.\n"
+"jupiter tc    pour tester le fichier de configuration.\n",
+
 "impossible d'ouvrir fichier de configuration %s\n",
-"impossible d'ouvrir device driver %s;\n%s.\n",
-"impossible d'ouvrir auto port %s\n",
+"impossible d'ouvrir pilote %s;\n%s.\n",
+"impossible d'ouvrir port série %s\n",
 "impossible de lancer commande %s\n",
+
+"Acsint ne peut être ouvert que par un seul programme à la fois.\n"
+"Un autre programme utilise déjà le pilote acsint.\n",
+"Vérifier les permissions de /dev/vcsa et %s\n",
+"Avez-vous créé %s en tant que fichier spécial en mode caractère,\n"
+"et avez-vous installé le module acsint ?\n",
+{0, "erreur de syntaxe",
+"%s ne peut pas se trouver au milieu d'une commande vocale composite",
+"%s doit être suivi d'une lettre ou d'un chiffre",
+"%s n'est pas une commande vocale connue",
+"%s ne peut être associée à aucune autre commande",
+"le mot de dictionnaire ou le mot de remplacement est trop long",
+"trop de mots dans le dictionnaire de remplacement",
+"impossible de laisser un caractere ponctuation ou unicode sans prononciation",
+"impossible de modifier la prononciation d'une letter, d'un chiffre, ou d'un unicode bas ou haut",
+},
+"tampon", "ligne", "oui", "non", "console", "jupiter prêt",
+"volume", "plus fort", "moins fort",
+"vitesse", "plus vite", "moins vite",
+"pitch", "plus bas", "plus haut",
+"bonjour", "rechargement", "o k",
+
 /* no more */
 
 }};
@@ -1351,6 +1380,11 @@ acs_lang = ACS_LANG_DE;
 
     if(!strncmp(buf, "pt_br", 5)) {
 acs_lang = ACS_LANG_PT_BR;
+	return;
+    }
+
+    if(!strncmp(buf, "fr", 2)) {
+acs_lang = ACS_LANG_FR;
 	return;
     }
 
