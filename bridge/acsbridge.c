@@ -448,7 +448,7 @@ int
 acs_tone_onoff(int enabled)
 {
 static const short offsnd[] = {
-	270,8,0,0	};
+	220,6,0,0	};
 static const short onsnd[] = {
 	700,12,0,0	};
 return acs_notes(enabled ? onsnd : offsnd);
