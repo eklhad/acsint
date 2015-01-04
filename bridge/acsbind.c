@@ -152,8 +152,9 @@ int acs_isalpha(unsigned int c)
 
 	case ACS_LANG_FR:
 		c |= 0x20;
-		if(c == 0xe0 || c == 0xe8 || c == 0xe9 || c == 0xea || c == 0xee) return 1;
-		if(c == 0xf4 || c == 0xfb) return 1;
+		if(c == 0xe0 || c == 0xe1 || c == 0xe2 || c == 0xe6 || c == 0xe7 || c == 0xe8) return 1;
+		if(c == 0xe9 || c == 0xea || c == 0xeb || c == 0xee || c == 0xef ) return 1;
+		if(c == 0xf4 || c == 0xf9 || c == 0xfb || c == 0xfc ) return 1;
 		break;
 
 	}
@@ -734,11 +735,95 @@ static const struct uc_name portuguese_uc[] = {
 {0, 0}
 };
 
+static const struct uc_name french_uc[] = {
+{7, "sonnerie"},
+{8, "espace arrière"},
+{9, "tabulation"},
+{10, "changement de ligne"},
+{12, "saut de page"},
+{13, "retour charriot"},
+{27, "échappement"},
+{' ', "espace"},
+{'!', "point d'exclamation"},
+{'"', "guillemet"},
+{'#', "dièse"},
+{'$', "dollar"},
+{'%', "pourcent"},
+{'&', "et"},
+{'\'', "apostrophe"},
+{'(', "parenthèse gauche"},
+{')', "parenthèse droite"},
+{'*', "astérisque"},
+{'+', "plus"},
+{',', "virgule"},
+{'-', "tiret"},
+{'.', "point"},
+{'/', "slash"},
+{':', "deux points"},
+{';', "point virgule"},
+{'<', "inférieur"},
+{'=', "égal"},
+{'>', "supérieur"},
+{'?', "point d'interrogation"},
+{'@', "arobas"},
+{'[', "crochet gauche"},
+{'\\', "backslash"},
+{']', "crochet droit"},
+{'^', "circonflexe"},
+{'_', "souligné"},
+{'`', "accent grave"},
+{'{', "accolade gauche"},
+{'|', "barre verticale"},
+{'}', "accolade droite"},
+{'~', "tildé"},
+{0x7f, "delete"},
+{0xa0, "espace insécable"},
+{0xa1, "point d'exclamation inversé"},
+{0xa2, "centime"},
+{0xa3, "livre"},
+{0xa4, "monétaire"},
+{0xa5, "yen"},
+{0xa6, "séparateur vertical"},
+{0xa7, "paragraphe"},
+{0xa8, "tréma"},
+{0xa9, "copyright"},
+{0xaa, "féminin"},
+{0xab, "ouvrer guillemet"},
+{0xac, "signe négation"},
+{0xad, "trait d'union conditionnel"},
+{0xae, "marque déposée"},
+{0xaf, "macron"},
+{0xb0, "degrés"},
+{0xb1, "plus ou moins"},
+{0xb2, "exposant deux"},
+{0xb3, "exposant trois"},
+{0xb4, "accent aigü"},
+{0xb5, "micro"},
+{0xb6, "pied de mouche"},
+{0xb7, "point médian"},
+{0xb8, "cédille"},
+{0xb9, "exposant un"},
+{0xba, "masculin"},
+{0xbb, "fermer guillemet"},
+{0xbc, "un quart"},
+{0xbd, "un demi"},
+{0xbe, "trois quarts"},
+{0xbf, "point d'interrogation inversé"},
+{0xd7, "fois"},
+{0xf7, "divisé par"},
+{0x2018, "apostrophe"},
+{0x2019, "apostrophe"},
+{0x20ac, "euro"},
+{0x221e, "infini"},
+{0, 0}
+};
+
 static const struct uc_name *uc_names[] = {
 0,
 english_uc,
 german_uc,
 portuguese_uc,
+french_uc
 };
 
 static char *punclist[65536];
@@ -985,6 +1070,7 @@ static const root_fn mkroot_fns[] = {
 0,
 mkroot_english,
 0,
+0,
 0};
 
 typedef void (*reconst_fn)(int);
@@ -992,6 +1078,7 @@ typedef void (*reconst_fn)(int);
 static const reconst_fn reconst_fns[] = {
 0,
 reconst_english,
+0,
 0,
 0};
 

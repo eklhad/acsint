@@ -136,7 +136,7 @@ static const unsigned int cp850[] = {
 
 // code page per language
 static const unsigned int *cp_lang[] = {0,
-cp437, cp437, cp850,
+cp437, cp437, cp850, cp850
 };
 
 void acs_vc(void)
@@ -1265,6 +1265,7 @@ static const char *lengthword[] = {
 	" length ",
 	" langes ",
 	" cumprimento ",
+	" longueur ",
 };
 
 int acs_getsentence(unsigned int *dest, int destlen, acs_ofs_type *offsets, int prop)
