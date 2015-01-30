@@ -520,6 +520,7 @@ strcpy(speechcommandlist[mkcode], s);
 struct uc_name {
 unsigned int unicode;
 const char *name;
+struct uc_name *next;
 };
 
 static const struct uc_name english_uc[] = {
@@ -826,28 +827,41 @@ portuguese_uc,
 french_uc
 };
 
-static char *punclist[65536];
+static struct uc_name *uc_loaded;
 
 void acs_clearpunc(unsigned int c)
 {
-if(c > 0xffff) return;
-if(punclist[c]) free(punclist[c]);
-punclist[c] = 0;
+struct uc_name *u, *s = 0;
+for(u=uc_loaded; u; u=u->next) {
+if(c == u->unicode) break;
+s = u;
+}
+if(!u) return;
+if(s) s->next = u->next;
+else uc_loaded = u->next;
+free(u);
 } /* acs_clearpunc */
 
-char *acs_getpunc(unsigned int c)
+const char *acs_getpunc(unsigned int c)
 {
-if(c > 0xffff) return 0;
-return punclist[c];
+struct uc_name *u;
+for(u=uc_loaded; u; u=u->next) {
+if(c == u->unicode) return u->name;
+}
+return 0;
 } /* acs_getpunc */
 
 void acs_setpunc(unsigned int c, const char *s)
 {
-if(c > 0xffff) return;
+struct uc_name *u;
 acs_clearpunc(c);
 if(!s) return;
-punclist[c] = malloc(strlen(s) + 1);
-strcpy(punclist[c], s);
+u = malloc(sizeof(struct uc_name));
+u->unicode = c;
+u->name = malloc(strlen(s) + 1);
+strcpy((char*)u->name, s);
+u->next = uc_loaded;
+uc_loaded = u;
 } /* acs_setpunc */
 
 /* The replacement dictionary, in utf8 */
@@ -1272,7 +1286,7 @@ if(!t) return -8;
 skipWhite(&t);
 if(!*t) return -8;
 if(p_uc <= ' ') return -9;
-if(p_uc >= 0x10000) return -9;
+if(p_uc >= 0x7fffffff) return -9;
 if(acs_isalnum(p_uc)) return -9;
 acs_setpunc(p_uc, t);
 return 0;
@@ -1320,8 +1334,7 @@ dict2[i] = 0;
 }
 numdictwords = 0;
 
-for(i=0; i<65536; ++i)
-acs_clearpunc(i);
+while(uc_loaded) acs_clearpunc(uc_loaded->unicode);
 
 u = uc_names[acs_lang]; /* that's all we have right now */
 while(u->unicode) {

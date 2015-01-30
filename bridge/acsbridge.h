@@ -734,7 +734,7 @@ Larger unicodes are simply ignored.
 *********************************************************************/
 
 void acs_setpunc(unsigned int c, const char *s);
-char *acs_getpunc(unsigned int c);
+const char *acs_getpunc(unsigned int c);
 void acs_clearpunc(unsigned int c);
 
 /*********************************************************************

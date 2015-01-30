@@ -387,7 +387,7 @@ if(l) write(acs_sy_fd1, s, l);
 
 void acs_say_char(unsigned int c)
 {
-char *s = acs_getpunc(c);
+const char *s = acs_getpunc(c);
 if(s) acs_say_string_n(s);
 else
 acs_write_mix(acs_sy_fd1, &c, 1);
