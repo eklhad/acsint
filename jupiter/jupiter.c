@@ -161,37 +161,37 @@ static const struct OUTWORDS const outwords[5] = {
 
 },{ /* German, but still mostly English */
 
-"usage:  jupiter [-d] [-c configfile] synthesizer port\n"
-"-d is daemon mode, run in background.\n"
-"Synthesizer is: dbe = doubletalk external,\n"
-"dte = dectalk external, dtp = dectalk pc,\n"
+"Verwendung: jupiter [-d] [-c Konfiguration] Port-des-Synthesizers\n"
+"-d startet im Dienstmodus im Hintergrund.\n"
+"Synthesizer sind: dbe = doubletalk extern,\n"
+"dte = dectalk extern, dtp = dectalk pc,\n"
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
-"port is 0 1 2 or 3, for the serial device.\n"
-"jupiter tc    to test the configuration file.\n",
-"nicht öfnen config file %s\n",
-"nicht öfnen die device driver %s;\n%s.\n",
-"nicht öfnen die serial port %s\n",
-"nicht execute command %s\n",
-"Acsint can only be opened by one program at a time.\n"
-"Another program is currently using the acsint device driver.\n",
-"Check the permissions on /dev/vcsa and %s\n",
-"Did you make %s character special,\n"
-"and did you install the acsint module?\n",
-{0, "syntax error",
-"%s cannot be in the middle of a composite speech command",
-"%s must be followed by a letter or digit",
-"%s is not a recognized speech command",
-"%s cannot be mixed with any other commands",
-"dictionary word or replacement word is too long",
-"too many words in the replacement dictionary",
-"cannot leave a punctuation or unicode with no pronunciation",
-"cannot set the pronunciation of a letter, digit, or low or high unicode",
+"Port ist entweder 0 1 2 oder 3, für serielle Geräte.\n"
+"Jupiter tc um die Konfigurationsdatei zu testen\n",
+"kann Konfigurationsdatei %s nicht öffnen\n",
+"kannn Gerätetreiber %s nicht öffnen;\n%s.\n",
+"kann seriellen Port %s nicht öffnen\n",
+"kann Kommando %s nicht ausführen\n",
+"Acsint kann nur von einem Programm gleichzeitig geöffnet werden.\n"
+"Ein anderes Programm verwendet bereits den Acsint-Gerätetreiber.\n",
+"Überprüfen Sie die Berechtigungen für /dev/vcsa und %s.\n",
+"Ist von Ihnen %s als „Character Special” gekennzeichnet worden,\n"
+"und haben Sie das Acsint-Modul installiert?\n",
+{0, "Xyntaxfehler",
+"%s kann nicht in der Mitte eines zusammengesetzten Sprachkommandos sein",
+"auf %s muss ein Buchstabe oder eine Zahl folgen",
+"%s ist kein bekanntes Sprachkommando",
+"%s kann nicht mit anderen Kommandos vermischt werden",
+"Wörterbuchbegriff oder Ersatzbegriff ist zu lang",
+"zu viele Begriffe im Ersetzungswörterbuch",
+"unmöglich einen Unicodepunkt oder Satzzeichen ohne Aussprache zu belassen",
+"unmöglich die Aussprache von Zeichen, Ziffern oder hoch/niedrig Unicodepunkten zu setzen",
 },
-"buffer", "linia", "ja", "nein", "console", "jupiter fertig",
-"set volume", "louder", "ruhig",
-"set rate", "schnell", "langsam",
-"set pitch", "lower", "higher",
-"guten tag", "reload", "o k",
+"Puffer", "Zeile", "ja", "nein", "Konsole", "jupiter bereit",
+"ändere Lautstärrke", "lauter", "leiser",
+"ändere Geschwindigkeit", "schneller", "langsamer",
+"setze Tonhöhe", "niedriger", "höher",
+"hallo", "erneut laden", "ok",
 
 },{ /* Brazilian Portuguese */
 

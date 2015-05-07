@@ -289,12 +289,13 @@ static const struct OUTWORDS outwords[5] = {
 
 },{ /* German */
 
-/* not entirely complete */
-{"alpha", "brohvo", "charlie", "delta", "echo",
-"foxtrot", "gawlf", "hotell", "india", "juleyet",
-"killo", "liema", "mike", "noavember", "oscar",
-"popa", "kebeck", "romeo", "seeara", "tango",
-"uniform", "victor", "wiskey", "x ray", "yangkey", "zoolu"},
+{"Anton", "Berta", "Cäsar", "Dora", "Emil", "Friedrich", "Gustav", "Heinrich",
+"Ida", "Julius", "Kaufmann", "Ludwig", "Martha", "Nordpol", "Otto", "Paula",
+"Quelle", "Richard", "Samuel", "Theodor", "Ulrich", "Viktor", "Wilhelm",
+"Xanthippe", "Ypsilon", "Zacharias",},
+/* umlauts
+"Ärger" "Ökonom", "Übermut",
+*/
 // 2 letter words
 "andedueresinjamaumzu",
 // 3 letter words
