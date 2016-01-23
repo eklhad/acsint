@@ -6,6 +6,12 @@ bindir = ${exec_prefix}/bin
 
 CFLAGS += -MMD
 
+LDFLAGS = -s
+ifneq ($(JDEB),)
+LDFLAGS =
+CFLAGS += -g -ggdb
+endif
+
 DRIVERPATH = ../drivers
 #ifneq "$(DRIVERPATH)" ""
 #	CFLAGS += -I$(DRIVERPATH)
@@ -19,7 +25,7 @@ OBJS = $(SRCS:.c=.o)
 all : jupiter
 
 jupiter : $(OBJS) $(ACSLIB)
-	cc -s -o jupiter $(OBJS) $(ACSLIB)
+	cc $(LDFLAGS) -o jupiter $(OBJS) $(ACSLIB)
 
 clean :
 	rm -f $(OBJS) jupiter

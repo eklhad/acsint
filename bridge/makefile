@@ -3,6 +3,10 @@
 #  When this was a shared library we needed fPIC
 CFLAGS += -MMD
 
+ifneq ($(JDEB),)
+CFLAGS += -g -ggdb
+endif
+
 SRCS = acsbridge.c acsbind.c acstalk.c
 OBJS = ${SRCS:.c=.o}
 
