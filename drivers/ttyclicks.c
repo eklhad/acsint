@@ -6,6 +6,15 @@
  * general public license, as articulated by the Free Software Foundation.
  */
 
+/* None of this is implemented on computers without the inbuilt speaker. */
+/* Or set NOCLICKS at the command line if you wish. */
+#include <linux/kconfig.h>
+#include <linux/module.h>
+#ifndef CONFIG_I8253_LOCK
+#define NOCLICKS 1
+#endif
+
+#ifndef NOCLICKS
 #include <linux/notifier.h>
 #include <linux/keyboard.h>
 #include <linux/kd.h>
@@ -13,10 +22,10 @@
 #include <linux/vt_kern.h>	/* for fg_console and speaker sounds */
 #include <linux/ctype.h>
 #include <linux/console.h>
-#include <linux/module.h>
 #include <linux/io.h>		/* for inb() outb() */
 #include <linux/delay.h>
 #include <linux/i8253.h>
+#endif
 
 #include "ttyclicks.h"
 
@@ -61,6 +70,8 @@ bool ttyclicks_tty = true;
 EXPORT_SYMBOL_GPL(ttyclicks_tty);
 bool ttyclicks_kmsg = true;
 EXPORT_SYMBOL_GPL(ttyclicks_kmsg);
+
+#ifndef NOCLICKS
 
 /*
  * Don't click the ansi escape sequences that move the cursor on the screen.
@@ -258,24 +269,32 @@ static void speaker_sing(unsigned int freq)
 
 static void my_mksteps(int f1, int f2, int step, int duration);
 
+#endif
+
 /* the sound of a character click */
 void ttyclicks_click(void)
 {
+#ifndef NOCLICKS
 	if (!ttyclicks_on)
 		return;
 	speaker_toggle();
 	udelay(TICKS_CLICK);
 	speaker_toggle();
+#endif
 }				/* ttyclicks_click */
 EXPORT_SYMBOL_GPL(ttyclicks_click);
 
 void ttyclicks_cr(void)
 {
+#ifndef NOCLICKS
 	if (!ttyclicks_on)
 		return;
 	my_mksteps(2900, 3600, 10, 10);
+#endif
 }				/* ttyclicks_cr */
 EXPORT_SYMBOL_GPL(ttyclicks_cr);
+
+#ifndef NOCLICKS
 
 /*
  * Push notes onto a sound fifo and play them via an asynchronous thread.
@@ -454,31 +473,41 @@ done:
 		pop_soundfifo(0);
 }
 
+#endif
+
 /* Put a string of notes into the sound fifo. */
 void ttyclicks_notes(const short *p)
 {
+#ifndef NOCLICKS
 	if (!ttyclicks_on)
 		return;
 	my_mknotes(p);
+#endif
 }				/* ttyclicks_notes */
 EXPORT_SYMBOL_GPL(ttyclicks_notes);
 
 void ttyclicks_steps(int f1, int f2, int step, int duration)
 {
+#ifndef NOCLICKS
 	if (!ttyclicks_on)
 		return;
 	my_mksteps(f1, f2, step, duration);
+#endif
 }				/* ttyclicks_steps */
 EXPORT_SYMBOL_GPL(ttyclicks_steps);
 
 void ttyclicks_bell(void)
 {
+#ifndef NOCLICKS
 	static const short notes[] = {
 		1800, 10, 0, 0
 	};
 	ttyclicks_notes(notes);
+#endif
 }				/* ttyclicks_bell */
 EXPORT_SYMBOL_GPL(ttyclicks_bell);
+
+#ifndef NOCLICKS
 
 /* Returns a time in microseconds to wait. */
 static int soundFromChar(char c, int minor)
@@ -615,16 +644,19 @@ static struct notifier_block nb_vt = {
 	.priority = -70
 };
 
+#endif
+
 /* Load and unload the module. */
 
 static int __init click_init(void)
 {
-	int rc;
+	int rc = 0;
 
 	ttyclicks_on = enabled;
 	ttyclicks_tty = fgtty;
 	ttyclicks_kmsg = kmsg;
 
+#ifndef NOCLICKS
 	rc = register_vt_notifier(&nb_vt);
 	if (rc)
 		return rc;
@@ -636,6 +668,7 @@ static int __init click_init(void)
 	}
 
 	register_console(&clickconsole);
+#endif
 
 	return rc;
 }				/* click_init */
@@ -644,6 +677,7 @@ static void __exit click_exit(void)
 {
 	ttyclicks_on = 0;
 
+#ifndef NOCLICKS
 	unregister_console(&clickconsole);
 	unregister_keyboard_notifier(&nb_key);
 	unregister_vt_notifier(&nb_vt);
@@ -651,6 +685,7 @@ static void __exit click_exit(void)
 /* possible race conditions here with timers hanging around */
 	sf_head = sf_tail = 0;
 	pop_soundfifo(0);
+#endif
 }				/* click_exit */
 
 module_init(click_init);
