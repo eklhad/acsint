@@ -112,7 +112,7 @@ const char *nohundred[30];
 const char *slashOrPhrases[8];
 };
 
-static const struct OUTWORDS outwords[5] = {
+static const struct OUTWORDS outwords[6] = {
 
 { /* no output words for the zero language */
 0
@@ -457,6 +457,61 @@ static const struct OUTWORDS outwords[5] = {
 0},
 {"il/elle", "elle/il", "lui/elle", "elle/lui", "son/sa", "sa/son", 0},
 
+},{ /* Slovak */
+
+// nato standard alphabet
+{"adam", "božena", "cyril", "dávid", "emil",
+"františek", "gustáv", "helena", "ivan", "jozef",
+"karol", "ladislav", "mária", "norbert", "oto",
+"peter", "quido", "rudolf", "svätopluk", "tomáš",
+"urban", "václav", "dvojité vé", "xaver", "ypsilon", "zuzana"},
+// 2 letter words
+"ahakaubobubybzdoduhahehihohujajejukulamamimumynanenopiposasisostuttitotutyvovyzazo",
+// 3 letter words
+{0},
+// contractions, none in this language
+{0},
+{"dvadsať", "tridsať", "štyridsať", "päťdesiat", "šesťdesiat", "sedemdesiat", "osemdesiat", "deväťdesiat"},
+"sto", "tisíc", "milión", "bilión", "trilión",
+{"tisíc", "milión", "bilión", "trilión", 0},
+{0},
+"sto",
+{"0", /* I haven't found a good portable word for zero */
+"jeden", "dva", "tri", "štyri", "päť", "šesť", "sedem", "osem", "deväť"},
+"nula",
+{"desať", "jedenásť", "dvanásť", "trinásť", "štrnásť",
+"pätnásť", "šestnásť", "sedemnásť", "osemnásť", "devätnásť"},
+{"nultý", "prvý", "druhý", "tretí", "štvrty",
+"piaty", "šiesty", "siedmy", "ôsmy", "deviaty",
+"desiaty", "jedenásty", "dvanásty", "trinásty", "štrnásty",
+"pätnásty", "šestnásty", "sedemnásty", "osemnásty", "devätnásty"},
+{"dvadsiaty", "tridsiaty", "štyridsiaty", "päťdesiaty", "šesťdesiaty", "sedemdesiaty", "osemdesiaty", "deväťdesiaty"},
+"dnes", "včera", "zajtra",
+{"nedeľa", "pondelok", "utorok", "streda",
+"štvrtok", "piatok", "sobota"},
+"poludnie", "polnoc", "hodín",
+"a", "alebo",
+"veľké ",
+"kód",
+"polovica",
+"do", "druhá odmocnina", "tretia odmocnina",
+"spojovník", "dvojbodka", "výkričník", "mínus", "dolár", "dolárov", "cent", "centov",
+"to jest,", "napríklad,",
+"", "dĺžka", "by",
+"bod", "bodka", "zavináč", "do", "cez",
+"lomka", "číslo", "čísla",
+"menší", "väčší", "rovná sa", "alebo sa rovná",
+{"január", "február", "marec",
+"apríl", "máj", "jún",
+"júl", "august", "september",
+"október", "november", "december"},
+{"izba", "suite", "apartmán", "apt",
+"dept", "department", "box", "pobox",
+"part", "piece", "site", "box",
+"car", "let", "číslo",
+0},
+{"on/ona", "ona/on", "jemu/jej", "jej/jemu", "jeho/jej", "jej/jeho", 0},
+
 }};
 
 static const struct OUTWORDS *ow;
@@ -800,7 +855,7 @@ static int append3num(int n, int dohundred, int zero)
 	}
 
 // PT complicated; just feed to the synth.
-if(acs_lang == ACS_LANG_PT_BR) {
+if(acs_lang == ACS_LANG_PT_BR || acs_lang == ACS_LANG_SK) {
 char buf[4];
 sprintf(buf, "%d", n);
 return appendString(buf);
@@ -852,7 +907,7 @@ static int appendYear(int y)
 {
 	int rc = 0;
 
-if(acs_lang == ACS_LANG_PT_BR) {
+if(acs_lang == ACS_LANG_PT_BR || acs_lang == ACS_LANG_SK) {
 char buf[6];
 sprintf(buf, "%d", y);
 return appendString(buf);

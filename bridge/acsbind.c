@@ -157,6 +157,21 @@ int acs_isalpha(unsigned int c)
 		if(c == 0xf4 || c == 0xf9 || c == 0xfb || c == 0xfc ) return 1;
 		break;
 
+	case ACS_LANG_SK:
+		if (c >= 0x010c && c <= 0x010f) return 1; // letters c and d with caron
+		if (c >= 0x0154 && c <= 0x0165) return 1; // letters r s t with caron and r with acute
+		if (c == 0x011a || c == 0x011b) return 1; // letter e with caron
+		if (c == 0x013d || c == 0x013e) return 1; // letter l with caron
+		if (c == 0x0139 || c == 0x013a) return 1; // letter l with acute
+		if (c == 0x0147 || c == 0x0148) return 1; // letter n with caron
+		if (c == 0x016e || c == 0x016f) return 1; // letter u with ring above
+		if (c == 0x017d || c == 0x017e) return 1; // letter z with caron
+		c |= 0x20;
+		if(c == 0xe1 || c == 0xe4 || c == 0xe9) return 1; // letters a with acute a with diaeresis e with acute
+		if(c == 0xed || c == 0xf3 || c == 0xfa) return 1; // letters i o u with acute
+		if(c == 0xfd || c == 0xf4) return 1; // letters y with acute o with caret
+		break;
+
 	}
 
 	return 0;
@@ -853,12 +868,92 @@ static const struct uc_name french_uc[] = {
 {0, 0}
 };
 
+static const struct uc_name slovak_uc[] = {
+{7, "bell"},
+{8, "backspace"},
+{9, "tab"},
+{10, "nový riadok"},
+{12, "formfeed"},
+{13, "enter"},
+{27, "escape"},
+{' ', "medzera"},
+{'!', "výkričník"},
+{'"', "úvodzovky"},
+{'#', "krížik"},
+{'$', "dolár"},
+{'%', "percento"},
+{'&', "and"},
+{'\'', "apostrof"},
+{'(', "zátvorka"},
+{')', "zatvoriť"},
+{'*', "hviezda"},
+{'+', "plus"},
+{',', "čiarka"},
+{'-', "spojovník"},
+{'.', "bodka"},
+{'/', "lomka"},
+{':', "dvojbodka"},
+{';', "bodkočiarka"},
+{'<', "menší"},
+{'=', "rovná sa"},
+{'>', "väčší"},
+{'?', "otáznik"},
+{'@', "zavináč"},
+{'[', "hranatá zátvorka"},
+{'\\', "opačná lomka"},
+{']', "hranatá zatvoriť"},
+{'^', "vokáň"},
+{'_', "podčiarkovník"},
+{'`', "prízvuk"},
+{'{', "zložená zátvorka"},
+{'|', "zvislá čiara"},
+{'}', "zložená zatvoriť"},
+{'~', "vlnovka"},
+{0x7f, "delete"},
+{0xa0, "tvrdá medzera"},
+{0xa1, "obrátený výkričník"},
+{0xa2, "centov"},
+{0xa3, "libier"},
+{0xa4, "symbol meny"},
+{0xa5, "jen"},
+{0xa6, "prerušená čiara"},
+{0xa7, "paragraf"},
+{0xa8, "prehláska"},
+{0xa9, "copyright"},
+{0xaa, "horný index a"},
+{0xab, "dvojitá lomená zátvorka"},
+{0xac, "logický zápor"},
+{0xad, "rozdeľovník"},
+{0xae, "registrované"},
+{0xaf, "pruh nad"},
+{0xb0, "stupňov"},
+{0xb1, "plus mínus"},
+{0xb2, "horný index 2"},
+{0xb3, "horný index 3"},
+{0xb4, "dĺžeň"},
+{0xb5, "mí"},
+{0xb6, "označenie odseku"},
+{0xb7, "bodka v prostriedku"},
+{0xb8, "sédi"},
+{0xb9, "horný index a"},
+{0xba, "horný index o"},
+{0xbb, "dvojitá lomená zatvoriť"},
+{0xbc, "štvrtina"},
+{0xbd, "polovica"},
+{0xbe, "tri štvrtiny"},
+{0xbf, "obrátený otáznik"},
+{0xd7, "krát"},
+{0xf7, "deleno"},
+{0, 0}
+};
+
 static const struct uc_name *uc_names[] = {
 0,
 english_uc,
 german_uc,
 portuguese_uc,
 french_uc,
+slovak_uc,
 };
 
 static struct uc_name *uc_loaded;

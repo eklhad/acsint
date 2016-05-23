@@ -121,7 +121,7 @@ const char *reloadword;
 const char *okword;
 };
 
-static const struct OUTWORDS const outwords[5] = {
+static const struct OUTWORDS const outwords[6] = {
 
 { /* no output words for the zero language */
 0
@@ -262,6 +262,39 @@ static const struct OUTWORDS const outwords[5] = {
 "vitesse", "plus vite", "moins vite",
 "pitch", "plus bas", "plus haut",
 "bonjour", "rechargement", "o k",
+
+},{ /* Slovak */
+"Použitie:  jupiter [-d] [-c súbor] hlas.výstup port\n"
+"-d režim démona, beh na pozadí.\n"
+"hlasový výstup je: dbe = doubletalk external,\n"
+"dte = dectalk external, dtp = dectalk pc,\n"
+"bns = braille n speak, ace = accent, esp = espeakup.\n"
+"port je 0 1 2 alebo 3, podľa sériového zariadenia.\n"
+"jupiter tc    test konfiguračného súboru.\n",
+"Nie je možné otvoriť konfiguračný súbor %s\n",
+"Nie je možné otvoriť ovládač zariadenia %s;\n%s.\n",
+"Nie je možné otvoriť sériový port %s\n",
+"Nie je možné vykonať príkaz %s\n",
+"Zariadenie acsint môže byť otvorené len jediným programom.\n"
+"Iný program práve používa ovládač zariadenia acsint.\n",
+"Overte oprávnenia pre /dev/vcsa a %s\n",
+"Nastavili ste špeciálne znakové zariadenie %s,\n"
+"a nainštalovali ste modul acsint?\n",
+{0, "syntaktická chyba",
+"%s nemôže byť v strede zloženého rečového príkazu",
+"%s musí byť nasledované písmenom alebo číslicou",
+"%s nie je známy rečový príkaz",
+"%s nemôže byť pomiešaný s ostatnými príkazmi",
+"slovo slovníka alebo nahrádzajúce slovo je priveľmi dlhé",
+"veľmi veľa slov v slovníku nahradiť",
+"nie je možné nechať interpunkčný znak alebo znak v systéme unicode bez výslovnosti",
+"Nie je možné nastaviť výslovnosť písmena, číslice, alebo znaku v systéme unicode",
+},
+"buffer", "riadok", "áno", "nie", "konzola", "jupiter pripravený",
+"nastaviť hlasitosť", "hlasnejšie", "tichšie",
+"nastaviť tempo", "rýchlejšie", "pomalšie",
+"nastaviť výšku", "nižšie", "vyššie",
+"dobrý deň", "načítať znovu", "oukey",
 
 /* no more */
 
@@ -1385,6 +1418,11 @@ acs_lang = ACS_LANG_PT_BR;
 
     if(!strncmp(buf, "fr", 2)) {
 acs_lang = ACS_LANG_FR;
+	return;
+    }
+
+    if(!strncmp(buf, "sk", 2)) {
+acs_lang = ACS_LANG_SK;
 	return;
     }
 
