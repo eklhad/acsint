@@ -247,6 +247,7 @@ return 0;
 } /* acs_isvowel */
 
 /* Turn unicode into lower case ascii, as best we can. */
+#define UnknownChar '~'
 char acs_unaccent(unsigned int c)
 {
 	static const char down[256+1] =
@@ -281,7 +282,7 @@ if(c < 0x100) return down[c];
 for(i=0; in_c[i]; ++i)
 if(c == in_c[i]) return out_c[i];
 
-return '?';
+return UnknownChar;
 } /* acs_unaccent */
 
 int acs_substring_mix(const char *s, const unsigned int *t)
