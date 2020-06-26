@@ -224,9 +224,9 @@ fcntl(acs_sy_fd0, F_SETFL, 0);
 
 	// Send an initial CR.
 		// Some units like to see this to establish baud rate.
-usleep(5000);
+usleep(100000);
 write(acs_sy_fd1, &crbyte, 1);
-usleep(2000);
+usleep(100000);
 
 return 0;
 } // acs_serial_open
