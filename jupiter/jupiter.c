@@ -1447,7 +1447,7 @@ const char *initstring;
 int
 main(int argc, char **argv)
 {
-int i, port;
+int i, port, onusb = 0;
 char serialdev[20];
 char *cmd = NULL;
 int lastrow, lastcol;
@@ -1515,9 +1515,13 @@ acs_style_defaults();
 if (*argv[0] == '|') {
 cmd = argv[0]+1;
 } else {
+if(argv[0][0] == 'u')
+port = atoi(argv[0]+1), onusb = 1;
+else
 port = atoi(argv[0]);
 if(port < 0 || port > 3) usage();
-sprintf(serialdev, "/dev/ttyS%d", port);
+sprintf(serialdev, "/dev/%s%d",
+(onusb ? "ttyUSB" : "ttyS"), port);
 }
 
 /* Compare major minor numbers on acsdriver with what we see
