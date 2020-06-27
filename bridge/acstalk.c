@@ -127,7 +127,10 @@ int acs_serial_flow(int hw)
 tio.c_iflag = IGNBRK | ISTRIP | IGNPAR;
 if(!hw) tio.c_iflag |= IXON | IXOFF;
 tio.c_oflag = 0;
-tio.c_cflag = PARENB | HUPCL | CS8 | CREAD | thisbaud | CLOCAL;
+// Ok PARENB causes trouble for some doubletalk units, so I leave it out.
+// But hmm - maybe other external synths require parity.
+// Maybe it should depend on acs_style.
+tio.c_cflag = HUPCL | CS8 | CREAD | thisbaud | CLOCAL;
 if(hw) tio.c_cflag |= CRTSCTS;
 tio.c_lflag = 0;
 tio.c_cc[VSTOP] = 17;
