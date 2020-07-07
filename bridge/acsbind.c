@@ -6,6 +6,9 @@ Also manage punctuation pronunciations and word replacements.
 
 #include <string.h>
 #include <malloc.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "acsbridge.h"
 

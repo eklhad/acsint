@@ -16,6 +16,7 @@ and declared in acsbridge.h.
 #include <fcntl.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 
 #include <linux/vt.h>
 

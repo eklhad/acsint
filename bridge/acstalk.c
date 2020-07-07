@@ -10,6 +10,7 @@ Description: communicate with a synthesizer over a serial port, socket, or pipe.
 #include <fcntl.h>
 #include <termios.h>
 #include <sys/select.h>
+#include <sys/wait.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -262,7 +263,7 @@ if(acs_sy_fd0 > nfds) nfds = acs_sy_fd0;
 if(fifo_fd > nfds) nfds = fifo_fd;
 ++nfds;
 rc = select(nfds, &channels, 0, 0, 0);
-if(rc < 0) return; // should never happen
+if(rc < 0) return 0; // should never happen
 
 rc = 0;
 if(FD_ISSET(acs_fd, &channels)) rc |= 1;
