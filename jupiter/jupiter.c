@@ -132,7 +132,7 @@ static const struct OUTWORDS const outwords[6] = {
 "Synthesizer is: dbe = doubletalk external,\n"
 "dte = dectalk external, dtp = dectalk pc,\n"
 "bns = braille n speak, ace = accent, esp = espeakup.\n"
-"port is 0 1 2 or 3, for the serial device.\n"
+"port is 0 through 7 for the serial device, or u0 through u7 for usb serial.\n"
 "jupiter tc    to test the configuration file.\n",
 "cannot open config file %s\n",
 "cannot open the device driver %s;\n%s.\n",
@@ -1519,7 +1519,7 @@ if(argv[0][0] == 'u')
 port = atoi(argv[0]+1), onusb = 1;
 else
 port = atoi(argv[0]);
-if(port < 0 || port > 3) usage();
+if(port < 0 || port > 7) usage();
 sprintf(serialdev, "/dev/%s%d",
 (onusb ? "ttyUSB" : "ttyS"), port);
 }
