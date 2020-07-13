@@ -119,6 +119,12 @@ const char *lowerword;
 const char *helloword;
 const char *reloadword;
 const char *okword;
+const char *markword;
+const char *cutword;
+const char *modeword;
+const char *endword;
+const char *inputword;
+const char *errorword;
 };
 
 static const struct OUTWORDS const outwords[6] = {
@@ -158,6 +164,7 @@ static const struct OUTWORDS const outwords[6] = {
 "set rate", "faster", "slower",
 "set pitch", "lower", "higher",
 "hello there", "reload", "o k",
+"mark", "cut", "mode", "boundary", "input", "error",
 
 },{ /* German, but still mostly English */
 
@@ -192,6 +199,7 @@ static const struct OUTWORDS const outwords[6] = {
 "ändere Geschwindigkeit", "schneller", "langsamer",
 "setze Tonhöhe", "niedriger", "höher",
 "hallo", "erneut laden", "ok",
+"mark", "cut", "mode", "boundary", "input", "error",
 
 },{ /* Brazilian Portuguese */
 
@@ -226,6 +234,7 @@ static const struct OUTWORDS const outwords[6] = {
 "determinar velocidade", "mais rápido", "mais lento",
 "determinar tom", "mais baixo", "mais alto",
 "olá", "recarregar", "o k",
+"mark", "cut", "mode", "boundary", "input", "error",
 
 },{ /* French, just a placeholder for now */
 
@@ -863,6 +872,7 @@ if(cmdp->nonempty&1 && acs_mb->end == acs_mb->start) goto error_bound;
 		if(*cmdlist) support = *cmdlist++;
 else{
 acs_click();
+if(!soundsOn) acs_say_string(o->modeword);
 if(acs_get1char(&support)) goto error_bell;
 }
 	}
@@ -877,7 +887,8 @@ suptext[i] = *cmdlist;
 suptext[i] = 0;
 if(*cmdlist) ++cmdlist;
 } else {
-acs_tone_onoff(0);
+if(soundsOn) acs_tone_onoff(0);
+else acs_say_string(o->inputword);
 if(acs_keystring(suptext, sizeof(suptext), ACS_KS_DEFAULT)) return;
 }
 }
@@ -1108,7 +1119,10 @@ case 40: /* mark left */
 if(!input) goto error_bell;
 acs_cursorsync();
 markleft = acs_mb->cursor;
-if(!quiet) acs_tone_onoff(0);
+if(!quiet) {
+if(soundsOn) acs_tone_onoff(0);
+else acs_say_string(o->markword);
+}
 break;
 
 case 41: /* mark right */
@@ -1145,7 +1159,10 @@ cp_macro[i] = 0;
 goto error_bell;
 }
 markleft = 0;
-if(!quiet) acs_tone_onoff(0);
+if(!quiet) {
+if(soundsOn) acs_tone_onoff(0);
+else acs_say_string(o->cutword);
+}
 return;
 
 #if 0
@@ -1237,7 +1254,8 @@ break;
 
 	default:
 	error_bell:
-		acs_bell();
+if(soundsOn) 		acs_bell();
+else acs_say_string(o->errorword);
 		return;
 
 	error_buzz:
@@ -1245,7 +1263,8 @@ break;
 		return;
 
 	error_bound:
-acs_highbeeps();
+if(soundsOn) acs_highbeeps();
+else acs_say_string(o->endword);
 		return;
 	} /* end switch on function */
 
