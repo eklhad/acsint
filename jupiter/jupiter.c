@@ -125,6 +125,8 @@ const char *modeword;
 const char *endword;
 const char *inputword;
 const char *errorword;
+const char *topword;
+const char *bottomword;
 };
 
 static const struct OUTWORDS const outwords[6] = {
@@ -165,8 +167,9 @@ static const struct OUTWORDS const outwords[6] = {
 "set pitch", "lower", "higher",
 "hello there", "reload", "o k",
 "mark", "cut", "mode", "boundary", "input", "error",
+"top", "bottom",
 
-},{ /* German, but still mostly English */
+},{ /* German */
 
 "Verwendung: jupiter [-d] [-c Konfiguration] Port-des-Synthesizers\n"
 "-d startet im Dienstmodus im Hintergrund.\n"
@@ -199,7 +202,8 @@ static const struct OUTWORDS const outwords[6] = {
 "ändere Geschwindigkeit", "schneller", "langsamer",
 "setze Tonhöhe", "niedriger", "höher",
 "hallo", "erneut laden", "ok",
-"mark", "cut", "mode", "boundary", "input", "error",
+"Markieren", "ausschneiden", "Modus", "Ende", "Kommando", "Fehler",
+"Anfang", "Ende",
 
 },{ /* Brazilian Portuguese */
 
@@ -234,9 +238,10 @@ static const struct OUTWORDS const outwords[6] = {
 "determinar velocidade", "mais rápido", "mais lento",
 "determinar tom", "mais baixo", "mais alto",
 "olá", "recarregar", "o k",
-"mark", "cut", "mode", "boundary", "input", "error",
+"marcar", "cortar", "modo", "limite", "inserir", "erro",
+"topo", "fundo",
 
-},{ /* French, just a placeholder for now */
+},{ /* French */
 
 "usage:  jupiter [-d] [-c configfile] synthesizer port\n"
 "-d est le mode démon, lancé en tâche de fond.\n"
@@ -271,6 +276,8 @@ static const struct OUTWORDS const outwords[6] = {
 "vitesse", "plus vite", "moins vite",
 "pitch", "plus bas", "plus haut",
 "bonjour", "rechargement", "o k",
+"marquer", "couper", "mode", "limite", "entrer", "erreur",
+"début", "fin",
 
 },{ /* Slovak */
 "Použitie:  jupiter [-d] [-c súbor] hlas.výstup port\n"
@@ -304,6 +311,8 @@ static const struct OUTWORDS const outwords[6] = {
 "nastaviť tempo", "rýchlejšie", "pomalšie",
 "nastaviť výšku", "nižšie", "vyššie",
 "dobrý deň", "načítať znovu", "oukey",
+"mark", "cut", "mode", "boundary", "input", "error",
+"top", "bottom",
 
 /* no more */
 
@@ -917,9 +926,13 @@ acs_cursorset();
 ctrack = 1;
 		break;
 
-	case 3: acs_startbuf(); break;
+	case 3: acs_startbuf();
+// if(!(soundsOn|quiet)) acs_say_string(o->topword);
+break;
 
-	case 4: acs_endbuf(); break;
+	case 4: acs_endbuf();
+// if(!(soundsOn|quiet)) acs_say_string(o->bottomword);
+break;
 
 	case 5: acs_startline(); break;
 
