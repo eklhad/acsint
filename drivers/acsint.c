@@ -638,10 +638,11 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 		case ACS_REFRESH:
 			raw_spin_lock_irqsave(&acslock, irqflags);
 			if (rbuf_head <= rbuf_end - 4) {
+				bool wake = (rbuf_head == rbuf_tail);
 				*rbuf_head = ACS_REFRESH;
-				if (rbuf_head == rbuf_tail)
-					wake_up_interruptible(&wq);
 				rbuf_head += 4;
+				if (wake)
+					wake_up_interruptible(&wq);
 			}
 			raw_spin_unlock_irqrestore(&acslock, irqflags);
 			break;
