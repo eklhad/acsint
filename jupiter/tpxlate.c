@@ -1436,7 +1436,7 @@ char ndc = " ..,."[acs_lang]; // number decimal character
 		i = 10*i + e-'0';
 		e = *++end;
 	}
-	if(isdigit(e)) {
+	if(acs_isdigit(e)) {
 		i = 10*i + e-'0';
 		e = *++end;
 	}
