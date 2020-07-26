@@ -36,7 +36,7 @@ MODULE_PARM_DESC(major,
 		 "major number for /dev/acsint, default is dynamic allocation through misc_register");
 
 /* For various critical sections of code. */
-static DEFINE_RAW_SPINLOCK(acslock);
+static DEFINE_SPINLOCK(acslock);
 
 /* circular buffer of output characters received from the tty */
 struct cbuf {
@@ -296,10 +296,11 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 	char *temp_head, *temp_tail, *t;
 	int j, j2;
 	int retval;
-	unsigned long irqflags;
 
 	if (!in_use)
 		return 0;	/* should never happen */
+
+// Some day: use wait_event_interruptible_locked_irq and wake_up_locked
 
 	retval = wait_event_interruptible(wq, (rbuf_head > rbuf_tail));
 	if (retval)
@@ -321,7 +322,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 			t += 4;
 	}
 
-	raw_spin_lock_irqsave(&acslock, irqflags);
+	spin_lock_irq(&acslock);
 
 	catchup = false;
 	catchup_head = false;
@@ -386,7 +387,7 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 		}
 	}
 
-	raw_spin_unlock_irqrestore(&acslock, irqflags);
+	spin_unlock_irq(&acslock);
 
 /* Now pass down the events. */
 /* First fgc, then catch up, then the rest. */
@@ -440,11 +441,11 @@ static ssize_t device_read(struct file *file, char *buf, size_t len,
 
 /* Pull the pointers back to start. */
 /* This should happen almost every time. */
-	raw_spin_lock_irqsave(&acslock, irqflags);
+	spin_lock_irq(&acslock);
 	rbuf_tail = temp_tail;
 	if (rbuf_head == rbuf_tail)
 		rbuf_head = rbuf_tail = rbuf;
-	raw_spin_unlock_irqrestore(&acslock, irqflags);
+	spin_unlock_irq(&acslock);
 
 	*offset += bytes_read;
 	return bytes_read;
@@ -460,7 +461,6 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 	short notes[2 * (10 + 1)];
 	int isize;		/* size of input to inject */
 	int f1, f2, step, duration;	/* for kd_mksteps */
-	unsigned long irqflags;
 
 	if (!in_use)
 		return 0;	/* should never happen */
@@ -636,7 +636,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 			break;
 
 		case ACS_REFRESH:
-			raw_spin_lock_irqsave(&acslock, irqflags);
+			spin_lock_irq(&acslock);
 			if (rbuf_head <= rbuf_end - 4) {
 				bool wake = (rbuf_head == rbuf_tail);
 				*rbuf_head = ACS_REFRESH;
@@ -644,7 +644,7 @@ static ssize_t device_write(struct file *file, const char *buf, size_t len,
 				if (wake)
 					wake_up_interruptible(&wq);
 			}
-			raw_spin_unlock_irqrestore(&acslock, irqflags);
+			spin_unlock_irq(&acslock);
 			break;
 
 		case ACS_PUSH_TTY:
@@ -832,7 +832,6 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 	int ss = param->shift & 0xf;
 	int leds = param->ledstate;
 	char keychar;
-	unsigned long irqflags;
 	struct keyhold *kp;	/* key pointer */
 
 	static const char lowercode[] =
@@ -841,7 +840,7 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 	    " \033!@#$%^&*()_+\177\tQWERTYUIOP{}\r ASDFGHJKL:\"~ |ZXCVBNM<>?    ";
 
 	if (keytype == KBD_UNICODE) {
-		raw_spin_lock_irqsave(&acslock, irqflags);
+		spin_lock_irq(&acslock);
 /* display key that was pushed because of KEYCODE or KEYSYM */
 		if (nkeypending
 		    && keystack[nkeypending - 1].keytype != KBD_UNICODE)
@@ -853,7 +852,7 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 		kp->when = jiffies;
 		kp->keytype = keytype;
 		++nkeypending;
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
+		spin_unlock_irq(&acslock);
 		return;
 	}
 
@@ -906,7 +905,7 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 	if (leds & K_CAPSLOCK && isalpha(keychar))
 		keychar ^= 0x20;
 
-	raw_spin_lock_irqsave(&acslock, irqflags);
+	spin_lock_irq(&acslock);
 	if (nkeypending == MAXKEYPENDING)
 		dropKeysPending(1);
 	kp = keystack + nkeypending;
@@ -914,15 +913,13 @@ static void post4echo(int keytype, struct keyboard_notifier_param *param)
 	kp->when = jiffies;
 	kp->keytype = keytype;
 	++nkeypending;
-	raw_spin_unlock_irqrestore(&acslock, irqflags);
+	spin_unlock_irq(&acslock);
 }				/* post4echo */
 
 /* Push a character onto the tty log.
  * Called from the vt notifyer and from my printk console. */
 static void pushlog(unsigned int c, int mino, bool from_vt)
 {
-	unsigned long irqflags;
-	bool wake = false;
 	bool at_head = false;	/* output is at the head */
 	bool throw = false;	/* throw the MORECHARS event */
 	int echo = 0;
@@ -931,7 +928,7 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 	if (!cb)
 		return;
 
-	raw_spin_lock_irqsave(&acslock, irqflags);
+	spin_lock_irq(&acslock);
 
 	if (mino == fg_console) {
 		if (from_vt)
@@ -955,19 +952,18 @@ static void pushlog(unsigned int c, int mino, bool from_vt)
 
 	if (throw && rbuf_head <= rbuf_end - 8) {
 		/* throw the MORECHARS event */
-		if (rbuf_head == rbuf_tail)
-			wake = true;
+		bool wake = (rbuf_head == rbuf_tail);
 		rbuf_head[0] = ACS_TTY_MORECHARS;
 		rbuf_head[1] = echo;
 			*(unsigned int *)(rbuf_head + 4) = c;
 		rbuf_head += 8;
 		if (echo)
 			cb->echopoint = cb->head;
+		if (wake)
+			wake_up_interruptible(&wq);
 	}
 
-	if (wake)
-		wake_up_interruptible(&wq);
-	raw_spin_unlock_irqrestore(&acslock, irqflags);
+	spin_unlock_irq(&acslock);
 }				/* pushlog */
 
 /*
@@ -1002,8 +998,6 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 	struct vc_data *vc = param->vc;
 	int mino = vc->vc_num;
 	unsigned int unicode = param->c;
-	unsigned long irqflags;
-	bool wake = false;
 
 	if (!in_use)
 		return NOTIFY_DONE;
@@ -1020,18 +1014,17 @@ vt_out(struct notifier_block *this_nb, unsigned long type, void *data)
 		cb_nomem_alloc[fg_console] = 0;
 		checkAlloc(fg_console, true);
 		last_oj = 0;
-		raw_spin_lock_irqsave(&acslock, irqflags);
+		spin_lock_irq(&acslock);
 		flushInKeyBuffer();
 		if (rbuf_head <= rbuf_end - 4) {
-			if (rbuf_head == rbuf_tail)
-				wake = true;
+			bool wake = (rbuf_head == rbuf_tail);
 			rbuf_head[0] = ACS_FGC;
 			rbuf_head[1] = fg_console + 1;
 			rbuf_head += 4;
 			if (wake)
 				wake_up_interruptible(&wq);
 		}
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
+		spin_unlock_irq(&acslock);
 		break;
 
 	case VT_PREWRITE:
@@ -1061,9 +1054,8 @@ keystroke(struct notifier_block *this_nb, unsigned long type, void *data)
 	int mymeta, mymask;
 	int j;
 	unsigned short action;
-	bool wake = false, keep = false, send = false;
+	bool keep = false, send = false;
 	bool divert, monitor, bypass;
-	unsigned long irqflags;
 
 	if (!in_use)
 		goto done;
@@ -1147,10 +1139,9 @@ regular:
 event:
 	if (keep) {
 		/* If this notifier is not called by an interrupt, then we need the spinlock */
-		raw_spin_lock_irqsave(&acslock, irqflags);
+		spin_lock_irq(&acslock);
 		if (rbuf_head <= rbuf_end - 4) {
-			if (rbuf_head == rbuf_tail)
-				wake = true;
+			bool wake = (rbuf_head == rbuf_tail);
 			rbuf_head[0] = ACS_KEYSTROKE;
 			rbuf_head[1] = key;
 			rbuf_head[2] = ss;
@@ -1159,7 +1150,7 @@ event:
 			if (wake)
 				wake_up_interruptible(&wq);
 		}
-		raw_spin_unlock_irqrestore(&acslock, irqflags);
+		spin_unlock_irq(&acslock);
 	}
 
 	if (!send)
