@@ -10,6 +10,7 @@
 /* Or set NOCLICKS at the command line if you wish. */
 #include <linux/kconfig.h>
 #include <linux/module.h>
+#include <linux/version.h>
 #ifndef CONFIG_I8253_LOCK
 #define NOCLICKS 1
 #endif
@@ -315,11 +316,20 @@ static int sf_head, sf_tail;
 static DEFINE_RAW_SPINLOCK(soundfifo_lock);
 
 /* Pop the next sound out of the sound fifo. */
-static void pop_soundfifo(unsigned long);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,1)
+typedef unsigned long TimerCallbackArg;
+#else
+typedef struct timer_list * TimerCallbackArg;
+#endif
+static void pop_soundfifo(TimerCallbackArg);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,1)
 static DEFINE_TIMER(kd_mknotes_timer, pop_soundfifo, 0, 0);
+#else
+static DEFINE_TIMER(kd_mknotes_timer, pop_soundfifo);
+#endif
 
-static void pop_soundfifo(unsigned long notUsed)
+static void pop_soundfifo(TimerCallbackArg notUsed)
 {
 	unsigned long flags;
 	int freq, duration;
