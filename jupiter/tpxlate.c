@@ -2090,7 +2090,7 @@ do_punct:
 			end += 3;
 			break;
 		}
-		if(!isdigit(e)) goto nomoney;
+		if(!acs_isdigit(e)) goto nomoney;
 // now $3, but could be a positional parameter
 		for(t=end+1; acs_isdigit(*t); ++t)  ;
 		len = t - end;
