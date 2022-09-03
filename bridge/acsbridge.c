@@ -73,7 +73,7 @@ va_start(args, msg);
 vfprintf(f, msg, args);
 va_end(args);
 return 0;
-} // acs_log
+}
 
 key_handler_t acs_key_h;
 acs_more_handler_t acs_more_h;
@@ -171,7 +171,7 @@ acs_vc_ncols = vcs_header[1];
 acs_vc_row = vcs_header[3];
 acs_vc_col = vcs_header[2];
 screenBuf.v_cursor = screenBuf.start + acs_vc_row * (acs_vc_ncols+1) + acs_vc_col;
-} /* acs_vc */
+}
 
 void acs_screensnap(void)
 {
@@ -196,7 +196,7 @@ for(j=0; j<acs_vc_ncols; ++j) {
 }
 *t = 0;
 screenBuf.end = t;
-} // acs_screensnap
+}
 
 static void screenBlank(void)
 {
@@ -216,7 +216,7 @@ for(j=0; j<acs_vc_ncols; ++j) *s++ = ' ';
 }
 *s = 0;
 screenBuf.end = s;
-} /* screenBlank */
+}
 
 /* check to see if a tty reading buffer has been allocated */
 static void
@@ -247,7 +247,7 @@ acs_tb->area[1] = 0;
 acs_tb->cursor = acs_tb->start;
 acs_tb->v_cursor = 0;
 acs_tb->attribs = 0;
-} /* checkAlloc */
+}
 
 int
 acs_screenmode(int enabled)
@@ -263,7 +263,7 @@ acs_mb = &screenBuf;
 screenBlank();
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 return 0;
-} /* acs_screenmode */
+}
 
 
 // Open and close the device.
@@ -296,7 +296,7 @@ acs_reset_configure();
 acs_bufsize(TTYLOGSIZE);
 
 return acs_fd;
-} // acs_open
+}
 
 int
 acs_close(void)
@@ -309,7 +309,7 @@ rc = -1;
 /* Close it regardless. */
 acs_fd = -1;
 return rc;
-} // acs_close
+}
 
 void
 acs_nodecheck(const char *devname)
@@ -341,7 +341,7 @@ unlink(devname);
 
 create:
 mknod(devname, S_IFCHR|0666, makedev(m1, m2));
-} /* acs_nodecheck */
+}
 
 // Write a command to /dev/acsint.
 
@@ -356,7 +356,7 @@ return -1;
 if(write(acs_fd, outbuf, n) < n)
 return -1;
 return 0;
-} // acs_write
+}
 
 /* Pass the size of our tty buffer to the driver */
 static int acs_bufsize(int n)
@@ -375,7 +375,7 @@ acs_sounds(int enabled)
 outbuf[0] = ACS_SOUNDS;
 outbuf[1] = enabled;
 return acs_write(2);
-} // acs_sounds
+}
 
 int
 acs_tty_clicks(int enabled) 
@@ -383,7 +383,7 @@ acs_tty_clicks(int enabled)
 outbuf[0] = ACS_SOUNDS_TTY;
 outbuf[1] = enabled;
 return acs_write(2);
-} // acs_tty_clicks
+}
 
 int
 acs_kmsg_tones(int enabled) 
@@ -391,7 +391,7 @@ acs_kmsg_tones(int enabled)
 outbuf[0] = ACS_SOUNDS_KMSG;
 outbuf[1] = enabled;
 return acs_write(2);
-} // acs_kmsg_tones
+}
 
 // Various routines to make sounds through the pc speaker.
 
@@ -400,14 +400,14 @@ acs_click(void)
 {
 outbuf[0] = ACS_CLICK;
 return acs_write(1);
-} // acs_click
+}
 
 int
 acs_cr(void)
 {
 outbuf[0] = ACS_CR;
 return acs_write(1);
-} // acs_cr
+}
 
 int
 acs_notes(const short *notelist)
@@ -422,7 +422,7 @@ outbuf[2+3*j+2] = notelist[2*j+1];
 }
 outbuf[1] = j;
 return acs_write(2+3*j);
-} /* acs_notes */
+}
 
 int acs_scale(int f1, int f2, int step, int duration)
 {
@@ -435,35 +435,35 @@ outbuf[5] = (f2 >> 8);
 outbuf[6] = duration;
 outbuf[7] = (duration >> 8);
 return acs_write(8);
-} /* acs_scale */
+}
 
 int acs_bell(void)
 {
 static const short bellsnd[] = {
         1800,10,0,0     };
 return acs_notes(bellsnd);
-} // acs_bell
+}
 
 int acs_buzz(void)
 {
 static const short buzzsnd[] = {
         120,20,0,0     };
 return acs_notes(buzzsnd);
-} // acs_buzz
+}
 
 int acs_highcap(void)
 {
 static const short capsnd[] = {
         3000,3,0,0     };
 return acs_notes(capsnd);
-} // acs_highcap
+}
 
 int acs_highbeeps(void)
 {
 static const short boundsnd[] = {
         2800,4,3300,3,0,0       };
 return acs_notes(boundsnd);
-} // acs_highbeeps
+}
 
 int
 acs_tone_onoff(int enabled)
@@ -473,7 +473,7 @@ static const short offsnd[] = {
 static const short onsnd[] = {
 	700,12,0,0	};
 return acs_notes(enabled ? onsnd : offsnd);
-} // acs_tone_onoff
+}
 
 // redirect keystrokes for capture, monitor, and bypass
 
@@ -483,28 +483,28 @@ acs_divert(int enabled)
 outbuf[0] = ACS_DIVERT;
 outbuf[1] = enabled;
 return acs_write(2);
-} // acs_divert
+}
 
 int acs_monitor(int enabled) 
 {
 outbuf[0] = ACS_MONITOR;
 outbuf[1] = enabled;
 return acs_write(2);
-} // acs_monitor
+}
 
 int
 acs_bypass(void)
 {
 outbuf[0] = ACS_BYPASS;
 return acs_write(1);
-} // acs_bypass
+}
 
 int acs_obreak(int gap) 
 {
 outbuf[0] = ACS_OBREAK;
 outbuf[1] = gap;
 return acs_write(2);
-} // acs_obreak
+}
 
 /* Use divert to swallow a string.
  * This is not unicode at present. */
@@ -540,7 +540,7 @@ acs_events();
 
 // At this point the key handler has put everything back.
 return swallow_rc;
-} // acs_keystring
+}
 
 const char lowercode[] =
 " \0331234567890-=\b qwertyuiop[]\r asdfghjkl;'` \\zxcvbnm,./    ";
@@ -609,7 +609,7 @@ cleanup:
 swallow_string[swallow_len] = 0;
 acs_key_h = save_key_h;
 acs_divert(0);
-} // swallow_key_h
+}
 
 static int key1key, key1ss;
 int acs_get1key(int *key_p, int *ss_p)
@@ -622,7 +622,7 @@ acs_events();
 *key_p = key1key;
 *ss_p = key1ss;
 return 0;
-} // acs_get1key
+}
 
 // special handler for get1key()
 static void swallow1_h(int key, int ss, int leds)
@@ -631,7 +631,7 @@ key1key = key;
 key1ss = ss;
 acs_key_h = save_key_h;
 acs_divert(0);
-} // swallow1_h
+}
 
 int acs_get1char(char *p)
 {
@@ -646,7 +646,7 @@ keychar = (state&ACS_SS_SHIFT) ? uppercode[key] : lowercode[key];
 if(!isalnum(keychar)) return -1;
 *p = keychar;
 return 0;
-} // acs_get1char
+}
 
 
 // set and unset keys
@@ -657,7 +657,7 @@ outbuf[0] = ACS_SET_KEY;
 outbuf[1] = key;
 outbuf[2] = ss;
 return acs_write(3);
-} // acs_setkey
+}
 
 int acs_unsetkey(int key, int ss)
 {
@@ -665,7 +665,7 @@ outbuf[0] = ACS_UNSET_KEY;
 outbuf[1] = key;
 outbuf[2] = ss;
 return acs_write(3);
-} // acs_unsetkey
+}
 
 int acs_ismeta(int key, int enabled)
 {
@@ -673,13 +673,13 @@ outbuf[0] = ACS_ISMETA;
 outbuf[1] = key;
 outbuf[2] = enabled;
 return acs_write(3);
-} // acs_ismeta
+}
 
 int acs_clearkeys(void)
 {
 outbuf[0] = ACS_CLEAR_KEYS;
 return acs_write(1);
-} // acs_clearkeys
+}
 
 static void
 postprocess(unsigned int *s)
@@ -764,7 +764,7 @@ advance:
 
 tl->end = t;
 *t = 0;
-} /* postprocess */
+}
 
 void acs_clearbuf(void)
 {
@@ -775,7 +775,7 @@ acs_mb->end = acs_mb->start;
 memset(acs_mb->marks, 0, sizeof(acs_mb->marks));
 }
 acs_mb->cursor = acs_mb->start;
-} // acs_clearbuf
+}
 
 /*********************************************************************
 Read events from the acsint device driver.
@@ -1017,7 +1017,7 @@ i += 4;
 } // looping through events
 
 return 0;
-} // acs_events
+}
 
 int acs_refresh(void)
 {
@@ -1025,7 +1025,7 @@ acs_log("get refresh\n");
 outbuf[0] = ACS_REFRESH;
 if(acs_write(1)) return -1;
 return acs_events();
-} // acs_refresh
+}
 
 
 // cursor commands.
@@ -1034,22 +1034,22 @@ static unsigned int *tc; // temp cursor
 void acs_cursorset(void)
 {
 tc = acs_mb->cursor;
-} // acs_cursorset
+}
 
 void acs_cursorsync(void)
 {
 acs_mb->cursor = tc;
-} // acs_cursorsync
+}
 
 int acs_cursorvalid(void)
 {
 return tc != 0;
-} // acs_cursorvalid
+}
 
 unsigned int acs_getc(void)
 {
 return (tc ? *tc : 0);
-} // acs_getc
+}
 
 int acs_forward(void)
 {
@@ -1057,7 +1057,7 @@ if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
 if(++tc == acs_mb->end) return 0;
 return 1;
-} // acs_forward
+}
 
 int acs_back(void)
 {
@@ -1065,7 +1065,7 @@ if(acs_mb->end == acs_mb->start) return 0;
 if(!tc) return 0;
 if(tc-- == acs_mb->start) return 0;
 return 1;
-} // acs_back
+}
 
 int acs_startline(void)
 {
@@ -1076,7 +1076,7 @@ do ++colno;
 while(acs_back() && acs_getc() != '\n');
 acs_forward();
 return colno;
-} // acs_startline
+}
 
 int acs_endline(void)
 {
@@ -1088,7 +1088,7 @@ acs_back();
 break;
 }
 return 1;
-} // acs_endline
+}
 
 // put the cursor back to a known location.
 // Internal use only.
@@ -1100,7 +1100,7 @@ static void putback(int n)
 	} else {
 		while(n++) acs_back();
 	}
-} // putback
+}
 
 // start of word (actually token/symbol)
 int acs_startword(void)
@@ -1141,7 +1141,7 @@ if(!c) return 0;
 	if(apos) acs_forward();
 
 return 1;
-} // acs_startword
+}
 
 // end of word
 int acs_endword(void)
@@ -1179,18 +1179,18 @@ if(!c) return 0;
 	if(apos) acs_back();
 
 return 1;
-} // acs_endword
+}
 
 void acs_startbuf(void)
 {
 tc = acs_mb->start;
-} // acs_startbuf
+}
 
 void acs_endbuf(void)
 {
 tc = acs_mb->end;
 if(tc != acs_mb->start) --tc;
-} // acs_endbuf
+}
 
 // skip past left spaces
 void acs_lspc(void)
@@ -1202,7 +1202,7 @@ if(!tc) return;
 		if(!acs_back()) break;
 done:
 	acs_forward();
-} // acs_lspc
+}
 
 // skip past right spaces
 void acs_rspc(void)
@@ -1214,7 +1214,7 @@ if(!tc) return;
 		if(!acs_forward()) break;
 done:
 	acs_back();
-} // acs_rspc
+}
 
 /* Case insensitive match.  Assumes the first letters already match.
  * This is an ascii match on the unaccented letters. */
@@ -1236,7 +1236,7 @@ y = tolower(y);
 	// put the cursor back
 	putback(-count);
 	return 0;
-} // stringmatch
+}
 
 int acs_bufsearch(const char *string, int back, int newline)
 {
@@ -1263,7 +1263,7 @@ if(c == first && stringmatch(string)) return 1;
 	} while(ok);
 
 	return 0;
-} // acs_bufsearch
+}
 
 // inject chars into the stream
 int acs_injectstring(const char *s)
@@ -1279,7 +1279,7 @@ outbuf[1] = len;
 outbuf[2] = len>>8;
 strcpy((char*)outbuf+3, s);
 return acs_write(len+3);
-} // acs_injectstring
+}
 
 static const char *lengthword[] = {
 	" ",
@@ -1441,5 +1441,5 @@ if(prop & ACS_GS_ONEWORD) break;
 if(o) o[t-dest] = s-acs_rb->cursor;
 
 return 0;
-} /* acs_getsentence */
+}
 

@@ -63,7 +63,7 @@ static int uni_1(unsigned int c)
 		return 6;
 	}
 	return 0;
-} /* uni_1 */
+}
 
 static unsigned int utf8_1(void)
 {
@@ -89,7 +89,7 @@ static unsigned int utf8_1(void)
 		++uni_p;
 	}
 	return (c ? c : '?');
-} /* utf8_1 */
+}
 
 /* This function allocates; you need to free when done. */
 unsigned char *acs_uni2utf8(const unsigned int *ubuf)
@@ -109,7 +109,7 @@ unsigned char *acs_uni2utf8(const unsigned int *ubuf)
 		uni_1(*t);
 	*uni_p = 0;
 	return out;
-} /* uni2utf8 */
+}
 
 /* convert to utf8 then write to a file */
 void acs_write_mix(int fd, const unsigned int *s, int len)
@@ -124,7 +124,7 @@ uni_p = buf;
 }
 if(uni_p > buf)
 write(fd, buf, uni_p - buf);
-} /* acs_write-mix */
+}
 
 /* dest has to have enough room */
 int acs_utf82uni(const unsigned char *ubuf, unsigned int *dest)
@@ -133,7 +133,7 @@ int l = 0;
 	uni_p = (unsigned char *)ubuf;
 	while(*dest++ = utf8_1()) ++l;
 return l;
-} /* acs_utf82uni */
+}
 
 int acs_isalpha(unsigned int c)
 {
@@ -178,23 +178,23 @@ int acs_isalpha(unsigned int c)
 	}
 
 	return 0;
-} /* acs_isalpha */
+}
 
 int acs_isdigit(unsigned int c)
 {
 	return (c >= '0' && c <= '9');
-} /* acs_isdigit */
+}
 
 int acs_isalnum(unsigned int c)
 {
 	return (acs_isalpha(c) || acs_isdigit(c));
-} /* acs_isalnum */
+}
 
 int acs_isspace(unsigned int c)
 {
 	if(c < 0x80 && isspace(c)) return 1;
 	return 0;
-} /* acs_isspace */
+}
 
 /* this assumes you already know it's alpha */
 int acs_isupper(unsigned int c)
@@ -202,7 +202,7 @@ int acs_isupper(unsigned int c)
 if(c == 0xdf) return 0;
 if(c&0x20) return 0;
 return 1;
-} /* acs_isupper */
+}
 
 /* this assumes you already know it's alpha */
 int acs_islower(unsigned int c)
@@ -210,21 +210,21 @@ int acs_islower(unsigned int c)
 if(c == 0xdf) return 1;
 if(c&0x20) return 1;
 return 0;
-} /* acs_isupper */
+}
 
 /* this assumes you already know it's alpha */
 unsigned int acs_tolower(unsigned int c)
 {
 if(c == 0xdf) return c;
 return (c | 0x20);
-} /* acs_tolower */
+}
 
 /* this assumes you already know it's alpha */
 unsigned int acs_toupper(unsigned int c)
 {
 // 0xdf works here
 return (c & ~0x20);
-} /* acs_toupper */
+}
 
 /* this assumes you already know it's alpha */
 int acs_isvowel(unsigned int c)
@@ -247,7 +247,7 @@ return wv[c-0xc0];
 
 // higher voweles not yet implemented
 return 0;
-} /* acs_isvowel */
+}
 
 /* Turn unicode into lower case ascii, as best we can. */
 #define UnknownChar '~'
@@ -286,7 +286,7 @@ for(i=0; in_c[i]; ++i)
 if(c == in_c[i]) return out_c[i];
 
 return UnknownChar;
-} /* acs_unaccent */
+}
 
 int acs_substring_mix(const char *s, const unsigned int *t)
 {
@@ -302,14 +302,14 @@ if(c != d) return -1;
 ++n;
 }
 return n;
-} /* acs_substring_mix */
+}
 
 int acs_unilen(const unsigned int *u)
 {
 	int i;
 	for(i=0; *u; ++i, ++u)  ;
 	return i;
-} /* acs_unilen */
+}
 
 /* Turn a key code and a shift state into a modified key number. */
 
@@ -320,7 +320,7 @@ int acs_build_mkcode(int key, int ss)
 if((unsigned)key >= ACS_NUM_KEYS) return -1;
 if(ss & ~0xf) return -1;
 return ss * ACS_NUM_KEYS + key;
-} /* acs_build_mkcode */
+}
 
 /* Match two strings, n characters, case insensitive.
  * This is pure ascii, because I'm looking for keywords in a config file,
@@ -341,7 +341,7 @@ if(c) return 0;
 c = s[0] | 0x20;
 if(c >= 'a' && c <= 'z') return 0;
 return 1;
-} /* keywordmatch_ci */
+}
 
 /* Build a modified key code from an ascii string. */
 /* Remember the encoded key and state; needed by line_configure below. */
@@ -472,7 +472,7 @@ return acs_build_mkcode(key, (ss & 0xf));
 
 error:
 return -1;
-} /* acs_ascii2mkcode */
+}
 
 /* Anything you might type, or capture through cut&paste, therefore utf8 */
 static char *macrolist[MK_RANGE];
@@ -493,13 +493,13 @@ void acs_clearmacro(int mkcode)
 if(mkcode < 0) return;
 if(macrolist[mkcode]) free(macrolist[mkcode]);
 macrolist[mkcode] = 0;
-} /* acs_clearmacro */
+}
 
 char *acs_getmacro(int mkcode)
 {
 if(mkcode < 0) return 0;
 return macrolist[mkcode];
-} /* acs_getmacro */
+}
 
 void acs_setmacro(int mkcode, const char *s)
 {
@@ -509,20 +509,20 @@ acs_clearspeechcommand(mkcode);
 if(!s) return;
 macrolist[mkcode] = malloc(strlen(s) + 1);
 strcpy(macrolist[mkcode], s);
-} /* acs_setmacro */
+}
 
 void acs_clearspeechcommand(int mkcode)
 {
 if(mkcode < 0) return;
 if(speechcommandlist[mkcode]) free(speechcommandlist[mkcode]);
 speechcommandlist[mkcode] = 0;
-} /* acs_clearspeechcommand */
+}
 
 char *acs_getspeechcommand(int mkcode)
 {
 if(mkcode < 0) return 0;
 return speechcommandlist[mkcode];
-} /* acs_getspeechcommand */
+}
 
 void acs_setspeechcommand(int mkcode, const char *s)
 {
@@ -532,7 +532,7 @@ acs_clearspeechcommand(mkcode);
 if(!s) return;
 speechcommandlist[mkcode] = malloc(strlen(s) + 1);
 strcpy(speechcommandlist[mkcode], s);
-} /* acs_setspeechcommand */
+}
 
 /* Preset words for punctuation and other unicodes.
  * These can be changed in your config file. */
@@ -973,7 +973,7 @@ if(!u) return;
 if(s) s->next = u->next;
 else uc_loaded = u->next;
 free(u);
-} /* acs_clearpunc */
+}
 
 const char *acs_getpunc(unsigned int c)
 {
@@ -982,7 +982,7 @@ for(u=uc_loaded; u; u=u->next) {
 if(c == u->unicode) return u->name;
 }
 return 0;
-} /* acs_getpunc */
+}
 
 void acs_setpunc(unsigned int c, const char *s)
 {
@@ -995,7 +995,7 @@ u->name = malloc(strlen(s) + 1);
 strcpy((char*)u->name, s);
 u->next = uc_loaded;
 uc_loaded = u;
-} /* acs_setpunc */
+}
 
 /* The replacement dictionary, in utf8 */
 
@@ -1026,7 +1026,7 @@ uc = acs_tolower(uc);
 
 	*lp = 0;
 	return 0;
-} /* lowerword */
+}
 
 static int
 inDictionary(const char *s)
@@ -1035,14 +1035,14 @@ inDictionary(const char *s)
 	for(i=0; i<numdictwords; ++i)
 		if(stringEqual(s, dict1[i])) return i;
 	return -1;
-} /* inDictionary */
+}
 
 static char *
 fromDictionary(const char *s)
 {
 int j = inDictionary(s);
 return (j >= 0 ? dict2[j] : 0);
-} /* fromDictionary */
+}
 
 int acs_setword(const char *word1, const char *word2)
 {
@@ -1074,7 +1074,7 @@ dict1[j] = dict1[numdictwords];
 dict2[j] = dict2[numdictwords];
 dict1[numdictwords] = dict2[numdictwords] = 0;
 return 0;
-} /* acs_setword */
+}
 
 /*********************************************************************
 A word is passed to us for possible replacement.
@@ -1102,7 +1102,7 @@ uni_p = (unsigned char *)t;
 while(rootword[i] = utf8_1())
 ++i;
 return rootword;
-} /* inline_uni */
+}
 
 static int mkroot_english(int wdlen)
 {
@@ -1181,7 +1181,7 @@ static int mkroot_english(int wdlen)
 	} // end final ed
 
 	return 0;
-} /* mkroot_english */
+}
 
 /* reconstruct the word based upon its root and the removed suffix */
 static void reconst_english(int root)
@@ -1209,7 +1209,7 @@ static const char sufdouble[] = {
 		*++t = c;
 	}
 	*++t = 0;
-} /* reconst */
+}
 
 typedef int (*root_fn)(int);
 
@@ -1272,7 +1272,7 @@ for(i=0; c = rootword[i]; ++i)
 if(c != ' ' && !acs_isalpha(c)) return 0;
 		(*reconst_fns[acs_lang])(root);
 return rootword;
-} /* acs_replace */
+}
 
 /* This works in ascii or utf8 */
 static void skipWhite(char **t)
@@ -1280,7 +1280,7 @@ static void skipWhite(char **t)
 char *s = *t;
 while(*s == ' ' || *s == '\t') ++s;
 *t = s;
-} /* skipWhite */
+}
 
 /* Process a line from a config file, performs any of the above functions */
 int acs_line_configure(char *s, acs_syntax_handler_t syn_h)
@@ -1447,7 +1447,7 @@ skipWhite(&u);
 rc = acs_setword(s, u);
 *t = save;
 return rc;
-} /* acs_line_configure */
+}
 
 /* Go back to the default configuration. */
 void acs_reset_configure(void)
@@ -1479,7 +1479,7 @@ for(i=0; i<MK_RANGE; ++i) {
 acs_clearmacro(i);
 acs_clearspeechcommand(i);
 }
-} /* acs_reset_configure */
+}
 
 void acs_suspendkeys(const char *except)
 {
@@ -1507,7 +1507,7 @@ acs_setkey(key, ss);
 }
 }
 }
-} /* acs_suspendkeys */
+}
 
 void acs_resumekeys(void)
 {
@@ -1530,5 +1530,5 @@ acs_setkey(key, (ss | teebit));
 }
 }
 }
-} /* acs_resumekeys */
+}
 

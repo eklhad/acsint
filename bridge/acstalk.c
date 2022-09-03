@@ -62,7 +62,7 @@ acs_curvolume = 7;
 break;
 
 } // switch
-} /* acs_style_defaults */
+}
 
 /* Handler - as index markers are returned to us */
 acs_imark_handler_t acs_imark_h;
@@ -117,7 +117,7 @@ acs_imark_start = 0;
 }
 
 if(acs_imark_h) (*acs_imark_h)(n+1, imark_end);
-} // indexSet
+}
 
 static struct termios tio; // tty io control
 
@@ -140,7 +140,7 @@ tio.c_cc[VSTART] = 19;
     tio.c_cc[VTIME] = 0;
 
 return tcsetattr(acs_sy_fd0, TCSANOW, &tio);
-} // acs_serial_flow
+}
 
 /* Get status lines from the serial device.
  * Active status lines are indicated with the following bit definitions:
@@ -161,7 +161,7 @@ return sigs;
 sigs = TIOCM_RTS | TIOCM_DTR;
 rc = ioctl(fd, TIOCMBIS, &sigs);
 */
-} /* getModemStatus */
+}
 
 /* For debugging */
 static void
@@ -174,7 +174,7 @@ if(sigs&TIOCM_CAR) printf(" carrier");
 if(sigs&TIOCM_RNG) printf(" ring");
 if(sigs&TIOCM_CTS) printf(" cts");
 puts("");
-} /* printModemStatus */
+}
 
 int acs_serial_open(const char *devname, int baud)
 {
@@ -233,7 +233,7 @@ write(acs_sy_fd1, &crbyte, 1);
 usleep(100000);
 
 return 0;
-} // acs_serial_open
+}
 
 void acs_sy_close(void)
 {
@@ -242,14 +242,31 @@ close(acs_sy_fd0);
 if(acs_sy_fd1 != acs_sy_fd0)
 close(acs_sy_fd1);
 acs_sy_fd0 = acs_sy_fd1 = -1;
-} // acs_sy_close
+}
 
 static fd_set channels;
+
+/*********************************************************************
+Ok, we have some splainin to do.
+There is a race condition in the linux kernel that seems to have no workaround.
+It affects my acsint device driver.
+I wait for something to happen then respond to it,
+and something else could happen before I respond, and it's too complicated to explain here.
+The effect is, a key could be struck but select doesn't see it.
+I use to work around it by
+	echo wake up >/etc/jupiter/fifo
+That sends another event through the kernel, and select sees it,
+and the console wakes up and everybody's happy.
+But that's pretty awkward.
+Now I add a timeout to the select.
+So this daemon wakes up a couple times a second, that's not a big price to pay.
+*********************************************************************/
 
 int acs_wait(void)
 {
 int rc;
 int nfds;
+struct timeval now;
 
 memset(&channels, 0, sizeof(channels));
 FD_SET(acs_fd, &channels);
@@ -262,7 +279,10 @@ nfds = acs_fd;
 if(acs_sy_fd0 > nfds) nfds = acs_sy_fd0;
 if(fifo_fd > nfds) nfds = fifo_fd;
 ++nfds;
-rc = select(nfds, &channels, 0, 0, 0);
+now.tv_sec = 0;
+now.tv_usec = 400000;
+rc = select(nfds, &channels, 0, 0, &now);
+
 if(rc < 0) return 0; // should never happen
 
 rc = 0;
@@ -270,7 +290,7 @@ if(FD_ISSET(acs_fd, &channels)) rc |= 1;
 if(acs_sy_fd0 >= 0 && FD_ISSET(acs_sy_fd0, &channels)) rc |= 2;
 if(fifo_fd >= 0 && FD_ISSET(fifo_fd, &channels)) rc |= 4;
 return rc;
-} // acs_wait
+}
 
 int acs_sy_events(void)
 {
@@ -363,7 +383,7 @@ leftover = nr - i;
 if(leftover) memmove(ss_inbuf, ss_inbuf+i, leftover);
 
 return 0;
-} // acs_sy_events
+}
 
 static void ip_more(void); /* more data for an interprocess message */
 
@@ -373,7 +393,7 @@ int source = acs_wait();
 if(source&4) ip_more();
 if(source&2) acs_sy_events();
 if(source&1) acs_events();
-} // acs_all_events
+}
 
 /* string has to be ascii or utf8 */
 void acs_say_string(const char *s)
@@ -381,13 +401,13 @@ void acs_say_string(const char *s)
 int l = strlen(s);
 if(l) write(acs_sy_fd1, s, l);
 ss_cr();
-} // acs_say_string
+}
 
 void acs_say_string_n(const char *s)
 {
 int l = strlen(s);
 if(l) write(acs_sy_fd1, s, l);
-} // acs_say_string_n
+}
 
 void acs_say_char(unsigned int c)
 {
@@ -396,14 +416,14 @@ if(s) acs_say_string_n(s);
 else
 acs_write_mix(acs_sy_fd1, &c, 1);
 ss_cr();
-} // acs_say_char
+}
 
 void acs_say_string_uc(const unsigned int *s)
 {
 int l = acs_unilen(s);
 if(l) acs_write_mix(acs_sy_fd1, s, l);
 ss_cr();
-} /* acs_say_string_uc */
+}
 
 void acs_say_indexed(const unsigned int *s, const acs_ofs_type *o, int mark)
 {
@@ -468,7 +488,7 @@ acs_write_mix(acs_sy_fd1, t, s-t);
 
 ss_cr();
 acs_log("sent %d markers, last offset %d\n", imark_end, imark_loc[imark_end-1]);
-} // acs_say_indexed
+}
 
 void acs_shutup(void)
 {
@@ -491,13 +511,13 @@ write(acs_sy_fd1, &ibyte, 1);
 acs_imark_start = 0;
 bnsf = 0;
 acs_log("shutup\n");
-} // acs_shutup
+}
 
 static void
 ss_writeString(const char *s)
 {
 write(acs_sy_fd1, s, strlen(s));
-} /* ss_writeString */
+}
 
 int acs_setvolume(int n)
 {
@@ -549,7 +569,7 @@ return -2;
 
 acs_curvolume = n0;
 return 0;
-} /* acs_setvolume */
+}
 
 int acs_incvolume(void)
 {
@@ -607,7 +627,7 @@ return -2;
 
 acs_curspeed = n0;
 return 0;
-} /* acs_setspeed */
+}
 
 int acs_incspeed(void)
 {
@@ -669,7 +689,7 @@ return -2;
 
 acs_curpitch = n0;
 return 0;
-} /* acs_setpitch */
+}
 
 int acs_incpitch(void)
 {
@@ -727,7 +747,7 @@ return -2; /* no voice function for this synth */
 } // switch
 
 return 0;
-} /* acs_setvoice */
+}
 
 /* Would the synth block if we sent it more text? */
 int ss_blocking(void)
@@ -746,7 +766,7 @@ if(rc < 0) return 0; // should never happen
 rc = 0;
 if(FD_ISSET(acs_sy_fd1, &channels)) rc = 1;
 return rc ^ 1;
-} /* ss_blocking */
+}
 
 /* Is the synth still talking? */
 int acs_stillTalking(void)
@@ -768,7 +788,7 @@ if(!acs_imark_start) return 0;
  * In that case acs_imark_start should be 0, and we shouldn't be here.
  * But we are here, so return 1. */
 return 1;
-} /* acs_stillTalking */
+}
 
 /* Signal handler, to watch for broken pipe, or death of child,
  * which ever is more convenient. */
@@ -825,7 +845,7 @@ signal(SIGPIPE, sig_h);
 acs_pipe_broken = 0;
 
 return 0;
-} /* acs_pipe_openv */
+}
 
 /* This isn't like printfv; I don't have a string with percent directives
  * to tell me how many args you are passing, or the type of each arg.
@@ -847,13 +867,13 @@ if(!alist[count]) break;
 alist[count] = 0;
 va_end(ap);
 return acs_pipe_openv(progname, alist);
-} /* acs_pipe_open */
+}
 
 int acs_pipe_system(const char *cmd)
 {
 if (!cmd) return -1;
 return acs_pipe_open("/bin/sh", "-c", cmd, 0);
-} /* acs_pipe_system */
+}
 
 int acs_startfifo(const char *pathname)
 {
@@ -867,7 +887,7 @@ if(fifo_fd < 0)
 return -1;
 
 return 0;
-} /* acs_startfifo */
+}
 
 void acs_stopfifo(void)
 {
@@ -877,7 +897,7 @@ fifo_fd = -1;
 
 if(ipmsg) free(ipmsg);
 ipmsg = 0;
-} /* acs_stopfifo */
+}
 
 static void ip_more(void)
 {
@@ -915,5 +935,5 @@ if(i && acs_fifo_h) (*acs_fifo_h)(ipmsg);
 nr = strlen(s);
 memmove(ipmsg, s, nr+1);
 }
-} /* ip_more */
+}
 

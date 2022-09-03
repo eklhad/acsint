@@ -537,7 +537,7 @@ tp_out->room = room;
 //  sortReservedWords();
 
 return 0;
-} /* setupTTS */
+}
 
 
 /*********************************************************************
@@ -570,7 +570,7 @@ static void ascify(void)
 add_c:
 		*s = c;
 	} /* end loop over characters in the input message. */
-} /* ascify */
+}
 
 
 /* speak a single character.
@@ -651,7 +651,7 @@ shortPhrase[l++] = hexbuf[i];
 shortPhrase[l] = 0;
 			t =  shortPhrase;
 		goto copy_t;
-} /* speakChar */
+}
 
 
 /*********************************************************************
@@ -672,13 +672,13 @@ void textBufSwitch(void)
 	memset(tp_out->offset, 0, tp_out->room*sizeof(acs_ofs_type));
 	tp_out->buf[0] = 0;
 	tp_out->len = 1;
-} /* textBufSwitch */
+}
 
 static void carryOffsetForward(const unsigned int *s)
 {
 	acs_ofs_type offset = tp_in->offset[s - tp_in->buf];
 	tp_out->offset[tp_out->len] = offset;
-} /* carryOffsetForward */
+}
 
 /* There's always room for the last zero */
 void textbufClose(const unsigned int *s, int overflow)
@@ -691,7 +691,7 @@ void textbufClose(const unsigned int *s, int overflow)
 		}
 	} else carryOffsetForward(s);
 	tp_out->buf[tp_out->len] = 0;
-} /* textbufClose */
+}
 
 
 /*********************************************************************
@@ -722,7 +722,7 @@ static int wordInList(const char * const *list, const unsigned int *s, int s_len
 	} /* loop over words  in list */
 
 	return -1;
-} /* wordInList */
+}
 
 
 /*********************************************************************
@@ -746,14 +746,14 @@ static int roomCheck(int n)
 	tp_out->offset = ofs;
 tp_out->room = room;
 	return 0;
-} /* roomCheck */
+}
 
 static int appendChar(unsigned int c)
 {
 	if(roomCheck(1)) return 1;
 	tp_out->buf[tp_out->len++] = c;
 	return 0;
-} /* appendChar */
+}
 
 /* append an isolated char or digit */
 static int appendIchar(unsigned int c)
@@ -762,7 +762,7 @@ static int appendIchar(unsigned int c)
 	tp_out->buf[tp_out->len++] = c;
 	tp_out->buf[tp_out->len++] = ' ';
 	return 0;
-} /* appendIchar */
+}
 
 /* Input is lower case utf8, output is the unicode buffer. */
 static int appendString(const char *s)
@@ -773,14 +773,14 @@ static int appendString(const char *s)
 	tp_out->len += n;
 	tp_out->buf[tp_out->len++] = ' ';
 	return 0;
-} /* appendString */
+}
 
 static int appendIdigit(int n)
 {
 	return (ow->idigits[n] ?
 appendString(ow->idigits[n]) :
 appendIchar('0'+n));
-} /* appendIdigit */
+}
 
 /* Speak a string of digits.
 In espeakup the string reads faster and smoother if it is in words,
@@ -793,7 +793,7 @@ static int appendDigitString(const unsigned int *s, int n)
 		if(appendIdigit(c-'0')) return 1;
 	}
 	return 0;
-} /* appendDigitString */
+}
 
 static void lastUncomma(void)
 {
@@ -806,7 +806,7 @@ static void lastUncomma(void)
 	--len;
 	tp_out->offset[len] = offset;
 	tp_out->len = len;
-} /* lastUncomma */
+}
 
 static int appendAcronString(const char *s)
 {
@@ -823,7 +823,7 @@ static int appendAcronString(const char *s)
 		tp_out->buf[tp_out->len++] = c;
 	}
 	return 0;
-} /* appendAcronString */
+}
 
 static int appendAcronCodes(const unsigned int *s, int n)
 {
@@ -839,7 +839,7 @@ static int appendAcronCodes(const unsigned int *s, int n)
 		tp_out->buf[tp_out->len++] = c;
 	}
 	return 0;
-} /* appendAcronCodes */
+}
 
 /* Read a natural number, up to 3 digits. */
 /* The dohundred parameter indicates 2 hundred 3 or 2 oh 3. */
@@ -889,7 +889,7 @@ rc |= appendString(ow->idigits[n]);
 	}
 
 	return rc;
-} /* append3num */
+}
 
 /* read 09 as O 9, and 00 as o o */
 static int appendOX(int n)
@@ -899,7 +899,7 @@ static int appendOX(int n)
 	if(n) rc |= append3num(n, 0, 0);
 	else rc |= appendString(ow->ohWord);
 	return rc;
-} /* appendOX */
+}
 
 /* Read a 4 digit number as a year. */
 /* This is optimal for other 4-digit numbers, such as house numbers etc. */
@@ -941,7 +941,7 @@ return appendDigitString(yd, 4);
 	if(!y) rc |= appendString(ow->hundredWord);
 	else rc |= appendOX(y);
 	return rc;
-} /* appendYear */
+}
 
 /* Read a natural number, up to 6 digits. */
 static int append6num(int n)
@@ -956,7 +956,7 @@ static int append6num(int n)
 	}
 	rc |= append3num(bottom, 1, (int)!top);
 	return rc;
-} /* append6num */
+}
 
 /* append 3-digit ordinal, such as first, or seventeenth */
 static int appendOrdinal(int n)
@@ -984,7 +984,7 @@ static int appendOrdinal(int n)
 	rc |= appendString(ow->decades[n/10 - 2]);
 	rc |= appendString(ow->ordinals[n%10]);
 	return rc;
-} /* appendOrdinal */
+}
 
 /* read the nxx and xxxx of a phone number */
 static int appendNxx(int n)
@@ -999,7 +999,7 @@ static int appendNxx(int n)
 		rc |= appendIdigit(n%10);
 	}
 	return 0;
-} /* appendNxx */
+}
 
 static int appendXxxx(int n)
 {
@@ -1046,7 +1046,7 @@ static int appendXxxx(int n)
 	rc |= appendIdigit(n/10);
 	rc |= appendIdigit(n%10);
 	return rc;
-} /* appendXxxx */
+}
 
 static int appendFraction(int num, int den, int preand)
 {
@@ -1059,14 +1059,14 @@ static int appendFraction(int num, int den, int preand)
 	}
 	if(num > 1) { appendBackup(); rc |= appendIchar('s'); }
 	return rc;
-} /* appendFraction */
+}
 
 static int alphaLength(const unsigned int *s)
 {
 	int len = 0;
 	while(acs_isalpha(*s)) ++s, ++len;
 	return len;
-} /* alphaLength */
+}
 
 static const unsigned int *atoi_s;
 static int atoiLength(const unsigned int *s, int len)
@@ -1079,7 +1079,7 @@ static int atoiLength(const unsigned int *s, int len)
 	}
 	atoi_s = s;
 	return n;
-} /* atoiLength */
+}
 
 /* Append "dollars and xx cents" to a money expression.
  * The number of dollars has already been spoken, as a natural number,
@@ -1118,7 +1118,7 @@ static int appendMoney(int zeroflag, int oneflag, int cents, const unsigned int 
 	} /* print cents */
 
 	return rc;
-} /* appendMoney */
+}
 
 
 /*********************************************************************
@@ -1159,7 +1159,7 @@ if(!w) return 1; // nothing to check against
 		if(w[0] == c1 && w[1] == c2) return 1;
 
 	return 0;
-} /* isWord2 */
+}
 
 
 static int isWord3(const unsigned int *s)
@@ -1198,7 +1198,7 @@ return 0;
 	} /* loop looking for this 3-letter word */
 
 	return 0;
-} /* isWord3 */
+}
 
 /*********************************************************************
 This 32x32 matrix records the reasonable letter pairs in the native language.
@@ -1250,7 +1250,7 @@ static int transitionValue(char x, char y)
 	/* paranoia */
 	if(x == ' ' || y == ' ') return 0;
 	return letterPairs[x-'a'][y-'a'];
-} /* transitionValue */
+}
 
 
 /*********************************************************************
@@ -1268,7 +1268,7 @@ static int leadSequence(const unsigned int *s, int n)
 	if(!(transitionValue(c1, c2)&4)) return 0;
 	if(n == 3 && !(transitionValue(c2, c3)&2)) return 0;
 	return 1;
-} /* leadSequence */
+}
 
 
 /*********************************************************************
@@ -1399,7 +1399,7 @@ if(i >= 0) return i;
 
 	if ((len+2)/3 <= cnt) return 0;
 	return 1;
-} /* isPronounceable */
+}
 
 
 /*********************************************************************
@@ -1923,7 +1923,7 @@ success:
 
 overflow:
 	return 1;
-} /* expandAlphaNumeric */
+}
 
 
 /*********************************************************************
@@ -2278,7 +2278,7 @@ success:
 
 overflow:
 	return 1;
-} /* expandPunct */
+}
 
 
 /*********************************************************************
@@ -2333,7 +2333,7 @@ nextchar:
 
 overflow:
 	textbufClose(s, overflowValue);
-} /* expandSentence */
+}
 
 
 /*********************************************************************
@@ -2399,7 +2399,7 @@ add_c:
 	*t = 0;
 	*v = *u;
 	tp_out->len = t - tp_out->buf;
-} /* postCleanup */
+}
 
 
 /*********************************************************************
@@ -2444,7 +2444,7 @@ void prepTTS(void)
 	/* compress whitespace and sequences of commas and periods */
 	postCleanup();
 	debugCheck('z', tp_out);
-} /* prepTTS */
+}
 
 
 unsigned int *prepTTSmsg(const char *msg)
@@ -2464,5 +2464,5 @@ tp_in->buf[len] = 0;
 	prepTTS();
 
 	return tp_out->buf + 1;
-} /* prepTTSmsg */
+}
 

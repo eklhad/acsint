@@ -340,7 +340,7 @@ cmdByName(const char *name)
 }
 
 	return 0;
-} // cmdByName
+}
 
 // Return the composite status of an atomic command.
 //  1  must end the composite.
@@ -354,7 +354,7 @@ compStatus(int cmd)
 compstat = cmdp->nextchar;
 	if(cmdp->alone) compstat |= 12;
 	return compstat;
-} // compStatus
+}
 
 static char last_atom[12];
 static int cfg_syntax(char *s)
@@ -411,7 +411,7 @@ nextchar = (compstat & 3);
 
 *v = 0;
 	return 0;
-} // cfg_syntax
+}
 
 /* prepend directory /etc/jupiter */
 #define SUPPORTLEN 200
@@ -424,7 +424,7 @@ strcpy(jfile, s);
 strcpy(jfile, "/etc/jupiter/");
 strcat(jfile, s);
 }
-} /* etcjup */
+}
 
 static const char *acsdriver = "/dev/acsint";
 
@@ -442,7 +442,7 @@ int l = strlen(s);
 char *t = malloc(l+1);
 strcpy(t, s);
 return t;
-} /* cloneString */
+}
 
 static void runSpeechCommand(int input, const char *cmdlist);
 static void
@@ -506,7 +506,7 @@ fprintf(stderr, "\n");
 }
 
 fclose(f);
-} // j_configure
+}
 
 
 /*********************************************************************
@@ -599,7 +599,7 @@ if(*p) save_postprocess = acs_postprocess, acs_postprocess = 0;
 else acs_postprocess = save_postprocess;
 break;
 } // switch
-} /* binmode */
+}
 
 /*********************************************************************
 An event is interrupting speech.
@@ -744,7 +744,7 @@ tp_out->offset[tp_out->len] = tp_out->offset[i];
 readNextMark = acs_rb->cursor + tp_out->offset[tp_out->len];
 //flip = 51 - flip;
 acs_say_indexed(tp_out->buf+1, tp_out->offset+1, flip);
-} /* readNextPart */
+}
 
 /* index mark handler, read next sentence if we finished the last one */
 static void imark_h(int mark, int lastmark)
@@ -779,7 +779,7 @@ n = write(fd, utf8, l);
 close(fd);
 free(utf8);
 return (n < l ? -1 : 0);
-} /* dumpBuffer */
+}
 
 
 
@@ -800,7 +800,7 @@ if(soundsOn) {
 soundsOn = 0;
 acs_sounds(0);
 }
-} /* suspend */
+}
 
 static void unsuspend(void)
 {
@@ -812,7 +812,7 @@ soundsOn = 1;
 acs_sounds(1);
 }
 suspended = 0;
-} /* unsuspend */
+}
 
 
 static void
@@ -826,7 +826,7 @@ fscanf(f, "%d,%d,%d,%d",
 &f1, &f2, &step, &duration);
 fclose(f);
 acs_scale(f1, f2, step, duration);
-} /* chromscale */
+}
 
 
 /*********************************************************************
@@ -1282,7 +1282,7 @@ else acs_say_string(o->endword);
 	} /* end switch on function */
 
 	goto top; /* next command */
-} /* runSpeechCommand */
+}
 
 /* keystroke handler */
 static int last_key, last_ss;
@@ -1290,7 +1290,7 @@ static void key_h(int key, int ss, int leds)
 {
 last_key = key;
 last_ss = ss;
-} /* key_h */
+}
 
 /* Remember the last console, and speak a message if it changes */
 static int last_fgc;
@@ -1341,7 +1341,7 @@ j_configure(jfile, 0);
 
 done:
 last_fgc = acs_fgc;
-} /* fgc_h */
+}
 
 /* fifo input still works, even if suspended */
 static void fifo_h(char *msg)
@@ -1355,7 +1355,7 @@ rc = cfg_syntax(msg+2);
 if(rc) acs_bell();
 else runSpeechCommand(0, msg+2);
 } else acs_say_string(msg);
-} /* fifo_h */
+}
 
 static void more_h(int echo, unsigned int c)
 {
@@ -1378,7 +1378,7 @@ if(acs_rb) return;
 ctrack = 1;
 if(!autoRead) return;
 if(!echo) goRead = 1;
-} /* more_h */
+}
 
 static void
 openSound(void)
@@ -1393,7 +1393,7 @@ static const short startNotes[] = {
 942,5,
 0,0};
 acs_notes(startNotes);
-} /* openSound */
+}
 
 static void
 testTTS(void)
@@ -1413,7 +1413,7 @@ free(out);
 }
 
 exit(0);
-} /* testTTS */
+}
 
 static void
 selectLanguage(void)
@@ -1745,5 +1745,5 @@ lastrow = acs_vc_row, lastcol = acs_vc_col;
 }
 
 acs_close();
-} // main
+}
 
