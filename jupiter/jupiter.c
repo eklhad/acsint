@@ -1459,7 +1459,7 @@ acs_lang = ACS_LANG_SK;
     }
 
     fprintf(stderr, "Sorry, language %s is not implemented\n", buf);
-}				/* selectLanguage */
+}
 
 /* Supported synthesizers */
 struct synth {
@@ -1468,7 +1468,20 @@ int style;
 const char *initstring;
 } synths[] = {
 {"dbe", ACS_SY_STYLE_DOUBLE,
-"\1@ \0012b \00126g \0012o \00194i "},
+/*********************************************************************
+I use to send 26g which enables bits 4 3 and 1.
+4 allows for nonascii, so people can send Spanish characters and use the
+Spanish dictionary. I'd like to keep this bit set.
+Bit 1 is using ring indicator, but I don't watch for that.
+I use to set it but don't use it, and if there's anything
+wrong with that serial line, well then...
+Bit 3 is early sync, sending me notification slightly before the word has fully spoken.
+This seems important, but I don't notice any difference if I don't set it.
+I have a doubletalk that loses its brains if this is set. One out of three.
+So now I don't set that bit, so I can use all three talkers.
+16g instead of 26g.
+*********************************************************************/
+"\1@ \0012b \00116g \0012o \00194i "},
 {"dte", ACS_SY_STYLE_DECEXP},
 {"dtp", ACS_SY_STYLE_DECPC},
 {"bns", ACS_SY_STYLE_BNS},
