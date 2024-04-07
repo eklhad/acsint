@@ -619,8 +619,10 @@ copy_t:
 		return;
 	} /* control character */
 
+if(asword != 2 || c < 0x80) {
 t = (char*)acs_getpunc(c);
 if(t) goto copy_t;
+}
 
 if(acs_isalpha(c) && asword == 2) {
 c = acs_unaccent(c);
