@@ -11,9 +11,9 @@ See sample.cfg for a sample configuration file.
 
 You can exercise the text preprocessor, without running the adapter,
 by running jupiter tts or jupiter ltts
-ltts reads punctuations literally, every one of them.
+ltts reads punctuation marks literally, every one of them.
 That may sound like overkill, but that's what I do 99% of the time.
-Perhaps because I'm a programmer - every punctuation is important.
+Perhaps because I'm a programmer - every punctuation mark is important.
 Even when I read a story, I'd rather hear the word comma than a pause.
 
 Use jupiter tc to test the syntax of the config file.
