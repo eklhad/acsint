@@ -7,7 +7,7 @@ The tty clicks module
 When this module is installed, soft clicks accompany
 the nonspace characters that are sent to the console,
 while a longer swoop indicates a newline character.
-These sounds simulate an old fashion teletype (how many of you are old enough
+These sounds simulate an old fashioned teletype (how many of you are old enough
 to remember those) running at 2400 baud.
 Why would you want such a thing?
 You probably wouldn't, but a blind person might.
@@ -54,7 +54,7 @@ Grub, for instance, beeps when it brings up the menu,
 provided I put a control G in the title.
 This tells me that I have ten seconds to cursor up and down
 and select a target, if I want something other than the default.
-Beyound this, it tells me that the machine has gotten to grub successfully,
+Beyond this, it tells me that the machine has gotten to grub successfully,
 and is not stuck in bios for some bizarre reason.
 It is difficult to overstate the importance of this little in-built speaker
 for the blind user.
@@ -119,7 +119,7 @@ Generate a 0.6 millisecond pulse.
 
 void ttyclicks_cr(void);
 
-Generate a quick frequency swoop from 2900 to 3600 hz.
+Generate a quick frequency swoop from 2900 to 3600 Hz.
 This sound is associated with the newline character at the console,
 but you can use this function to generate the same sound whenever you wish.
 
@@ -144,11 +144,11 @@ Use a negative step for a descending scale.
 
 void ttyclicks_bell(void);
 
-This function generates an 1800 hz tone for a tenth of a second.
+This function generates an 1800 Hz tone for a tenth of a second.
 this is associated with the control G bell.
-The traditional bell is 1000 hz, but I wanted a slightly higher tone.
+The traditional bell is 1000 Hz, but I wanted a slightly higher tone.
 As long as this module is loaded, it swallows control G, and sounds the bell,
-rather then passing it through to the console and letting the console
+rather than passing it through to the console and letting the console
 ring the bell.  This allows the master switch, ttyclicks_on,
 to enable or disable the control G bell along with all the other sounds.
 You can turn off all the sounds in one go, if they are bothering your roommate.
