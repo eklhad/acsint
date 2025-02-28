@@ -203,7 +203,8 @@ Mark the start and end of a string in the buffer, grab it,
 then inject it into the input stream of this console or another console.
 (I typically cut&paste between two consoles.)
 
-The command consists of the action code and the low and high bytes of an unsigned short.
+The command consists of the action code and the low and high bytes
+of an unsigned short.
 Thus ACS_PUSH_TTY 2 1 is pushing a string of length 258.
 The next 258 bytes form the string.
 The string can be utf8 to push international text into the console.
@@ -276,7 +277,7 @@ ACS_SOUNDS_TTY
 This takes the parameter 1 or 0, enabled or disabled.
 If enabled, then tty output produces clicks for printable characters,
 pauses for spaces, and a special swoop for newline.
-Blank lines, text, C code, columated data - all have distinct audio signatures.
+Blank lines, text, C code, columnated data - all have distinct audio signatures.
 This does not pass any events back to user space, it simply generates
 clicks as characters pass through the tty and onto the screen.
 
@@ -306,7 +307,7 @@ and thus no speech.
 ACS_CR
 
 Generate the swoop that is associated with the newline character.
-(This was orriginally tied to cr, not lf,
+(This was originally tied to cr, not lf,
 so is called acs_cr for historical reasons.)
 You may want to issue this sound when the user hits enter to complete
 a command that is directed towards the adapter rather than standard input.
@@ -337,7 +338,7 @@ ACS_NOTES
 
 This command plays a series of notes, a song if you will.
 The notes are of course square waves, and not terribly melodic.
-The driver queuees up at most 10 notes to play; subsequent notes are discarded.
+The driver queues up at most 10 notes to play; subsequent notes are discarded.
 
 The first parameter is a single byte indicating the number of notes.
 
@@ -345,7 +346,7 @@ Each note is defined by three bytes.
 The first two bytes build a short, which is the frequency in hurtz.
 A frequency of -1 is a rest.
 The third byte is the duration in hundredths of a second.
-The standard control G bell, 1Khz for a tenth of a second, looks like:
+The standard control G bell, 1kHz for a tenth of a second, looks like:
 ACS_NOTES 1 232 3 10
 
 ACS_REFRESH
