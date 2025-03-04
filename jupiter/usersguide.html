@@ -1,18 +1,46 @@
-<HTML>
-<FONT face=Arial,Helvetica,sans-serif size=4>
+<!DOCTYPE html>
 <HEAD>
+<meta charset="UTF-8">
 <META name=description content="jupiter documentation, a linear adapter for the blind.">
 <meta name=keywords content="
 text based, command line, interactive, linear,
 adapter, speech, blind, customizable">
 <TITLE> Jupiter Documentation </TITLE>
-<LINK REL="SHORTCUT ICON" href="pc.ico">
+        <style type="text/css">
+body {
+background: white;
+color: black;
+font-family: Arial,Helvetica,sans-serif;
+font-size: 100%;
+}
+h1 {
+text-align: center;
+font-size: 2.5em;
+color: navy;
+}
+h2 {
+text-align: center;
+font-size: 2.0em;
+color: darkslateblue;
+}
+p.cen {
+font-size: 1.5em;
+text-align: center;
+}
+hr {
+border: 3px solid blue;
+}
+a:link { color: red; font-size: 1.25em; }
+a:visited { color: red; font-size: 1.25em; }
+a:hover { color: red; font-size: 1.25em; }
+a:active { color: red; font-size: 1.25em; }
+</style>
 </HEAD>
-<BODY bgcolor=white text=black link=red vlink=red alink=navy>
+<BODY>
 
-<H2 align=center> Jupiter Documentation, a User's Guide </H2>
+<h1> Jupiter Documentation, a User's Guide </h1>
 
-<H3 align=center> <A NAME=top> Contents </A> </H3>
+<h2 id=top> Contents </h2>
 
 <UL>
 <LI><A HREF=#auth> Author </A>
@@ -30,19 +58,19 @@ adapter, speech, blind, customizable">
 <LI><A HREF=#sum> Summary </A>
 </UL>
 
-<H3 align=center> <A NAME=auth> Author </A> </H3>
+<h2> <A NAME=auth> Author </A> </h2>
 
 Karl Dahlke
 <A HREF=mailto:eklhad@gmail.com>eklhad@gmail.com</A>
 
-<H3 align=center> <A NAME=copy> Copyright Notice </A> </H3>
+<h2> <A NAME=copy> Copyright Notice </A> </h2>
 
 This program is copyright &copy; Karl Dahlke, 2000-2014.
 It is made available by the author under the terms of the GNU General Public License (GPL),
 as articulated by the Free Software Foundation.
 It may be used for any purpose, and redistributed, provided this copyright notice is included.
 
-<H3 align=center> <A NAME=over> Overview </A> </H3>
+<h2> <A NAME=over> Overview </A> </h2>
 
 Jupiter is unique among all adapters in that it does not (by default) transform the words or icons on the screen into speech or braille.
 It is not typically used as a screen reader.
@@ -90,7 +118,7 @@ and the result will be very confusing.
 I therefore recommend 12 or 24 virtual text-based consoles
 to manage your parallel sessions.
 
-<H3 align=center> <A NAME=lang> Other Languages </A> </H3>
+<h2> <A NAME=lang> Other Languages </A> </h2>
 
 The buffer stores tty output in unicode, which is compatible with every language on Earth.
 Thus, in theory, Jupiter could be modified to support any language.
@@ -100,7 +128,7 @@ You don't have to be a programmer;
 you just have to be fluent in your language and conversational in English.
 I will do the rest.
 
-<H3 align=center> <A NAME=syn> Synthesizers </A> </H3>
+<h2> <A NAME=syn> Synthesizers </A> </h2>
 
 This adapter, like Speakup or Orca or any other adapter, requires a speech synthesizer.
 There are two flavors.
@@ -185,7 +213,7 @@ Another quirk of espeakup is that it does not exit on broken pipe.
 If jupiter exits for any reason, espeakup is still hanging around.
 You need to killall espeakup to clean things up.
 
-<H3 align=center> <A NAME=mod> Modules </A> </H3>
+<h2> <A NAME=mod> Modules </A> </h2>
 
 Any program can read screen memory from /dev/vcs,
 but how do you get your hands on tty output
@@ -206,18 +234,19 @@ If yours is 3.12.3.2, and mine is 3.12.3.1, then my modules won't run on your ke
 This is intentional,
 to prevent the accidental assembly of an inconsistent kernel, but it sometimes gets in the way.
 Thus you have to build these modules yourself.
-And that means you have to have the source for your kernel, which is often available as part of your distribution,
-but is rarely loaded onto your computer.
+That means you have to have the kernel headers, which is an available package,
+but rarely loaded by default.
 After all, most people don't build the kernel or kernel modules.
 But you may have to, as part of the Jupiter installation process,
-so make sure you have the source for your running kernel.
+so make sure you have the headers,
+e.g. apt install kernel-headers.
 Then descend into the drivers directory in the acsint package and type `make modules'.
 Then as root, type `make modules_install',
 or simply copy the ko files to any location under /lib/modules/version/kernel.
 If these two steps run without error, run `depmod -a'.
 This tells the modprobe system about the two new modules that you just built.
 Now you will be able to load them into the kernel at any time,
-and of course you will want to load them very early in the boot sequence,
+and of course you will want to load them early in the boot sequence,
 because Jupiter will not run without them.
 I use to load the modules and run jupiter from the top of /etc/rc.sysinit,
 whence my computer was talking as early as possible.
@@ -369,7 +398,7 @@ in /etc/modprobe.d/access.conf
 <P>
 options acsint major=11
 
-<H3 align=center> <A NAME=modes> Modes </A> </H3>
+<h2> <A NAME=modes> Modes </A> </h2>
 
 Jupiter has several modes that are on or off, enabled or disabled.
 Bind these to function or control keys, and you can turn these modes on or off at will.
@@ -593,7 +622,7 @@ e.g. when there is a lot more output than you expected, you want to shut them of
 Thus I use F9 to toggle oneline, and F10 to toggle clicktty.
 Other modes are changed infrequently, and can be modified by key chords or key sequences.
 
-<H3 align=center> <A NAME=cfg> Config Files </A> </H3>
+<h2> <A NAME=cfg> Config Files </A> </h2>
 
 At startup, Jupiter reads its key bindings, and loads its replacement dictionary,
 from the file /etc/jupiter/start.cfg.
@@ -648,7 +677,7 @@ and pulled into every config file,like this.
 <P>
 Again these files are taken relative to /etc/jupiter.
 
-<H3 align=center> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </H3>
+<h2> <A NAME=rc> The Reading Cursor and Atomic Commands </A> </h2>
 
 The reading cursor is a location in the tty buffer (in linear mode),
 or on screen (in screen mode),
@@ -1042,7 +1071,7 @@ Here is a pretty sound.
 
 </DL>
 
-<H3 align=center> <A NAME=vc> The Visual Cursor and Autoread </A> </H3>
+<h2> <A NAME=vc> The Visual Cursor and Autoread </A> </h2>
 
 This section has no meaning in linear mode; it only applies to screen mode.
 
@@ -1132,7 +1161,7 @@ rather than the character that the cursor is on now.
 The T function should only be used with the shutup command;
 then Jupiter can perform autoread as it was programmed to do.
 
-<H3 align=center> <A NAME=cfs> Config File Syntax </A> </H3>
+<h2> <A NAME=cfs> Config File Syntax </A> </h2>
 
 Each line in a config file is one of the following.
 
@@ -1279,7 +1308,7 @@ Set the volume and speed of the synthesizer, for example.
 
 </UL>
 
-<H3 align=center> <A NAME=fifo> Jupiter fifo </A> </H3>
+<h2> <A NAME=fifo> Jupiter fifo </A> </h2>
 
 In unix or linux, a fifo is a virtual file that carries data from one running program to another.
 A particular fifo is used to pass text or instructions from other programs into Jupiter.
@@ -1329,7 +1358,7 @@ echo :: reload bash.speech > /etc/jupiter/fifo
 <br>
 }
 
-<H3 align=center> <A NAME=sum> Summary </A> </H3>
+<h2> <A NAME=sum> Summary </A> </h2>
 
 Jupiter is written in three layers.
 The modules (1) provide audio feedback as output is generated,
@@ -1358,5 +1387,5 @@ As always, you can
 <P>
 <A HREF=#top>Back to top</A>
 
-</BODY></font>
+</BODY>
 </html>
