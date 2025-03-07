@@ -120,7 +120,7 @@ int acs_cr(void);
 Play a sequence of notes.
 Each note is indicated by two shorts.
 First is frequency, second is duration in hundredths of a second.
-So the standard control g bell sound, 1 khz for a tenth of a second, is
+So the standard control g bell sound, 1 kHz for a tenth of a second, is
 static const short bellbeep[] = { 1000, 10, 0};
 0 frequency ends the list of notes.
 Use -1 for a rest.
@@ -246,7 +246,7 @@ This almost works in screen mode.
 A codepage converts the bytes in screen memory into unicode,
 but the conversion is not 100% faithful.
 It is optimized for the letters of your language, but there is some ambiguity.
-On my system, cp437, the Germsn s-zet is the same as the greek beta.
+On my system, cp437, the German s-zet is the same as the Greek beta.
 A program can generate either character, as utf8 output,
 and they both have the same representation in screen memory, and cannot be distinguished by acsint.
 Speakup has the same problem; it is intrinsic to Linux.
@@ -290,7 +290,7 @@ Set the bits for the processing that you want.
 Usually you will want most or all of these.
 
 Control H - erases the previous character.
-Contrl G - strips bells.
+Control G - strips bells.
 CRLF - Turn cr lf into lf.
 Other - removes other control characters.
 ESCB - Remove the ansi escape codes that move the cursor, set attributes, etc.
@@ -693,7 +693,7 @@ int acs_ascii2mkcode(const char *s, char **endptr);
 /* Use the modified key code to set and retrieve a macro string.
  * If the macro starts with | it is executed as a system command.
  * This takes the place of esekeyd, and has the advantage of executing
- * different comands based on shift state - which esekeyd couldn't do.
+ * different commands based on shift state - which esekeyd couldn't do.
  * If the leading character is not a pipe then it is just a string,
  * and should be passed to the tty input queue. */
 void acs_setmacro(int mkcode, const char *s);
@@ -746,7 +746,7 @@ For ease of implementation I put limits on the length of a word
 and the number of words in the replacement dictionary.
 The length bounds the utf8 representation of the word.
 Replacement is case insensitive.
-I do not, at this point, atempt to preserve the case after replacement.
+I do not, at this point, attempt to preserve the case after replacement.
 So if dog goes to cat, then Dog also goes to cat.
 If the second word in setword() is null then the first word
 is removed from the dictionary.
@@ -769,7 +769,7 @@ So this is a smarter replacement dictionary.
 It is of course English centered;
 folks from other countries will need to reimplement this for their locale.
 Note that I require the root word to be replaced with one or more words,
-not punctuations etc, so that we can meaningfully put the suffix back on.
+not punctuation marks etc, so that we can meaningfully put the suffix back on.
 *********************************************************************/
 
 unsigned int *acs_replace(const unsigned int *word1, int len);
@@ -792,7 +792,7 @@ A blank line, or line beginning with # is ignored.
 
 The four functions have the following syntax.
 
-# macro begins with the modified key follow by less than.
+# macro begins with the modified key followed by less than.
 # < is suppose to remind you of getting input, as in <filename
 +F3 < this is text that should be sent to the console on shift F3
 The text can be international; see the comments on injectstring() above.
@@ -1486,7 +1486,7 @@ int acs_isalpha(unsigned int uc);
 int acs_isdigit(unsigned int uc);
 int acs_isspace(unsigned int uc);
 int acs_isalnum(unsigned int uc);
-// Next 5 routines assume the character is a letter in your language.
+// The next 5 routines assume the character is a letter in your language.
 int acs_isupper(unsigned int uc);
 int acs_islower(unsigned int uc);
 int acs_isvowel(unsigned int uc);
