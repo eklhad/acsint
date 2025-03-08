@@ -80,7 +80,7 @@ int acs_open(const char *devname);
 // Free the AccessBridge, closing the associated device.
 int acs_close(void);
 
-/* Fix up the major and minor number of /dev/acsint - linux only.
+/* Fix up the major and minor number of /dev/acsint - Linux only.
  * You should call this before acs_open().
  * This is a fallback in case udev is not configured properly,
  * or does not run properly. */
@@ -113,7 +113,7 @@ int acs_kmsg_tones(int enabled);
 // Generate a soft click
 int acs_click(void);
 
-// Generaate a quick swoop sound, typically used for newline
+// Generate a quick swoop sound, typically used for newline
 int acs_cr(void);
 
 /*********************************************************************
@@ -134,7 +134,7 @@ Play a series of ascending or descending notes.
 Provide the start and end frequencies, and the step.
 The duration is in milliseconds.
 However, this is done by jiffies timing, so is subject to the
-resolution of HZ.
+resolution of Hz.
 A step of 100% goes up by octaves, -50% goes down by octaves.
 12% is a wholetone scale, while 6% is a chromatic scale.
 *********************************************************************/
@@ -233,7 +233,7 @@ you switch to screen mode, or switch back to that console.
 
 The characters in the buffer are 4 byte unicodes.
 They leave the tty as utf8, or iso8859-x on some older systems,
-and are converted by linux vt.c into unicode.
+and are converted by Linux vt.c into unicode.
 That's the way acsint receives them,
 and that's the way it stores them,
 and that's the way it passes them down to user space.
@@ -278,14 +278,14 @@ extern struct acs_readingBuffer *acs_mb, *acs_rb, *acs_tb;
 Within screen mode, attribs is an array holding the attributes of each character on screen.
 Underline, inverse, blinking, etc.
 The attribute of the character pointed to by s is acs_mb->attribs[s-acs_mb->start];
-No, I don't know what any of the bits mean; guess we'll have to look them up in linux documentation.
+No, I don't know what any of the bits mean; guess we'll have to look them up in Linux documentation.
 A normal character is 7.
 *********************************************************************/
 
 /*********************************************************************
 Postprocess the text in the buffer, before you try to read it.
 This is line mode only.
-It is controled by a global variable acs_postprocess
+It is controlled by a global variable acs_postprocess
 Set the bits for the processing that you want.
 Usually you will want most or all of these.
 
@@ -293,7 +293,7 @@ Control H - erases the previous character.
 Control G - strips bells.
 CRLF - Turn cr lf into lf.
 Other - removes other control characters.
-ESCB - Remove the ansi escape codes that move the cursor, set attributes, etc.
+ESCB - Remove the ANSI escape codes that move the cursor, set attributes, etc.
 These are not text, and can be confusing if mixed into the tty log.
 *********************************************************************/
 
@@ -561,7 +561,7 @@ int acs_keystring(char *buf, int buflen, int properties);
 #define ACS_KS_BADBELL 0x1
 // Stop the string when a bad character is entered
 #define ACS_KS_BADSTOP 0x2
-// call highbeeps() if the user enteres too many characters into the string.
+// call highbeeps() if the user enters too many characters into the string.
 // Running off the end, a boundary condition.
 #define ACS_KS_BOUNDARYBEEPS 0x4
 // Abort the string if too long.
@@ -619,7 +619,7 @@ but I've only tested up to a few hundred.
 Over 256 is not a problem,
 so cut&paste a large block of text if you wish.
 
-The text can be utf8 or an 8859 codepage, consistent with your linux console.
+The text can be utf8 or an 8859 codepage, consistent with your Linux console.
 The setmacro() function can similarly accept utf8.
 Consider the control #7 macro in acstest.cfg.
 Run acstest, switch to another console, run
@@ -672,12 +672,12 @@ right  right arrow
 home  home
 +pause shift pause
 
-These are, once again, low levvel functions,
+These are, once again, low level functions,
 and you probably should use acs_line_configure() instead.
 *********************************************************************/
 
 /* Return the modified key code based on key and state.
- * This assumes numlock is off, and/or the led states don't matter.
+ * This assumes numlock is off, and/or the LED states don't matter.
  * acsint doesn't capture numlock keypad codes in any case.
  * Returns -1 if the conversion cannot be made. */
 int acs_build_mkcode(int keycode, int state);
@@ -995,7 +995,7 @@ void acs_rspc(void);
 
 /*********************************************************************
 Search for a string in the buffer.
-The search is case inssensitive.
+The search is case insensitive.
 Upper and lower case letters are determined by the current locale,
 so could be set to work in Spanish, French, etc.
 The second parameter causes the search to run backward or forward.
@@ -1022,7 +1022,7 @@ of the destination array, leaving room for the null byte at the end,
 or to the end of the tty buffer, which ever comes first.
 
 If you set ACS_GS_STOPLINE I will stop when I encounter a newline character.
-Reading line by line can be helpfull when working on software
+Reading line by line can be helpful when working on software
 or other technical material.
 Even if you are reading all the way down the page,
 you may still want the stopline feature,
@@ -1031,7 +1031,7 @@ or pause between lines,
 or call acs_cr() for each newline and keep these sounds
 in sync with the speech.
 Stopline might be off if you are reading a story,
-and the punctuations tell all,
+and the punctuation marks tell all,
 and the newlines really mean nothing.
 
 Set ACS_GS_NLSPACE if newlines are to be treated as spaces.
@@ -1047,7 +1047,7 @@ and it does some translations that you may or may not want.
 Your destination array should be big enough to hold
 a reasonable phrase or sentence.
 Yes, you could feed your synthesizer one word at a time,
-but the speech is chopppy and unnatural.
+but the speech is choppy and unnatural.
 You - probably - don't - want - to - do - that.
 So make your sentence array 200 bytes or so.
 
@@ -1213,7 +1213,7 @@ enum acs_sy_style {
 // generic, no index markers etc.
 // This one should be first, with a value of 0, hence the default.
 ACS_SY_STYLE_GENERIC,
-// doubletalk, double light, tripletalk, etc
+// DoubleTalk, double light, TripleTalk, etc
 ACS_SY_STYLE_DOUBLE,
 // Dectalk, pc and express
 ACS_SY_STYLE_DECEXP,
@@ -1265,7 +1265,7 @@ In addition these markers tell us whether the unit is still talking.
 So whenever index markers are available here is what I'm going to do.
 If you send a one time string to the synth, like reading the current character,
 or current word, or announcing "louder" as you increase volume,
-or any little snippit of text without index markers,
+or any little snippet of text without index markers,
 then I'm going to assume it is instantly read,
 and the synthesizer is ready for more text.
 The theory is that you won't type faster than it can speak these bits of text,
@@ -1312,9 +1312,9 @@ int acs_stillTalking(void);
 
 /*********************************************************************
 Send a character or a string to the synthesizer to be spoken right away.
-I will append the cr, to tell the synth to start speking.
+I will append the cr, to tell the synth to start speaking.
 But it isn't always a cr.
-The dectalk requires control k cr, just to be perverse.
+The DECTalk requires control k cr, just to be perverse.
 So as always, you need to set the synthesizer style.
 
 The say_char routine looks in the punctuation pronunciation table,
